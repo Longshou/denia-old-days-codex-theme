@@ -8,6 +8,13 @@ import vm from "node:vm";
 
 const root = path.resolve(process.argv[2] || path.join(import.meta.dirname, ".."));
 const realRoot = await fs.realpath(root);
+const canonSourcesPath = path.join(root, "..", "canon", "sources.md");
+let canonSources = null;
+try {
+  canonSources = await fs.readFile(canonSourcesPath, "utf8");
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
 
 const resolvePackageFile = async (relative) => {
   const file = path.resolve(root, relative);
@@ -55,6 +62,26 @@ assert(manifest.cleanup?.rootClass === "denia-old-days-ds-extension", "unexpecte
 assert(Array.isArray(manifest.capabilities) && manifest.capabilities.includes("runtime.cleanup"), "runtime cleanup capability is required");
 assert(manifest.capabilities.includes("runtime.multi-art-preload"), "multi-art preload capability is required");
 assert(manifest.capabilities.includes("task.state-art-rail"), "state art rail capability is required");
+
+if (canonSources) {
+  const officialRows = new Map(
+    canonSources.split("\n")
+      .filter((line) => /^\| (?:Bright|Dark|Compact) \|/u.test(line))
+      .map((line) => [line.split("|")[1].trim(), line]),
+  );
+  const officialSourceUrls = {
+    Bright: [
+      "https://www.kurobbs.com/mc/post/1507356224033308672",
+      "https://www.youtube.com/watch?v=rtMnPOV3DO8",
+    ],
+    Dark: ["https://www.kurobbs.com/mc/post/1508896679676882944"],
+    Compact: ["https://wiki.kurobbs.com/mc/item/1488852222116831232"],
+  };
+  for (const [form, urls] of Object.entries(officialSourceUrls)) {
+    const row = officialRows.get(form) || "";
+    for (const url of urls) assert(row.includes(url), `${form} official source row must include ${url}`);
+  }
+}
 
 const required = [
   manifest.entrypoints.style,
@@ -109,6 +136,10 @@ for (const [token, replacement] of runtimeReplacements) runtimePayload = runtime
 assert(!/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/u.test(runtimePayload), "runtime payload must not retain template tokens");
 assertRuntimeArtworkLifecycle(runtimePayload);
 assertPublicStateUrlCollectionCoverage();
+assertLiveVerificationArtworkTarget(loader);
+assertFallbackCleanupBehavior(loader);
+assertSuggestionDeckLifecycle(runtimePayload);
+assertFormStateRecognition(runtimePayload);
 
 assert(loader.includes("127.0.0.1"), "loader must bind to loopback");
 assert(!loader.includes("0.0.0.0"), "loader must not use a wildcard host");
@@ -717,26 +748,41 @@ function createRuntimeHarness(createObjectUrl) {
   }
 
   class FakeClassList {
-    constructor() {
-      this.values = new Set();
+    constructor(owner) {
+      this.owner = owner;
     }
 
     add(...names) {
-      names.forEach((name) => this.values.add(name));
+      const values = this.#values();
+      names.forEach((name) => values.add(name));
+      this.#sync(values);
     }
 
     remove(...names) {
-      names.forEach((name) => this.values.delete(name));
+      const values = this.#values();
+      names.forEach((name) => values.delete(name));
+      this.#sync(values);
     }
 
     toggle(name, force) {
-      if (force) this.values.add(name);
-      else this.values.delete(name);
-      return Boolean(force);
+      const values = this.#values();
+      const enabled = force === undefined ? !values.has(name) : Boolean(force);
+      if (enabled) values.add(name);
+      else values.delete(name);
+      this.#sync(values);
+      return enabled;
     }
 
     contains(name) {
-      return this.values.has(name);
+      return this.#values().has(name);
+    }
+
+    #values() {
+      return new Set(this.owner.className.split(/\s+/u).filter(Boolean));
+    }
+
+    #sync(values) {
+      this.owner.className = [...values].join(" ");
     }
   }
 
@@ -745,7 +791,8 @@ function createRuntimeHarness(createObjectUrl) {
       this.tagName = tagName.toUpperCase();
       this.id = "";
       this.className = "";
-      this.classList = new FakeClassList();
+      this.classList = new FakeClassList(this);
+      this.attributes = new Map();
       this.dataset = {};
       this.style = new FakeStyle();
       this.children = [];
@@ -753,6 +800,8 @@ function createRuntimeHarness(createObjectUrl) {
       this.isConnected = false;
       this.textContent = "";
       this.innerHTML = "";
+      this.listeners = new Map();
+      this.disabled = false;
     }
 
     append(...nodes) {
@@ -769,7 +818,9 @@ function createRuntimeHarness(createObjectUrl) {
     }
 
     insertAdjacentElement(_position, node) {
-      this.parentElement?.insertBefore(node, null);
+      if (!this.parentElement) return;
+      const index = this.parentElement.children.indexOf(this);
+      this.parentElement.#attach(node, index + 1);
     }
 
     remove() {
@@ -779,20 +830,44 @@ function createRuntimeHarness(createObjectUrl) {
     }
 
     setAttribute(name, value) {
-      this[name] = String(value);
+      const stringValue = String(value);
+      this.attributes.set(name, stringValue);
+      if (name === "id") this.id = stringValue;
+      if (name === "class") this.className = stringValue;
+      if (name.startsWith("data-")) this.dataset[dataAttributeKey(name)] = stringValue;
     }
 
     getAttribute(name) {
-      return this[name] || null;
+      if (name === "id") return this.id || null;
+      if (name === "class") return this.className || null;
+      if (name.startsWith("data-")) return this.dataset[dataAttributeKey(name)] || null;
+      return this.attributes.get(name) || null;
     }
 
-    addEventListener() {}
-    removeEventListener() {}
-    querySelector() { return null; }
-    querySelectorAll() { return []; }
-    closest() { return null; }
-    matches() { return false; }
-    getBoundingClientRect() { return { width: 0, height: 0 }; }
+    addEventListener(name, handler) {
+      const handlers = this.listeners.get(name) || [];
+      handlers.push(handler);
+      this.listeners.set(name, handlers);
+    }
+
+    removeEventListener(name, handler) {
+      this.listeners.set(name, (this.listeners.get(name) || []).filter((candidate) => candidate !== handler));
+    }
+
+    click() {
+      if (this.disabled) return;
+      for (const handler of this.listeners.get("click") || []) handler.call(this, { currentTarget: this, target: this });
+    }
+
+    querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+    querySelectorAll(selector) { return descendants(this).filter((node) => matchesSelector(node, selector)); }
+    closest(selector) {
+      for (let node = this; node; node = node.parentElement) if (matchesSelector(node, selector)) return node;
+      return null;
+    }
+    matches(selector) { return matchesSelector(this, selector); }
+    contains(candidate) { return candidate === this || descendants(this).includes(candidate); }
+    getBoundingClientRect() { return { x: 0, y: 0, width: 120, height: 36 }; }
 
     #attach(node, index) {
       node.remove();
@@ -813,8 +888,9 @@ function createRuntimeHarness(createObjectUrl) {
     head,
     body,
     createElement: (tagName) => new FakeElement(tagName),
-    querySelector: () => null,
-    querySelectorAll: () => [],
+    elementFromPoint: () => null,
+    querySelector(selector) { return this.querySelectorAll(selector)[0] || null; },
+    querySelectorAll(selector) { return [head, body, ...descendants(head), ...descendants(body)].filter((node) => matchesSelector(node, selector)); },
     getElementById(id) {
       const pending = [head, body];
       while (pending.length) {
@@ -825,6 +901,40 @@ function createRuntimeHarness(createObjectUrl) {
       return null;
     },
   };
+
+  function descendants(node) {
+    return node.children.flatMap((child) => [child, ...descendants(child)]);
+  }
+
+  function dataAttributeKey(name) {
+    return name.slice(5).replace(/-([a-z])/gu, (_match, letter) => letter.toUpperCase());
+  }
+
+  function attributeValue(node, name) {
+    if (name === "id") return node.id;
+    if (name === "class") return node.className;
+    if (name.startsWith("data-")) return node.dataset[dataAttributeKey(name)];
+    return node.attributes.get(name);
+  }
+
+  function matchesSelector(node, selectorList) {
+    return selectorList.split(",").some((selector) => {
+      const source = selector.trim();
+      if (!source || /\s/u.test(source.replace(/\[[^\]]+\]/gu, ""))) return false;
+      const tag = /^[a-z][a-z0-9-]*/iu.exec(source)?.[0];
+      if (tag && node.tagName !== tag.toUpperCase()) return false;
+      for (const id of source.matchAll(/#([a-z0-9_-]+)/giu)) if (node.id !== id[1]) return false;
+      for (const className of source.matchAll(/\.([a-z0-9_-]+)/giu)) if (!node.classList.contains(className[1])) return false;
+      for (const attribute of source.matchAll(/\[([^\]=*^$~|]+)(?:([*$]?=)["']?([^\]"']*)["']?)?\]/gu)) {
+        const actual = attributeValue(node, attribute[1]);
+        if (!attribute[2] && actual == null) return false;
+        if (attribute[2] === "=" && actual !== attribute[3]) return false;
+        if (attribute[2] === "*=" && !String(actual || "").includes(attribute[3])) return false;
+        if (attribute[2] === "$=" && !String(actual || "").endsWith(attribute[3])) return false;
+      }
+      return true;
+    });
+  }
   const sandbox = {
     Blob,
     HTMLElement: FakeElement,
@@ -849,7 +959,13 @@ function createRuntimeHarness(createObjectUrl) {
     console,
     decodeURIComponent,
     document,
-    getComputedStyle: () => ({ display: "none", visibility: "hidden" }),
+    getComputedStyle: (node) => ({
+      backgroundImage: node?.computedBackgroundImage || "none",
+      display: node?.computedDisplay || "block",
+      opacity: node?.computedOpacity || "1",
+      visibility: node?.computedVisibility || "visible",
+      getPropertyValue: (name) => node?.style?.getPropertyValue(name) || "",
+    }),
     matchMedia: () => ({ matches: false }),
     requestAnimationFrame: () => 1,
     setTimeout,
@@ -862,7 +978,7 @@ function createRuntimeHarness(createObjectUrl) {
   const context = vm.createContext(sandbox);
   sandbox.captureFreeze = (value) => freezeCalls.push(value);
   vm.runInContext("globalThis.originalFreeze = Object.freeze; Object.freeze = (value) => { captureFreeze(value); return originalFreeze(value); };", context);
-  return { context, sandbox, root: documentElement, created, revoked, events, freezeCalls };
+  return { context, sandbox, root: documentElement, document, FakeElement, created, revoked, events, freezeCalls };
 }
 
 function publicStateContainsUrl(value, seen = new Set()) {
@@ -897,6 +1013,261 @@ function assertPublicStateUrlCollectionCoverage() {
   assert(publicStateContainsUrl(collections.setWithMap), "public state URL scan must inspect cross-realm Set and nested Map values");
   assert(!publicStateContainsUrl(collections.safeMap), "public state URL scan must terminate on collection cycles without URLs");
   assert(publicStateContainsUrl({ nested: ["blob:ordinary-object-array"] }), "public state URL scan must retain ordinary object and array coverage");
+}
+
+function assertLiveVerificationArtworkTarget(loaderSource) {
+  const declarationStart = loaderSource.indexOf("const verifyExpression = `");
+  const declarationEnd = loaderSource.indexOf("`;\n\nclass CdpSession", declarationStart);
+  assert(declarationStart >= 0 && declarationEnd > declarationStart, "validator could not extract loader verifyExpression");
+  const declaration = loaderSource.slice(declarationStart, declarationEnd + 2);
+  const expression = vm.runInNewContext(`${declaration}\nverifyExpression`);
+
+  const runCase = ({ heroBackgroundImage = "none", photoBackgroundImage = "none" }) => {
+    const root = {
+      classList: { contains: (name) => ["denia-old-days-ds-extension", "denia-old-days-ds-home"].includes(name) },
+      clientWidth: 1200,
+      dataset: {},
+      scrollWidth: 1200,
+    };
+    const hero = {};
+    const photoFront = {};
+    const document = {
+      documentElement: root,
+      elementFromPoint: () => null,
+      getElementById: () => null,
+      querySelector(selector) {
+        if (selector === ".denia-old-days-ds-hero") return hero;
+        if (selector === ".denia-old-days-ds-photo-front") return photoFront;
+        return null;
+      },
+    };
+    const sandbox = {
+      document,
+      getComputedStyle(node) {
+        if (node === root) return { getPropertyValue: () => 'url("blob:bright")' };
+        if (node === hero) return { backgroundImage: heroBackgroundImage };
+        if (node === photoFront) return { backgroundImage: photoBackgroundImage };
+        return {};
+      },
+      innerHeight: 800,
+      innerWidth: 1200,
+      window: {
+        __DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__: {
+          id: "denia-old-days",
+          version: "0.1.0",
+          artReady: true,
+        },
+      },
+    };
+    return vm.runInNewContext(expression, sandbox);
+  };
+
+  assert(
+    runCase({ heroBackgroundImage: 'url("blob:bright")' }).heroUsesRuntimeArt === false,
+    "live verification must not accept artwork rendered only on the hero paper container",
+  );
+  assert(
+    runCase({ photoBackgroundImage: 'url("blob:bright")' }).heroUsesRuntimeArt === true,
+    "live verification must accept matching bright artwork on photo-front",
+  );
+  assert(
+    runCase({}).heroUsesRuntimeArt === false,
+    "live verification must reject a missing photo-front artwork URL",
+  );
+}
+
+function assertFallbackCleanupBehavior(loaderSource) {
+  const declarationStart = loaderSource.indexOf("const cleanupExpression = `");
+  const declarationEnd = loaderSource.indexOf("`;\n\nconst verifyExpression", declarationStart);
+  assert(declarationStart >= 0 && declarationEnd > declarationStart, "validator could not extract loader cleanupExpression");
+  const declaration = loaderSource.slice(declarationStart, declarationEnd + 2);
+  const expression = vm.runInNewContext(`${declaration}\ncleanupExpression`);
+  const harness = createRuntimeHarness((index) => `blob:cleanup-${index + 1}`);
+
+  const ownedIds = [
+    "denia-old-days-dream-skin-extension-style",
+    "denia-old-days-ds-chrome",
+    "denia-old-days-ds-sidebar-brand",
+    "denia-old-days-ds-hero-copy",
+    "denia-old-days-ds-hero-badge",
+    "denia-old-days-ds-stage-pass",
+    "denia-old-days-ds-custom-card",
+    "denia-old-days-ds-card-deck",
+  ];
+  for (const id of ownedIds) {
+    const node = harness.document.createElement("div");
+    node.id = id;
+    harness.document.body.append(node);
+  }
+
+  const removableClasses = [
+    "denia-old-days-ds-native-card",
+    "denia-old-days-ds-native-suggestions",
+    "denia-old-days-ds-composer",
+    "denia-old-days-ds-send",
+    "denia-old-days-ds-attachment",
+    "denia-old-days-ds-observation",
+    "denia-old-days-ds-final-card",
+  ];
+  const touched = removableClasses.map((className) => {
+    const node = harness.document.createElement("div");
+    node.classList.add(className);
+    node.dataset.deniaObservationLabel = "观察记录";
+    node.dataset.deniaOldDaysCard = "0";
+    harness.document.body.append(node);
+    return node;
+  });
+
+  const hero = harness.document.createElement("div");
+  hero.classList.add("denia-old-days-ds-hero");
+  for (const property of ["background-image", "background-position", "background-size", "background-repeat", "background-color"]) {
+    hero.style.setProperty(property, "legacy");
+  }
+  harness.document.body.append(hero);
+
+  harness.root.classList.add("denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task");
+  harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.0";
+  harness.root.dataset.deniaFormState = "working";
+  for (const name of ["bright", "dark", "portrait"]) {
+    harness.root.style.setProperty(`--denia-old-days-art-${name}`, `url(blob:${name})`);
+  }
+
+  assert(vm.runInContext(expression, harness.context) === true, "fallback cleanup must report success");
+  for (const className of ["denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task"]) {
+    assert(!harness.root.classList.contains(className), `fallback cleanup must remove root class ${className}`);
+  }
+  assert(!("deniaOldDaysExtensionVersion" in harness.root.dataset), "fallback cleanup must remove the extension version marker");
+  assert(!("deniaFormState" in harness.root.dataset), "fallback cleanup must remove the form state marker");
+  for (const name of ["bright", "dark", "portrait"]) {
+    assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
+  }
+  for (const id of ownedIds) assert(!harness.document.getElementById(id), `fallback cleanup must remove owned node ${id}`);
+  removableClasses.forEach((className, index) => {
+    assert(!touched[index].classList.contains(className), `fallback cleanup must remove touched class ${className}`);
+    assert(!("deniaObservationLabel" in touched[index].dataset), `fallback cleanup must remove observation data from ${className}`);
+    assert(!("deniaOldDaysCard" in touched[index].dataset), `fallback cleanup must remove card data from ${className}`);
+  });
+  for (const property of ["background-image", "background-position", "background-size", "background-repeat", "background-color"]) {
+    assert(!hero.style.getPropertyValue(property), `fallback cleanup must remove legacy hero ${property}`);
+  }
+}
+
+function assertSuggestionDeckLifecycle(payload) {
+  const labels = ["Explore code", "Build feature", "Review changes", "Fix bug"];
+
+  const makeHarness = (initialLabels) => {
+    const harness = createRuntimeHarness((index) => `blob:suggestion-${index + 1}`);
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    main.classList.add("dream-skin-home");
+    harness.document.body.append(main);
+    let nativeContainer = null;
+    const remount = (nextLabels) => {
+      nativeContainer?.remove();
+      nativeContainer = harness.document.createElement("div");
+      nativeContainer.className = "native-actions";
+      main.append(nativeContainer);
+      const buttons = nextLabels.map((label) => {
+        const button = harness.document.createElement("button");
+        button.textContent = label;
+        button.clickCount = 0;
+        button.addEventListener("click", () => { button.clickCount += 1; });
+        nativeContainer.append(button);
+        return button;
+      });
+      return buttons;
+    };
+    const buttons = remount(initialLabels);
+    return { harness, main, remount, buttons, nativeContainer: () => nativeContainer };
+  };
+
+  const short = makeHarness(labels.slice(0, 3));
+  vm.runInContext(payload, short.harness.context, { timeout: 1000 });
+  assert(!short.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck must not be created for only three native actions");
+  assert(!short.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "three native actions must remain visible and undecorated");
+
+  const complete = makeHarness(labels);
+  vm.runInContext(payload, complete.harness.context, { timeout: 1000 });
+  const state = complete.harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  let deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
+  assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "suggestion deck must proxy all four native actions");
+
+  const reordered = complete.remount([labels[3], labels[0], labels[2], labels[1]]);
+  state.refresh();
+  deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
+  deck.querySelectorAll("button[data-denia-old-days-card]")[0].click();
+  assert(reordered[0].clickCount === 1, "suggestion deck must forward clicks to remounted and reordered native actions");
+
+  const dropped = complete.remount(labels.slice(0, 3));
+  state.refresh();
+  assert(!complete.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck must be removed when native action count drops below four");
+  assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "native action container must be restored after count drop");
+  assert(dropped.every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "native action buttons must be restored after count drop");
+}
+
+function assertFormStateRecognition(payload) {
+  const runCase = (build) => {
+    const harness = createRuntimeHarness((index) => `blob:form-state-${index + 1}`);
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    harness.document.body.append(main);
+    build({ ...harness, main });
+    vm.runInContext(payload, harness.context, { timeout: 1000 });
+    return harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.formState;
+  };
+
+  const appendMarker = ({ document, main }, attributes, text = "") => {
+    const marker = document.createElement("div");
+    for (const [name, value] of Object.entries(attributes)) marker.setAttribute(name, value);
+    marker.textContent = text;
+    main.append(marker);
+    return marker;
+  };
+
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-state": "error" }, "Something needs attention")) === "error",
+    "visible data-state=error must be authoritative without error wording",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-status": "error" }, "Something needs attention")) === "error",
+    "visible data-status=error must be authoritative without error wording",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-testid": "task-error-state" }, "Something needs attention")) === "error",
+    "visible error test IDs must be authoritative without error wording",
+  );
+  assert(
+    runCase(({ document, main }) => {
+      const button = document.createElement("button");
+      button.textContent = "Review changes";
+      main.append(button);
+    }) === "staged",
+    "an ordinary Review changes button must not imply approval",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-state": "approval" })) === "approval",
+    "visible stable approval state must be authoritative",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-status": "permission" })) === "approval",
+    "visible stable permission status must be authoritative",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { role: "dialog" }, "Review changes")) === "approval",
+    "Review changes inside a visible dialog must imply approval",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { role: "alertdialog" }, "Review changes")) === "approval",
+    "Review changes inside a visible alert dialog must imply approval",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-status": "running" })) === "working",
+    "working state recognition must remain intact",
+  );
+  assert(
+    runCase((fixture) => appendMarker(fixture, { "data-content-search-unit-key": "unit:assistant" })) === "complete",
+    "completed assistant state recognition must remain intact",
+  );
 }
 
 function scanCssSyntax(source) {

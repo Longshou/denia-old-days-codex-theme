@@ -143,15 +143,17 @@ const cleanupExpression = `(() => {
   const state = window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   if (state?.cleanup) return state.cleanup();
   const root = document.documentElement;
-  document.getElementById('denia-old-days-dream-skin-extension-style')?.remove();
-  document.getElementById('denia-old-days-ds-chrome')?.remove();
-  document.getElementById('denia-old-days-ds-sidebar-brand')?.remove();
-  document.getElementById('denia-old-days-ds-hero-copy')?.remove();
-  document.getElementById('denia-old-days-ds-hero-badge')?.remove();
-  document.getElementById('denia-old-days-ds-stage-pass')?.remove();
-  document.getElementById('denia-old-days-ds-custom-card')?.remove();
-  document.getElementById('denia-old-days-ds-card-deck')?.remove();
-  root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home');
+  for (const id of [
+    'denia-old-days-dream-skin-extension-style',
+    'denia-old-days-ds-chrome',
+    'denia-old-days-ds-sidebar-brand',
+    'denia-old-days-ds-hero-copy',
+    'denia-old-days-ds-hero-badge',
+    'denia-old-days-ds-stage-pass',
+    'denia-old-days-ds-custom-card',
+    'denia-old-days-ds-card-deck',
+  ]) document.getElementById(id)?.remove();
+  root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home', 'denia-old-days-ds-task');
   delete root.dataset.deniaOldDaysExtensionVersion;
   delete root.dataset.deniaFormState;
   root.style.removeProperty('--denia-old-days-art-bright');
@@ -163,7 +165,19 @@ const cleanupExpression = `(() => {
   for (const name of ['mode-button', 'native-hero-copy', 'hero', 'suggestions', 'home-main']) {
     document.querySelectorAll('.denia-old-days-ds-' + name).forEach((node) => node.classList.remove('denia-old-days-ds-' + name));
   }
-  document.querySelectorAll('[data-denia-old-days-card]').forEach((node) => delete node.dataset.deniaOldDaysCard);
+  for (const className of [
+    'denia-old-days-ds-native-card',
+    'denia-old-days-ds-native-suggestions',
+    'denia-old-days-ds-composer',
+    'denia-old-days-ds-send',
+    'denia-old-days-ds-attachment',
+    'denia-old-days-ds-observation',
+    'denia-old-days-ds-final-card',
+  ]) document.querySelectorAll('.' + className).forEach((node) => node.classList.remove(className));
+  document.querySelectorAll('[data-denia-observation-label], [data-denia-old-days-card]').forEach((node) => {
+    delete node.dataset.deniaObservationLabel;
+    delete node.dataset.deniaOldDaysCard;
+  });
   return true;
 })()`;
 
@@ -178,9 +192,11 @@ const verifyExpression = `(() => {
   const root = document.documentElement;
   const home = root.classList.contains('denia-old-days-ds-home');
   const hero = document.querySelector('.denia-old-days-ds-hero');
+  const photoFront = document.querySelector('.denia-old-days-ds-photo-front');
   const runtimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-bright').trim();
   const runtimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(runtimeArt)?.[1] || '';
   const heroBackgroundImage = hero ? getComputedStyle(hero).backgroundImage : '';
+  const photoFrontBackgroundImage = photoFront ? getComputedStyle(photoFront).backgroundImage : '';
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
@@ -216,8 +232,9 @@ const verifyExpression = `(() => {
     version: state?.version || null,
     artReady: Boolean(state?.artReady),
     fastArtPresent: Boolean(runtimeArt),
-    heroUsesRuntimeArt: Boolean(!home || (runtimeArtUrl && heroBackgroundImage.includes(runtimeArtUrl))),
+    heroUsesRuntimeArt: Boolean(!home || (runtimeArtUrl && photoFrontBackgroundImage.includes(runtimeArtUrl))),
     heroBackgroundImage,
+    photoFrontBackgroundImage,
     metrics: state?.metrics || null,
     installed: root.classList.contains('denia-old-days-ds-extension'),
     stylePresent: Boolean(document.getElementById('denia-old-days-dream-skin-extension-style')),

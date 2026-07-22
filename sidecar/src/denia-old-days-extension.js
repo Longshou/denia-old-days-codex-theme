@@ -196,7 +196,16 @@
   function ensureSuggestionDeck() {
     let deck = document.getElementById("denia-old-days-ds-card-deck");
     const nativeButtons = nativeSuggestionButtons();
-    if (nativeButtons.length < 3) return deck;
+    if (nativeButtons.length !== 4) {
+      if (deck) {
+        ownedNodes.delete(deck);
+        deck.remove();
+      }
+      for (const node of touchedNodes) {
+        node.classList?.remove("denia-old-days-ds-native-card", "denia-old-days-ds-native-suggestions");
+      }
+      return null;
+    }
     const nativeContainer = nativeButtons[0].parentElement;
     if (nativeContainer) touch(nativeContainer, "denia-old-days-ds-native-suggestions");
     nativeButtons.forEach((button) => touch(button, "denia-old-days-ds-native-card"));
@@ -244,12 +253,23 @@
   }
 
   function errorVisible() {
-    return [...document.querySelectorAll('[role="alert"], [data-state="error"], [data-status="error"], [data-testid*="error"]')]
-      .some((node) => visible(node) && /error|failed|failure|错误|失败/iu.test(node.textContent || ""));
+    const stableMarkers = document.querySelectorAll('[data-state="error"], [data-status="error"], [data-testid*="error"]');
+    if ([...stableMarkers].some(visible)) return true;
+    return [...document.querySelectorAll('[role="alert"]')]
+      .some((node) => visible(node) && /error|failed|failure|错误|失败/iu.test(node.textContent || node.getAttribute("aria-label") || ""));
   }
 
   function approvalVisible() {
-    return [...document.querySelectorAll('button, [role="dialog"]')]
+    const stableMarkers = document.querySelectorAll([
+      '[data-state*="approval"]',
+      '[data-status*="approval"]',
+      '[data-state*="permission"]',
+      '[data-status*="permission"]',
+      '[data-testid*="approval"]',
+      '[data-testid*="permission"]',
+    ].join(","));
+    if ([...stableMarkers].some(visible)) return true;
+    return [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
       .some((node) => visible(node) && /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(node.textContent || node.getAttribute("aria-label") || ""));
   }
 

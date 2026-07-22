@@ -15,9 +15,9 @@
 
 | 形态 | 文件 | 官方来源 | 尺寸 | SHA-256 |
 | --- | --- | --- | --- | --- |
-| Bright | `art/source/official/old-days-bright-102s.jpg` | 库洛官方《旧日斑斓》动画约 `00:01:42` 帧 | 1920×1080 | `d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd` |
-| Dark | `art/source/official/denia-poster-wide.png` | 库洛官方达妮娅横版海报 | 1840×1080 | `1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1` |
-| Compact | `art/source/official/denia-portrait.png` | 库洛官方达妮娅透明立绘 | 1186×1844 | `95ad359595edc790084194504dbbd7a5245c6428b9ec78a1aca4dc7bab994245` |
+| Bright | `art/source/official/old-days-bright-102s.jpg` | [库洛官方《旧日斑斓》动画](https://www.kurobbs.com/mc/post/1507356224033308672)约 `00:01:42` 帧；[官方角色展示视频](https://www.youtube.com/watch?v=rtMnPOV3DO8) | 1920×1080 | `d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd` |
+| Dark | `art/source/official/denia-poster-wide.png` | [库洛官方达妮娅横版海报](https://www.kurobbs.com/mc/post/1508896679676882944) | 1840×1080 | `1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1` |
+| Compact | `art/source/official/denia-portrait.png` | [库洛官方达妮娅透明立绘](https://wiki.kurobbs.com/mc/item/1488852222116831232) | 1186×1844 | `95ad359595edc790084194504dbbd7a5245c6428b9ec78a1aca4dc7bab994245` |
 
 这些文件是不可变的构建输入。项目仅作内部非官方粉丝主题使用，不主张对官方素材的所有权或再分发许可，也不隶属于、不受 OpenAI、库洛游戏或《鸣潮》权利方认可或赞助。
 
