@@ -1,21 +1,34 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 const root = path.resolve(process.argv[2] || path.join(import.meta.dirname, ".."));
+const realRoot = await fs.realpath(root);
 
-const readRequired = async (relative) => {
+const resolvePackageFile = async (relative) => {
   const file = path.resolve(root, relative);
   assert(file.startsWith(`${root}${path.sep}`), `path escapes package: ${relative}`);
+  let realFile;
   try {
-    const stat = await fs.lstat(file);
-    assert(!stat.isSymbolicLink(), `symbolic links are not allowed: ${relative}`);
-    assert(stat.isFile() && stat.size > 0, `missing or empty sidecar/${relative}`);
-    return await fs.readFile(file, "utf8");
+    realFile = await fs.realpath(file);
   } catch (error) {
     if (error?.code === "ENOENT") throw new Error(`missing sidecar/${relative}`);
-    throw error;
+    throw new Error(`could not resolve sidecar/${relative}`, { cause: error });
   }
+  assert(realFile.startsWith(`${realRoot}${path.sep}`), `real path escapes package: ${relative}`);
+  return { file, realFile };
+};
+
+const readRequired = async (relative) => {
+  const { file, realFile } = await resolvePackageFile(relative);
+  const stat = await fs.lstat(file);
+  assert(!stat.isSymbolicLink(), `symbolic links are not allowed: ${relative}`);
+  assert(stat.isFile() && stat.size > 0, `missing or empty sidecar/${relative}`);
+  return await fs.readFile(realFile, "utf8");
 };
 
 const manifest = JSON.parse(await readRequired("extension.json"));
@@ -74,6 +87,27 @@ const [loader, styles, runtime, ...scripts] = await Promise.all([
   ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
 ]);
+
+const runtimeTokens = [
+  "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__",
+];
+for (const token of runtimeTokens) {
+  assert(runtime.split(token).length - 1 === 1, `runtime template must contain ${token} exactly once`);
+  assert(loader.includes(`.replace("${token}"`), `loader must replace ${token}`);
+}
+const runtimeReplacements = new Map([
+  [runtimeTokens[0], JSON.stringify(manifest)],
+  [runtimeTokens[1], JSON.stringify(styles)],
+  ...runtimeTokens.slice(2).map((token) => [token, JSON.stringify("data:image/webp;base64,AA==")]),
+]);
+let runtimePayload = runtime;
+for (const [token, replacement] of runtimeReplacements) runtimePayload = runtimePayload.replace(token, replacement);
+assert(!/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/u.test(runtimePayload), "runtime payload must not retain template tokens");
+assertRuntimeArtworkLifecycle(runtimePayload);
 
 assert(loader.includes("127.0.0.1"), "loader must bind to loopback");
 assert(!loader.includes("0.0.0.0"), "loader must not use a wildcard host");
@@ -144,14 +178,322 @@ for (const relative of ["package.sh", ...["common.sh", "install.sh", "start.sh",
 }
 
 for (const [key, relative] of Object.entries(manifest.assets || {})) {
-  const assetPath = path.resolve(root, relative);
-  assert(assetPath.startsWith(`${root}${path.sep}`), `asset path escapes package: ${key}`);
+  const { file: assetPath } = await resolvePackageFile(relative);
   const asset = await fs.lstat(assetPath);
   assert(!asset.isSymbolicLink() && asset.isFile(), `asset must be a regular file: ${key}`);
   assert(asset.size < 1024 * 1024, `asset must stay below 1 MiB: ${key}`);
 }
 
+if (process.env.DENIA_VALIDATE_SKIP_MUTATION_FIXTURE !== "1") {
+  await assertRejectsCommentedArtworkRevoke();
+}
+if (process.env.DENIA_VALIDATE_SKIP_SECURITY_FIXTURE !== "1") {
+  await assertRejectsAncestorSymlinkPaths();
+}
+
 console.log(`Validated ${manifest.name} extension ${manifest.version}: ${required.length} required files, removable sidecar protocol.`);
+
+async function assertRejectsCommentedArtworkRevoke() {
+  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "denia-validator-mutation-"));
+  try {
+    const fixtureRoot = path.join(temporaryRoot, "sidecar");
+    await fs.cp(root, fixtureRoot, { recursive: true });
+    const runtimePath = path.join(fixtureRoot, manifest.entrypoints.runtime);
+    const runtimeSource = await fs.readFile(runtimePath, "utf8");
+    const revokeLoop = "    for (const artUrl of Object.values(artUrls)) URL.revokeObjectURL(artUrl);";
+    assert(runtimeSource.includes(revokeLoop), "mutation fixture missing artwork revoke loop");
+    await fs.writeFile(runtimePath, runtimeSource.replace(revokeLoop, `    // ${revokeLoop.trim()}`));
+
+    const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), fixtureRoot], {
+      encoding: "utf8",
+      env: { ...process.env, DENIA_VALIDATE_SKIP_MUTATION_FIXTURE: "1" },
+    });
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+    assert(
+      result.status !== 0 && output.includes("artwork URLs"),
+      "validator must reject runtime whose revoke loop is commented out",
+    );
+  } finally {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
+  }
+}
+
+async function assertRejectsAncestorSymlinkPaths() {
+  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "denia-validator-symlink-"));
+  try {
+    const fixtureRoot = path.join(temporaryRoot, "sidecar");
+    const externalAssets = path.join(temporaryRoot, "outside-assets");
+    await fs.cp(root, fixtureRoot, { recursive: true });
+    await fs.cp(path.join(root, "assets"), externalAssets, { recursive: true });
+    await fs.rm(path.join(fixtureRoot, "assets"), { recursive: true, force: true });
+    await fs.symlink(externalAssets, path.join(fixtureRoot, "assets"), "dir");
+
+    const environment = {
+      ...process.env,
+      DENIA_VALIDATE_SKIP_MUTATION_FIXTURE: "1",
+      DENIA_VALIDATE_SKIP_SECURITY_FIXTURE: "1",
+    };
+    const validatorResult = spawnSync(process.execPath, [fileURLToPath(import.meta.url), fixtureRoot], {
+      encoding: "utf8",
+      env: environment,
+      timeout: 7000,
+    });
+    const validatorOutput = `${validatorResult.stdout || ""}\n${validatorResult.stderr || ""}`;
+    const loaderResult = spawnSync(process.execPath, [
+      path.join(fixtureRoot, "runtime/loader.mjs"),
+      "--verify",
+      "--extension-dir",
+      fixtureRoot,
+      "--port",
+      "65534",
+    ], {
+      encoding: "utf8",
+      env: environment,
+      timeout: 7000,
+    });
+    const loaderOutput = `${loaderResult.stdout || ""}\n${loaderResult.stderr || ""}`;
+    const missingGuards = [];
+    if (validatorResult.status === 0 || !validatorOutput.includes("real path escapes package")) missingGuards.push("validator");
+    if (loaderResult.status === 0 || !loaderOutput.includes("real path escapes package")) missingGuards.push("loader");
+    assert(
+      missingGuards.length === 0,
+      `ancestor symlink realpath guard missing from: ${missingGuards.join(", ")}`,
+    );
+  } finally {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
+  }
+}
+
+function assertRuntimeArtworkLifecycle(payload) {
+  const propertyNames = ["bright", "dark", "portrait"].map((name) => `--denia-old-days-art-${name}`);
+  const successful = createRuntimeHarness((index) => `blob:denia-${index + 1}`);
+
+  vm.runInContext(payload, successful.context, { timeout: 1000 });
+  const firstState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(successful.created.length === 3, "runtime install must create three artwork URLs");
+  assert(successful.freezeCalls.length === 1 && Object.isFrozen(successful.freezeCalls[0]), "runtime must freeze the artwork URL map");
+  assert(Object.keys(successful.freezeCalls[0]).join(",") === "bright,dark,portrait", "runtime artwork URL map must contain all states");
+  assert(firstState?.artReady === true, "runtime artReady must be true when every artwork URL succeeds");
+  assert(!publicStateContainsUrl(firstState), "runtime public state must not expose artwork URLs");
+  assert(successful.events.filter((event) => event.startsWith("set:")).length === 3, "runtime install must set exactly three CSS artwork variables");
+  for (const [index, property] of propertyNames.entries()) {
+    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 1}")`, `runtime install must set ${property}`);
+  }
+
+  const firstInstallEventCount = successful.events.length;
+  vm.runInContext(payload, successful.context, { timeout: 1000 });
+  const secondState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(successful.created.length === 6, "runtime reinstall must create three replacement artwork URLs");
+  assert(successful.freezeCalls.length === 2 && Object.isFrozen(successful.freezeCalls[1]), "runtime reinstall must freeze its replacement artwork URL map");
+  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3", "runtime reinstall must revoke previous artwork URLs");
+  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-4");
+  const reinstallCleanupEvents = successful.events.slice(firstInstallEventCount, firstReplacementCreate);
+  assert(propertyNames.every((property) => reinstallCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime reinstall must remove each previous CSS artwork variable before creating replacements");
+  assert(reinstallCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",") === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3", "runtime reinstall must clean previous artwork URLs before creating replacements");
+  assert(successful.events.filter((event) => event.startsWith("set:")).length === 6, "runtime reinstall must set exactly three replacement CSS artwork variables");
+  assert(secondState?.artReady === true && !publicStateContainsUrl(secondState), "runtime reinstall must retain ready state without exposing URLs");
+  for (const [index, property] of propertyNames.entries()) {
+    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 4}")`, `runtime reinstall must reset ${property}`);
+  }
+
+  const finalCleanupEventCount = successful.events.length;
+  secondState.cleanup();
+  const finalCleanupEvents = successful.events.slice(finalCleanupEventCount);
+  assert(successful.revoked.join(",") === [1, 2, 3, 4, 5, 6].map((number) => `blob:denia-${number}`).join(","), "runtime cleanup must revoke current artwork URLs");
+  assert(propertyNames.every((property) => finalCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime cleanup must remove each current CSS artwork variable exactly once");
+  assert(finalCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",") === "revoke:blob:denia-4,revoke:blob:denia-5,revoke:blob:denia-6", "runtime cleanup must revoke each current artwork URL exactly once");
+  assert(propertyNames.every((property) => successful.root.style.getPropertyValue(property) === ""), "runtime cleanup must remove every CSS artwork variable");
+  assert(!successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__, "runtime cleanup must remove public state");
+
+  const incomplete = createRuntimeHarness((index) => index === 2 ? "" : `blob:partial-${index + 1}`);
+  vm.runInContext(payload, incomplete.context, { timeout: 1000 });
+  const incompleteState = incomplete.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(incompleteState?.artReady === false, "runtime artReady must be false unless every artwork URL succeeds");
+  assert(!publicStateContainsUrl(incompleteState), "incomplete runtime state must not expose artwork URLs");
+  incompleteState.cleanup();
+}
+
+function createRuntimeHarness(createObjectUrl) {
+  const created = [];
+  const revoked = [];
+  const events = [];
+  const freezeCalls = [];
+
+  class FakeStyle {
+    constructor() {
+      this.values = new Map();
+    }
+
+    setProperty(name, value) {
+      this.values.set(name, value);
+      events.push(`set:${name}:${value}`);
+    }
+
+    removeProperty(name) {
+      this.values.delete(name);
+      events.push(`remove:${name}`);
+    }
+
+    getPropertyValue(name) {
+      return this.values.get(name) || "";
+    }
+  }
+
+  class FakeClassList {
+    constructor() {
+      this.values = new Set();
+    }
+
+    add(...names) {
+      names.forEach((name) => this.values.add(name));
+    }
+
+    remove(...names) {
+      names.forEach((name) => this.values.delete(name));
+    }
+
+    toggle(name, force) {
+      if (force) this.values.add(name);
+      else this.values.delete(name);
+      return Boolean(force);
+    }
+
+    contains(name) {
+      return this.values.has(name);
+    }
+  }
+
+  class FakeElement {
+    constructor(tagName = "div") {
+      this.tagName = tagName.toUpperCase();
+      this.id = "";
+      this.className = "";
+      this.classList = new FakeClassList();
+      this.dataset = {};
+      this.style = new FakeStyle();
+      this.children = [];
+      this.parentElement = null;
+      this.isConnected = false;
+      this.textContent = "";
+      this.innerHTML = "";
+    }
+
+    append(...nodes) {
+      for (const node of nodes) this.#attach(node, this.children.length);
+    }
+
+    prepend(...nodes) {
+      [...nodes].reverse().forEach((node) => this.#attach(node, 0));
+    }
+
+    insertBefore(node, reference) {
+      const index = reference ? this.children.indexOf(reference) : this.children.length;
+      this.#attach(node, index < 0 ? this.children.length : index);
+    }
+
+    insertAdjacentElement(_position, node) {
+      this.parentElement?.insertBefore(node, null);
+    }
+
+    remove() {
+      if (this.parentElement) this.parentElement.children = this.parentElement.children.filter((node) => node !== this);
+      this.parentElement = null;
+      this.isConnected = false;
+    }
+
+    setAttribute(name, value) {
+      this[name] = String(value);
+    }
+
+    getAttribute(name) {
+      return this[name] || null;
+    }
+
+    addEventListener() {}
+    removeEventListener() {}
+    querySelector() { return null; }
+    querySelectorAll() { return []; }
+    closest() { return null; }
+    matches() { return false; }
+    getBoundingClientRect() { return { width: 0, height: 0 }; }
+
+    #attach(node, index) {
+      node.remove();
+      node.parentElement = this;
+      node.isConnected = true;
+      this.children.splice(index, 0, node);
+    }
+  }
+
+  const documentElement = new FakeElement("html");
+  const head = new FakeElement("head");
+  const body = new FakeElement("body");
+  documentElement.isConnected = true;
+  head.isConnected = true;
+  body.isConnected = true;
+  const document = {
+    documentElement,
+    head,
+    body,
+    createElement: (tagName) => new FakeElement(tagName),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    getElementById(id) {
+      const pending = [head, body];
+      while (pending.length) {
+        const node = pending.shift();
+        if (node.id === id) return node;
+        pending.push(...node.children);
+      }
+      return null;
+    },
+  };
+  const sandbox = {
+    Blob,
+    HTMLElement: FakeElement,
+    MutationObserver: class {
+      observe() {}
+      disconnect() {}
+    },
+    URL: {
+      createObjectURL(blob) {
+        const value = createObjectUrl(created.length, blob);
+        created.push(value);
+        events.push(`create:${value}`);
+        return value;
+      },
+      revokeObjectURL(value) {
+        revoked.push(value);
+        events.push(`revoke:${value}`);
+      },
+    },
+    atob,
+    cancelAnimationFrame: () => {},
+    console,
+    decodeURIComponent,
+    document,
+    getComputedStyle: () => ({ display: "none", visibility: "hidden" }),
+    matchMedia: () => ({ matches: false }),
+    requestAnimationFrame: () => 1,
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  sandbox.window = sandbox;
+  sandbox.window.matchMedia = sandbox.matchMedia;
+  const context = vm.createContext(sandbox);
+  sandbox.captureFreeze = (value) => freezeCalls.push(value);
+  vm.runInContext("globalThis.originalFreeze = Object.freeze; Object.freeze = (value) => { captureFreeze(value); return originalFreeze(value); };", context);
+  return { context, sandbox, root: documentElement, created, revoked, events, freezeCalls };
+}
+
+function publicStateContainsUrl(value, seen = new Set()) {
+  if (typeof value === "string") return /^(?:blob|data):/u.test(value);
+  if (!value || typeof value !== "object" || seen.has(value)) return false;
+  seen.add(value);
+  return Object.values(value).some((nested) => publicStateContainsUrl(nested, seen));
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

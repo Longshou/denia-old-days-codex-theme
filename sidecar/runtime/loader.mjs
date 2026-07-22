@@ -26,8 +26,28 @@ const screenshotPath = value("--screenshot", "");
 const openHome = has("--open-home");
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("--port must be a valid local TCP port");
 
-const manifestPath = path.join(extensionDir, "extension.json");
-const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+let extensionRealDir;
+try {
+  extensionRealDir = await fs.realpath(extensionDir);
+} catch (error) {
+  throw new Error(`Could not resolve extension package directory: ${extensionDir}`, { cause: error });
+}
+
+const resolveExtensionFile = async (candidate, label) => {
+  if (!candidate.startsWith(`${extensionDir}${path.sep}`)) throw new Error(`Extension path escapes package directory: ${label}`);
+  let realPath;
+  try {
+    realPath = await fs.realpath(candidate);
+  } catch (error) {
+    throw new Error(`Could not resolve extension package file: ${label}`, { cause: error });
+  }
+  if (!realPath.startsWith(`${extensionRealDir}${path.sep}`)) throw new Error(`Extension real path escapes package directory: ${label}`);
+  return realPath;
+};
+
+const manifestPath = path.resolve(extensionDir, "extension.json");
+const manifestRealPath = await resolveExtensionFile(manifestPath, "extension.json");
+const manifest = JSON.parse(await fs.readFile(manifestRealPath, "utf8"));
 if (manifest.schemaVersion !== 1 || manifest.id !== "denia-old-days") {
   throw new Error("Unsupported or unexpected extension manifest");
 }
@@ -36,15 +56,19 @@ const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
 const darkPath = path.resolve(extensionDir, manifest.assets.stateArtwork);
 const portraitPath = path.resolve(extensionDir, manifest.assets.portraitFallback);
-for (const candidate of [stylePath, runtimePath, brightPath, darkPath, portraitPath]) {
-  if (!candidate.startsWith(`${extensionDir}${path.sep}`)) throw new Error("Extension entrypoint escapes its package directory");
-}
+const [styleRealPath, runtimeRealPath, brightRealPath, darkRealPath, portraitRealPath] = await Promise.all([
+  resolveExtensionFile(stylePath, manifest.entrypoints.style),
+  resolveExtensionFile(runtimePath, manifest.entrypoints.runtime),
+  resolveExtensionFile(brightPath, manifest.assets.runtimeWallpaper),
+  resolveExtensionFile(darkPath, manifest.assets.stateArtwork),
+  resolveExtensionFile(portraitPath, manifest.assets.portraitFallback),
+]);
 const [cssText, runtimeTemplate, bright, dark, portrait] = await Promise.all([
-  fs.readFile(stylePath, "utf8"),
-  fs.readFile(runtimePath, "utf8"),
-  fs.readFile(brightPath),
-  fs.readFile(darkPath),
-  fs.readFile(portraitPath),
+  fs.readFile(styleRealPath, "utf8"),
+  fs.readFile(runtimeRealPath, "utf8"),
+  fs.readFile(brightRealPath),
+  fs.readFile(darkRealPath),
+  fs.readFile(portraitRealPath),
 ]);
 
 const imageDataUrl = (filePath, bytes) => {
