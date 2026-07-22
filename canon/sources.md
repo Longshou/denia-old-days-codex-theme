@@ -21,3 +21,12 @@
 
 运行包不包含官方截图、剧情视频帧、第三方录屏画面、官方 Logo 或来源不明的字体。
 
+## 源文件校验
+
+| 文件 | SHA-256 |
+| --- | --- |
+| `art/source/background.svg` | `f434bc0fbf01523e8198f7f41bdb546c98186e99a6c0c5ab44a5ca6ed1a6df1a` |
+| `art/source/hero.svg` | `a7cacba007ae990c9b02bba07fdf9437c0a40b6028189109c21c37c3090671ec` |
+| `art/source/task-preview.svg` | `ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade` |
+
+上述哈希对应 `0.1.0` 首发候选源文件。生成的 JPEG、WebP 和 PNG 在构建时重新校验，不以 Git 文件作为分发来源。
