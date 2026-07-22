@@ -23,10 +23,42 @@ await sharp(source("background.svg"))
   .jpeg({ quality: 88, chromaSubsampling: "4:4:4" })
   .toFile(output("theme/background.jpg"));
 
-await sharp(source("hero.svg"))
-  .resize({ width: 1400, withoutEnlargement: true })
-  .webp({ quality: 86, alphaQuality: 92 })
-  .toFile(output("sidecar/assets/denia-old-days-hero.webp"));
+const runtimeArt = [
+  {
+    source: "official/old-days-bright-102s.jpg",
+    target: "sidecar/assets/denia-old-days-bright.webp",
+    resize: { width: 1440, height: 810, fit: "cover", position: "centre" },
+    webp: { quality: 86, smartSubsample: true },
+  },
+  {
+    source: "official/denia-poster-wide.png",
+    target: "sidecar/assets/denia-old-days-dark.webp",
+    resize: { width: 1380, height: 810, fit: "cover", position: "centre" },
+    webp: { quality: 84, smartSubsample: true },
+  },
+  {
+    source: "official/denia-portrait.png",
+    target: "sidecar/assets/denia-old-days-portrait.webp",
+    resize: { width: 640, height: 996, fit: "inside", withoutEnlargement: true },
+    webp: { quality: 88, alphaQuality: 92 },
+  },
+];
+
+for (const item of runtimeArt) {
+  await sharp(source(item.source))
+    .resize(item.resize)
+    .webp(item.webp)
+    .toFile(output(item.target));
+}
+
+await fs.rm(output("sidecar/assets/denia-old-days-hero.webp"), { force: true });
+
+const homePhoto = await sharp(source("official/old-days-bright-102s.jpg"))
+  .resize(610, 343, { fit: "cover", position: "centre" })
+  .extend({ top: 18, right: 18, bottom: 52, left: 18, background: "#fffef8" })
+  .rotate(-1.2, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .png()
+  .toBuffer();
 
 const homeOverlay = Buffer.from(`
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000">
@@ -42,33 +74,46 @@ const homeOverlay = Buffer.from(`
   <text x="188" y="572" fill="#263548" font-family="Arial, sans-serif" font-size="18">校对这页改动</text>
   <rect x="156" y="616" width="472" height="70" rx="21" fill="#fff" stroke="#b8dde3"/>
   <text x="188" y="660" fill="#263548" font-family="Arial, sans-serif" font-size="18">修补未完成的记录</text>
-  <rect x="156" y="765" width="1010" height="92" rx="30" fill="#fff" fill-opacity=".91" stroke="#8fd2dd" stroke-width="2"/>
+  <rect x="156" y="765" width="562" height="92" rx="30" fill="#fff" fill-opacity=".91" stroke="#8fd2dd" stroke-width="2"/>
   <text x="196" y="820" fill="#8b9da5" font-family="Arial, sans-serif" font-size="18">让达妮娅记录下一项任务…</text>
-  <circle cx="1112" cy="811" r="30" fill="#263548"/>
-  <path d="M1099 811h26M1112 798v26" stroke="#f7d88a" stroke-width="4" stroke-linecap="round"/>
-  <rect x="1178" y="112" width="238" height="46" rx="23" fill="#eaf7f7" stroke="#8fd2dd"/>
-  <text x="1206" y="141" fill="#55717c" font-family="Arial, sans-serif" font-size="14">布景之形 · 记录中</text>
+  <circle cx="664" cy="811" r="30" fill="#263548"/>
+  <path d="M651 811h26M664 798v26" stroke="#f7d88a" stroke-width="4" stroke-linecap="round"/>
 </svg>`);
 
-const [background, hero] = await Promise.all([
-  sharp(source("background.svg")).resize(1600, 1000, { fit: "cover" }).png().toBuffer(),
-  sharp(source("hero.svg")).resize({ width: 760 }).png().toBuffer(),
-]);
+const background = await sharp(source("background.svg"))
+  .resize(1600, 1000, { fit: "cover" })
+  .png()
+  .toBuffer();
 
 await sharp(background)
   .composite([
-    { input: hero, left: 790, top: 128 },
     { input: homeOverlay, left: 0, top: 0 },
+    { input: homePhoto, left: 820, top: 218 },
   ])
   .png({ compressionLevel: 9 })
   .toFile(output("evidence/home.png"));
 
-await sharp(source("task-preview.svg"))
+const [taskBackground, taskRailArt] = await Promise.all([
+  sharp(source("task-preview.svg")).resize(1600, 1000, { fit: "cover" }).png().toBuffer(),
+  sharp(output("sidecar/assets/denia-old-days-dark.webp"))
+    .resize(148, 1000, { fit: "cover", position: "centre" })
+    .ensureAlpha()
+    .linear([1, 1, 1, 0.16], [0, 0, 0, 0])
+    .png()
+    .toBuffer(),
+]);
+
+await sharp(taskBackground)
+  .composite([{ input: taskRailArt, left: 1452, top: 0 }])
   .resize(1600, 1000, { fit: "cover" })
   .png({ compressionLevel: 9 })
   .toFile(output("evidence/task.png"));
 
-const heroStat = await fs.stat(output("sidecar/assets/denia-old-days-hero.webp"));
-if (heroStat.size > 1024 * 1024) throw new Error(`runtime hero exceeds 1 MiB: ${heroStat.size}`);
+for (const item of runtimeArt) {
+  const stat = await fs.stat(output(item.target));
+  if (stat.size > 1024 * 1024) {
+    throw new Error(`runtime artwork exceeds 1 MiB: ${item.target}`);
+  }
+}
 
-console.log("rendered 4 Denia assets");
+console.log("rendered 6 Denia assets");

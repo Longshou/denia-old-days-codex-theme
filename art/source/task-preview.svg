@@ -4,10 +4,6 @@
       <stop offset="0" stop-color="#f9ffff"/>
       <stop offset="1" stop-color="#eaf7f7"/>
     </linearGradient>
-    <linearGradient id="void" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#7556d9" stop-opacity=".86"/>
-      <stop offset="1" stop-color="#11162f" stop-opacity=".18"/>
-    </linearGradient>
     <filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#263548" flood-opacity=".12"/></filter>
   </defs>
   <rect width="1600" height="1000" fill="#dceff1"/>
@@ -26,10 +22,9 @@
     <circle cx="49" cy="333" r="7" fill="#f4afc5"/>
     <text x="69" y="339">Review page</text>
   </g>
-  <rect x="270" width="1330" height="1000" fill="url(#page)"/>
-  <path d="M1494 0h106v1000h-174c82-140 41-270 97-398 54-123-21-283 7-420z" fill="url(#void)"/>
-  <path d="M1518 130 1553 191l-35 61-35-61z" fill="#e45aa8" opacity=".65"/>
-  <ellipse cx="1518" cy="191" rx="63" ry="28" fill="none" stroke="#6fb8e7" stroke-width="5" opacity=".65"/>
+  <rect x="270" width="1162" height="1000" fill="url(#page)"/>
+  <rect x="1432" width="20" height="1000" fill="#fffaf0"/>
+  <rect x="1452" width="148" height="1000" fill="#202238"/>
   <g transform="translate(405 56)">
     <text x="0" y="28" fill="#7a8e9a" font-family="Arial, sans-serif" font-size="12" letter-spacing="3">2026 / 07 / 22 · MEMORY 07</text>
     <text x="0" y="76" fill="#263548" font-family="Arial, sans-serif" font-size="32" font-weight="700">整理记忆气泡的状态映射</text>
