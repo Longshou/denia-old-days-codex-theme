@@ -347,6 +347,7 @@ for (const [key, relative] of Object.entries(manifest.assets || {})) {
 
 await assertLoaderRejectsUnresolvedRuntimeTokens();
 if (process.env.DENIA_VALIDATE_SKIP_STYLESHEET_FIXTURES !== "1") {
+  await assertAcceptsUnicodeStylesheetFixture();
   await assertRejectsStylesheetMutations();
 }
 if (process.env.DENIA_VALIDATE_SKIP_MUTATION_FIXTURE !== "1") {
@@ -573,6 +574,27 @@ async function assertRejectsStylesheetMutations() {
       fixture.expected,
       fixture.failure,
     );
+  }
+}
+
+async function assertAcceptsUnicodeStylesheetFixture() {
+  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "denia-validator-css-unicode-"));
+  try {
+    const fixtureRoot = path.join(temporaryRoot, "sidecar");
+    await fs.cp(root, fixtureRoot, { recursive: true });
+    const stylePath = path.join(fixtureRoot, manifest.entrypoints.style);
+    const source = await fs.readFile(stylePath, "utf8");
+    const unicodeProbe = String.raw`.unicode-probe { content: "😀 𝄞 escaped quote: \""; }
+`;
+    await fs.writeFile(stylePath, unicodeProbe + source);
+    const result = spawnStylesheetFixture(fixtureRoot);
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+    assert(
+      result.status === 0 && output.includes("Validated 达妮娅 · 旧日斑斓 extension 0.1.0"),
+      `validator must accept astral Unicode before critical CSS rules without shifting parser indices:\n${output.trim()}`,
+    );
+  } finally {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
 }
 
@@ -878,7 +900,7 @@ function assertPublicStateUrlCollectionCoverage() {
 }
 
 function scanCssSyntax(source) {
-  const characters = [...source];
+  const characters = source.split("");
   const delimiters = [];
   const braceStack = [];
   let quote = null;
