@@ -35,6 +35,7 @@ assert(manifest.cleanup?.rootClass === "denia-old-days-ds-extension", "unexpecte
 assert(Array.isArray(manifest.capabilities) && manifest.capabilities.includes("runtime.cleanup"), "runtime cleanup capability is required");
 
 const required = [
+  manifest.entrypoints.runtime,
   manifest.assets.runtimeWallpaper,
   "runtime/loader.mjs",
   "scripts/common.sh",
@@ -56,8 +57,9 @@ for (const relative of required) {
   await readRequired(relative);
 }
 
-const [loader, ...scripts] = await Promise.all([
+const [loader, runtime, ...scripts] = await Promise.all([
   readRequired("runtime/loader.mjs"),
+  readRequired(manifest.entrypoints.runtime),
   ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
 ]);
@@ -69,7 +71,27 @@ assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__"), "loader must in
 assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__"), "loader must inject manifest token");
 assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_ART_JSON__"), "loader must inject art token");
 
-const publicText = [JSON.stringify(manifest), loader, ...scripts].join("\n");
+for (const token of [
+  "ensureSidebarBrand",
+  "ensureHomeHero",
+  "ensureSuggestionDeck",
+  "decorateComposer",
+  "decorateTask",
+  "deriveFormState",
+  "scheduleRefresh",
+  "requestAnimationFrame",
+  "MutationObserver",
+  "prefers-reduced-motion",
+  "cleanup",
+]) assert(runtime.includes(token), `runtime missing ${token}`);
+
+assert((runtime.match(/new MutationObserver\s*\(/gu) || []).length === 1, "runtime must create exactly one MutationObserver");
+assert(!runtime.includes("setInterval("), "runtime must not use setInterval");
+assert(runtime.includes("URL.revokeObjectURL"), "runtime cleanup must revoke object URL");
+assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
+assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
+
+const publicText = [JSON.stringify(manifest), loader, runtime, ...scripts].join("\n");
 assert(!/miku|hatsune|bocchi|hutao|tariz|初音|胡桃|孤独摇滚/iu.test(publicText), "public Sidecar contains another theme's branding");
 assert(!/app\.asar|codesign\s|defaults\s+write\s+com\.openai\.codex/iu.test(publicText), "Sidecar must not patch Codex");
 assert(!scripts.some((text) => /\/usr\/bin\/python3|(^|\s)eval(\s|$)|osascript/mu.test(text)), "lifecycle scripts must not use Python, eval, or AppleScript");
