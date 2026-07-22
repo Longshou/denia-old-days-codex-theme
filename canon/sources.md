@@ -28,7 +28,6 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | 文件 | 作者与方式 | 权利状态 | 用途 |
 | --- | --- | --- | --- |
 | `art/source/background.svg` | 本项目原创 SVG | 项目原创 | Base Theme 手账环境背景 |
-| `art/source/hero.svg` | 本项目原创 SVG | 非官方同人衍生图 | Sidecar 首页拍立得主视觉 |
 | `art/source/task-preview.svg` | 本项目原创 SVG | 项目原创 | 脱敏任务预览 |
 
 ## 源文件校验
@@ -36,7 +35,6 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | 文件 | SHA-256 |
 | --- | --- |
 | `art/source/background.svg` | `f434bc0fbf01523e8198f7f41bdb546c98186e99a6c0c5ab44a5ca6ed1a6df1a` |
-| `art/source/hero.svg` | `a7cacba007ae990c9b02bba07fdf9437c0a40b6028189109c21c37c3090671ec` |
 | `art/source/task-preview.svg` | `ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade` |
 
 上述哈希对应 `0.1.0` 首发候选原创源文件。官方源文件的固定哈希见前表；构建产物在构建时重新校验。
