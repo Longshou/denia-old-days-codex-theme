@@ -551,6 +551,8 @@
   }
 
   .denia-old-days-ds-hero {
+    grid-template-columns: 1fr;
+    column-gap: 0;
     margin-top: 16px;
     padding: 26px 24px;
     border-radius: 22px;

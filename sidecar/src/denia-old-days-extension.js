@@ -128,7 +128,7 @@
     chrome.id = "denia-old-days-ds-chrome";
     chrome.className = "denia-old-days-ds-chrome";
     chrome.setAttribute("aria-hidden", "true");
-    chrome.innerHTML = '<span class="denia-old-days-ds-bubble denia-old-days-ds-bubble-a"></span><span class="denia-old-days-ds-bubble denia-old-days-ds-bubble-b"></span><span class="denia-old-days-ds-star">✦</span>';
+    chrome.innerHTML = '<span class="denia-old-days-ds-star">✦</span>';
     document.body.append(chrome);
     return chrome;
   }

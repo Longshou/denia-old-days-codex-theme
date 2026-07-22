@@ -149,6 +149,7 @@ for (const name of ["bright", "dark", "portrait"]) {
   assert(runtime.includes(`--denia-old-days-art-${name}`), `runtime missing ${name} artwork variable`);
 }
 assert(!runtime.includes("denia-old-days-ds-photo-back"), "home hero must not include generic photo-back markup");
+assert(!runtime.includes("denia-old-days-ds-bubble"), "fixed chrome must not retain empty decorative bubble markup");
 assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
 assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
 
@@ -168,7 +169,8 @@ for (const token of [
   ":focus-visible",
 ]) assert(styles.includes(token), `stylesheet missing ${token}`);
 
-const activeStyles = stripCssComments(styles);
+const cssSyntax = scanCssSyntax(styles);
+const activeStyles = cssSyntax.source;
 assert(!activeStyles.includes(".denia-old-days-ds-photo-back"), "default hero must not contain a dark reverse");
 for (const token of [
   "--denia-old-days-art-bright",
@@ -179,7 +181,8 @@ for (const token of [
   "prefers-reduced-transparency: reduce",
 ]) assert(activeStyles.includes(token), `stylesheet missing ${token}`);
 
-const stylesheetRules = parseCssRules(activeStyles);
+const stylesheetRules = parseCssRules(cssSyntax);
+assertCssScannerCoverage();
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   "grid-template-columns": "minmax(340px, .9fr) minmax(430px, 1.1fr)",
   "column-gap": "clamp(32px, 4vw, 58px)",
@@ -205,6 +208,23 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
   "border-radius": "4px",
   background: "var(--denia-old-days-art-bright) center / cover no-repeat",
 });
+assertArtworkVariableWhitelist(stylesheetRules, new Map([
+  ["--denia-old-days-art-bright", {
+    selector: ".denia-old-days-ds-photo-front",
+    property: "background",
+    atRuleFragments: [],
+  }],
+  ["--denia-old-days-art-portrait", {
+    selector: ".denia-old-days-ds-photo-front",
+    property: "background",
+    atRuleFragments: ["max-width: 1199px", "max-height: 759px"],
+  }],
+  ["--denia-old-days-art-dark", {
+    selector: ".denia-old-days-ds-task .denia-old-days-ds-chrome::after",
+    property: "background",
+    atRuleFragments: [],
+  }],
+]));
 assert(
   !stylesheetRules.some((rule) => rule.selectors.some((selector) => selector.includes(":hover") && selector.includes("denia-old-days-ds-photo"))),
   "home photo must not use hover flip selectors",
@@ -235,18 +255,6 @@ assert(
   canonicalCssValue(taskRail.declarations.get("background")).includes(canonicalCssValue("var(--denia-old-days-art-dark) 18% center / auto 100% no-repeat")),
   "task rail must render the dark artwork outside the reading column",
 );
-const darkArtworkRules = stylesheetRules.filter((rule) => [...rule.declarations.values()].some((value) => value.includes("--denia-old-days-art-dark")));
-assert(
-  darkArtworkRules.length === 1
-    && darkArtworkRules[0].selectors.length === 1
-    && darkArtworkRules[0].selectors[0] === taskRailSelector,
-  "dark artwork must only be declared on the fixed task chrome rail",
-);
-const forbiddenArtworkHosts = /(?:^|[\s>+~])(?:main|article|code)\b|\[role\s*=\s*["']?main|message|diff|terminal|composer/iu;
-assert(
-  !darkArtworkRules.some((rule) => rule.selectors.some((selector) => forbiddenArtworkHosts.test(selector))),
-  "dark artwork must not overlap main, messages, code, diff, terminal, or composer content",
-);
 for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-days-ds-task main"]) {
   assertCssDeclarations(stylesheetRules, selector, { position: "relative", "z-index": "3" });
 }
@@ -273,14 +281,26 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
   background: "var(--denia-old-days-art-portrait) center bottom / contain no-repeat",
 }, compactMedia);
-const portraitArtworkRules = stylesheetRules.filter((rule) => [...rule.declarations.values()].some((value) => value.includes("--denia-old-days-art-portrait")));
-assert(
-  portraitArtworkRules.length === 1 && compactMedia.every((fragment) => portraitArtworkRules[0].atRules.some((atRule) => atRule.includes(fragment))),
-  "portrait artwork must be limited to the compact hero breakpoint",
-);
 const narrowMedia = ["max-width: 919px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", { display: "none" }, narrowMedia);
 assertCssDeclarations(stylesheetRules, taskRailSelector, { display: "none" }, narrowMedia);
+assertCssCascadeDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
+  "grid-template-columns": "1fr",
+  "column-gap": "0",
+}, narrowMedia);
+const compactPhotoRule = findCssRule(stylesheetRules, ".denia-old-days-ds-photo", compactMedia);
+const narrowPhotoRule = findCssRule(stylesheetRules, ".denia-old-days-ds-photo", narrowMedia);
+const compactHeroRule = findCssRule(stylesheetRules, ".denia-old-days-ds-hero", compactMedia);
+const narrowHeroGridRule = stylesheetRules.find((rule) =>
+  rule.selectors.includes(".denia-old-days-ds-hero")
+    && rule.declarations.has("grid-template-columns")
+    && narrowMedia.every((fragment) => rule.atRules.some((atRule) => atRule.includes(fragment))));
+assert(
+  narrowHeroGridRule
+    && narrowHeroGridRule.sourceIndex > compactHeroRule.sourceIndex
+    && narrowPhotoRule.sourceIndex > compactPhotoRule.sourceIndex,
+  "narrow breakpoint must follow compact breakpoint so hidden artwork and the single-column hero win the cascade",
+);
 
 const transparencyMedia = ["prefers-reduced-transparency: reduce"];
 for (const [selector, background] of [
@@ -289,7 +309,21 @@ for (const [selector, background] of [
   [".denia-old-days-ds-composer", "#f9ffff !important"],
   [".denia-old-days-ds-final-card", "#fffdf1 !important"],
 ]) assertCssDeclarations(stylesheetRules, selector, { background }, transparencyMedia);
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-extension *", {
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-composer", {
+  "backdrop-filter": "none",
+}, transparencyMedia);
+const transparentComposerRule = findCssRule(stylesheetRules, ".denia-old-days-ds-composer", transparencyMedia);
+if (stylesheetRules.some((rule) => rule.declarations.has("-webkit-backdrop-filter"))) {
+  assert(
+    canonicalCssValue(transparentComposerRule.declarations.get("-webkit-backdrop-filter")) === "none",
+    ".denia-old-days-ds-composer must set -webkit-backdrop-filter: none under reduced transparency",
+  );
+}
+for (const selector of [
+  ".denia-old-days-ds-extension *",
+  ".denia-old-days-ds-extension *::before",
+  ".denia-old-days-ds-extension *::after",
+]) assertCssDeclarations(stylesheetRules, selector, {
   animation: "none !important",
   "transition-duration": "0.01ms !important",
 }, ["prefers-reduced-motion: reduce"]);
@@ -312,6 +346,9 @@ for (const [key, relative] of Object.entries(manifest.assets || {})) {
 }
 
 await assertLoaderRejectsUnresolvedRuntimeTokens();
+if (process.env.DENIA_VALIDATE_SKIP_STYLESHEET_FIXTURES !== "1") {
+  await assertRejectsStylesheetMutations();
+}
 if (process.env.DENIA_VALIDATE_SKIP_MUTATION_FIXTURE !== "1") {
   await assertRejectsCommentedArtworkRevoke();
 }
@@ -382,7 +419,11 @@ async function assertRejectsCommentedArtworkRevoke() {
 
     const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), fixtureRoot], {
       encoding: "utf8",
-      env: { ...process.env, DENIA_VALIDATE_SKIP_MUTATION_FIXTURE: "1" },
+      env: {
+        ...process.env,
+        DENIA_VALIDATE_SKIP_MUTATION_FIXTURE: "1",
+        DENIA_VALIDATE_SKIP_STYLESHEET_FIXTURES: "1",
+      },
     });
     const output = `${result.stdout || ""}\n${result.stderr || ""}`;
     assert(
@@ -408,6 +449,7 @@ async function assertRejectsAncestorSymlinkPaths() {
       ...process.env,
       DENIA_VALIDATE_SKIP_MUTATION_FIXTURE: "1",
       DENIA_VALIDATE_SKIP_SECURITY_FIXTURE: "1",
+      DENIA_VALIDATE_SKIP_STYLESHEET_FIXTURES: "1",
     };
     const validatorResult = spawnSync(process.execPath, [fileURLToPath(import.meta.url), fixtureRoot], {
       encoding: "utf8",
@@ -438,6 +480,143 @@ async function assertRejectsAncestorSymlinkPaths() {
   } finally {
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
+}
+
+async function assertRejectsStylesheetMutations() {
+  const cases = [
+    {
+      prefix: "denia-validator-css-comments-",
+      mutate: (source) => `${source}
+.denia-css-string-open { content: "/*"; }
+.denia-old-days-ds-photo-back { background: var(--denia-old-days-art-dark); }
+.denia-css-string-close { content: "*/"; }
+`,
+      expected: "default hero must not contain a dark reverse",
+      failure: "validator must not treat comment delimiters inside CSS strings as comments",
+    },
+    {
+      prefix: "denia-validator-css-order-",
+      mutate(source) {
+        const compact = findCssBlockRange(source, "@media (max-width: 1199px), (max-height: 759px)");
+        const narrow = findCssBlockRange(source, "@media (max-width: 919px)");
+        assert(compact.start < narrow.start, "stylesheet mutation fixture expects compact media before narrow media");
+        return source.slice(0, compact.start)
+          + source.slice(narrow.start, narrow.end)
+          + "\n\n"
+          + source.slice(compact.start, narrow.start)
+          + source.slice(narrow.end);
+      },
+      expected: "narrow breakpoint must follow compact breakpoint",
+      failure: "validator must reject a narrow media block overridden by the later compact block",
+    },
+    {
+      prefix: "denia-validator-css-bright-host-",
+      target: ".denia-old-days-ds-photo-front {\n  position: absolute;",
+      replacement: ".denia-old-days-ds-photo-front,\narticle {\n  position: absolute;",
+      name: "bright artwork selector",
+      expected: "artwork variable --denia-old-days-art-bright must stay on its approved selector",
+      failure: "validator must reject bright artwork added to an article through a combined selector",
+    },
+    {
+      prefix: "denia-validator-css-portrait-host-",
+      target: "  .denia-old-days-ds-photo-front {\n    inset: 12px 12px 32px;",
+      replacement: "  .denia-old-days-ds-photo-front,\n  article {\n    inset: 12px 12px 32px;",
+      name: "compact portrait selector",
+      expected: "artwork variable --denia-old-days-art-portrait must stay on its approved selector",
+      failure: "validator must reject compact portrait artwork added to an article through a combined selector",
+    },
+    {
+      prefix: "denia-validator-css-dark-host-",
+      target: ".denia-old-days-ds-task .denia-old-days-ds-chrome::after {\n  content: \"\";",
+      replacement: ".denia-old-days-ds-task .denia-old-days-ds-chrome::after,\nmain {\n  content: \"\";",
+      name: "dark artwork selector",
+      expected: "artwork variable --denia-old-days-art-dark must stay on its approved selector",
+      failure: "validator must reject dark artwork added to main through a combined selector",
+    },
+    {
+      prefix: "denia-validator-css-transparency-",
+      target: "    backdrop-filter: none;",
+      replacement: "    backdrop-filter: blur(18px);",
+      name: "reduced-transparency composer backdrop filter",
+      expected: ".denia-old-days-ds-composer must set backdrop-filter: none",
+      failure: "validator must reject composer blur under reduced transparency",
+    },
+    {
+      prefix: "denia-validator-css-webkit-transparency-",
+      target: "  backdrop-filter: blur(18px) saturate(1.05);",
+      replacement: "  backdrop-filter: blur(18px) saturate(1.05);\n  -webkit-backdrop-filter: blur(18px) saturate(1.05);",
+      name: "base composer webkit backdrop filter",
+      expected: ".denia-old-days-ds-composer must set -webkit-backdrop-filter: none",
+      failure: "validator must require a reduced-transparency override when composer uses webkit backdrop filtering",
+    },
+    {
+      prefix: "denia-validator-css-motion-before-",
+      target: "  .denia-old-days-ds-extension *::before,\n",
+      replacement: "",
+      name: "reduced-motion ::before selector",
+      expected: ".denia-old-days-ds-extension *::before",
+      failure: "validator must require the global ::before reduced-motion selector",
+    },
+    {
+      prefix: "denia-validator-css-motion-after-",
+      target: "  .denia-old-days-ds-extension *::before,\n  .denia-old-days-ds-extension *::after {",
+      replacement: "  .denia-old-days-ds-extension *::before {",
+      name: "reduced-motion ::after selector",
+      expected: ".denia-old-days-ds-extension *::after",
+      failure: "validator must require the global ::after reduced-motion selector",
+    },
+  ];
+  for (const fixture of cases) {
+    await assertRejectsStylesheetMutation(
+      fixture.prefix,
+      fixture.mutate || ((source) => replaceRequired(source, fixture.target, fixture.replacement, fixture.name)),
+      fixture.expected,
+      fixture.failure,
+    );
+  }
+}
+
+async function assertRejectsStylesheetMutation(prefix, mutate, expectedOutput, failureMessage) {
+  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  try {
+    const fixtureRoot = path.join(temporaryRoot, "sidecar");
+    await fs.cp(root, fixtureRoot, { recursive: true });
+    const stylePath = path.join(fixtureRoot, manifest.entrypoints.style);
+    const source = await fs.readFile(stylePath, "utf8");
+    await fs.writeFile(stylePath, mutate(source));
+    const result = spawnStylesheetFixture(fixtureRoot);
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+    assert(result.status !== 0 && output.includes(expectedOutput), failureMessage);
+  } finally {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
+  }
+}
+
+function replaceRequired(source, target, replacement, fixtureName) {
+  assert(source.includes(target), `stylesheet mutation fixture missing ${fixtureName}`);
+  return source.replace(target, replacement);
+}
+
+function findCssBlockRange(source, header) {
+  const start = source.indexOf(header);
+  assert(start >= 0, `stylesheet mutation fixture missing ${header}`);
+  const syntax = scanCssSyntax(source);
+  const opening = syntax.delimiters.find((delimiter) => delimiter.character === "{" && delimiter.index > start);
+  assert(opening?.match > opening.index, `stylesheet mutation fixture could not resolve ${header}`);
+  return { start, end: opening.match + 1 };
+}
+
+function spawnStylesheetFixture(fixtureRoot) {
+  return spawnSync(process.execPath, [fileURLToPath(import.meta.url), fixtureRoot], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      DENIA_VALIDATE_SKIP_MUTATION_FIXTURE: "1",
+      DENIA_VALIDATE_SKIP_SECURITY_FIXTURE: "1",
+      DENIA_VALIDATE_SKIP_STYLESHEET_FIXTURES: "1",
+    },
+    timeout: 7000,
+  });
 }
 
 function assertRuntimeArtworkLifecycle(payload) {
@@ -698,49 +877,207 @@ function assertPublicStateUrlCollectionCoverage() {
   assert(publicStateContainsUrl({ nested: ["blob:ordinary-object-array"] }), "public state URL scan must retain ordinary object and array coverage");
 }
 
-function stripCssComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//gu, "");
+function scanCssSyntax(source) {
+  const characters = [...source];
+  const delimiters = [];
+  const braceStack = [];
+  let quote = null;
+  let escaped = false;
+  let inComment = false;
+  let parenthesisDepth = 0;
+  let bracketDepth = 0;
+
+  for (let index = 0; index < characters.length; index += 1) {
+    const character = characters[index];
+    const next = characters[index + 1];
+    if (inComment) {
+      if (character === "*" && next === "/") {
+        characters[index] = " ";
+        characters[index + 1] = " ";
+        index += 1;
+        inComment = false;
+      } else if (character !== "\n" && character !== "\r") {
+        characters[index] = " ";
+      }
+      continue;
+    }
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "/" && next === "*") {
+      characters[index] = " ";
+      characters[index + 1] = " ";
+      index += 1;
+      inComment = true;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === "(") {
+      parenthesisDepth += 1;
+      continue;
+    }
+    if (character === ")") {
+      parenthesisDepth -= 1;
+      assert(parenthesisDepth >= 0, `stylesheet has an unmatched ) at index ${index}`);
+      continue;
+    }
+    if (character === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+    if (character === "]") {
+      bracketDepth -= 1;
+      assert(bracketDepth >= 0, `stylesheet has an unmatched ] at index ${index}`);
+      continue;
+    }
+    if (!"{};,:".includes(character)) continue;
+    if (character === "{") {
+      const delimiter = {
+        character,
+        index,
+        braceDepth: braceStack.length,
+        parenthesisDepth,
+        bracketDepth,
+        match: -1,
+      };
+      delimiters.push(delimiter);
+      braceStack.push(delimiter);
+      continue;
+    }
+    if (character === "}") {
+      const opening = braceStack.pop();
+      assert(opening, `stylesheet has an unmatched } at index ${index}`);
+      opening.match = index;
+      delimiters.push({
+        character,
+        index,
+        braceDepth: braceStack.length,
+        parenthesisDepth,
+        bracketDepth,
+        match: opening.index,
+      });
+      continue;
+    }
+    delimiters.push({
+      character,
+      index,
+      braceDepth: braceStack.length,
+      parenthesisDepth,
+      bracketDepth,
+      match: -1,
+    });
+  }
+
+  assert(!inComment, "stylesheet has an unclosed comment");
+  assert(!quote, `stylesheet has an unclosed ${quote || "string"}`);
+  assert(!escaped, "stylesheet ends with an incomplete string escape");
+  assert(braceStack.length === 0, "stylesheet has an unclosed block");
+  assert(parenthesisDepth === 0, "stylesheet has unbalanced parentheses");
+  assert(bracketDepth === 0, "stylesheet has unbalanced brackets");
+  return { source: characters.join(""), delimiters };
 }
 
-function parseCssRules(source, atRules = [], rules = []) {
-  let cursor = 0;
-  while (cursor < source.length) {
-    const open = source.indexOf("{", cursor);
-    if (open < 0) break;
-    const header = source.slice(cursor, open).trim().replace(/\s+/gu, " ");
-    let depth = 1;
-    let close = open + 1;
-    while (close < source.length && depth > 0) {
-      if (source[close] === "{") depth += 1;
-      else if (source[close] === "}") depth -= 1;
-      close += 1;
-    }
-    assert(depth === 0, `stylesheet has an unclosed block after ${header}`);
-    const body = source.slice(open + 1, close - 1);
+function assertCssScannerCoverage() {
+  const syntax = scanCssSyntax(String.raw`
+/* REMOVE-ME { ; , } */
+@media (min-width: 1px) {
+  .scanner-alpha[data-label='literal,;:{}/*'], .scanner-beta {
+    content: "escaped quote: \" literal /* , ; { }";
+    color: red;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .scanner-gamma { content: 'escaped quote: \' literal */ , ; { }'; }
+  }
+}
+`);
+  const rules = parseCssRules(syntax);
+  const combined = rules.find((rule) => rule.selectors.includes(".scanner-beta"));
+  const nested = rules.find((rule) => rule.selectors.includes(".scanner-gamma"));
+  assert(!syntax.source.includes("REMOVE-ME"), "CSS scanner must remove real comments");
+  assert(
+    combined?.selectors.length === 2
+      && combined.selectors[0] === ".scanner-alpha[data-label='literal,;:{}/*']"
+      && combined.declarations.get("color") === "red"
+      && combined.declarations.get("content")?.includes("literal /* , ; { }")
+      && combined.atRules.length === 1,
+    "CSS scanner must preserve delimiters inside double/single-quoted and escaped selector or declaration strings",
+  );
+  assert(
+    nested?.atRules.length === 2 && nested.declarations.get("content")?.includes("literal */ , ; { }"),
+    "CSS scanner must preserve escaped single-quoted strings inside nested media rules",
+  );
+}
+
+function parseCssRules(syntax, start = 0, end = syntax.source.length, atRules = [], braceDepth = 0, rules = []) {
+  let cursor = start;
+  const openings = syntax.delimiters.filter((delimiter) =>
+    delimiter.character === "{"
+      && delimiter.braceDepth === braceDepth
+      && delimiter.index >= start
+      && delimiter.index < end);
+  for (const opening of openings) {
+    if (opening.index < cursor) continue;
+    const header = syntax.source.slice(cursor, opening.index).trim().replace(/\s+/gu, " ");
+    assert(opening.match >= 0 && opening.match <= end, `stylesheet has an unclosed block after ${header}`);
     if (header.startsWith("@")) {
-      parseCssRules(body, [...atRules, header], rules);
+      parseCssRules(syntax, opening.index + 1, opening.match, [...atRules, header], braceDepth + 1, rules);
     } else if (header) {
       rules.push({
-        selectors: header.split(",").map((selector) => selector.trim().replace(/\s+/gu, " ")),
-        declarations: parseCssDeclarations(body),
+        selectors: splitCssRange(syntax, cursor, opening.index, ",", braceDepth)
+          .map((selector) => selector.trim().replace(/\s+/gu, " ")),
+        declarations: parseCssDeclarations(syntax, opening.index + 1, opening.match, braceDepth + 1),
         atRules,
+        sourceIndex: cursor,
       });
     }
-    cursor = close;
+    cursor = opening.match + 1;
   }
   return rules;
 }
 
-function parseCssDeclarations(body) {
+function parseCssDeclarations(syntax, start, end, braceDepth) {
   const declarations = new Map();
-  for (const declaration of body.split(";")) {
-    const separator = declaration.indexOf(":");
-    if (separator < 0) continue;
-    const property = declaration.slice(0, separator).trim().toLowerCase();
-    const value = declaration.slice(separator + 1).trim();
+  for (const declaration of splitCssRange(syntax, start, end, ";", braceDepth)) {
+    const declarationStart = syntax.source.indexOf(declaration, start);
+    const declarationEnd = declarationStart + declaration.length;
+    const separator = syntax.delimiters.find((delimiter) =>
+      delimiter.character === ":"
+        && delimiter.index >= declarationStart
+        && delimiter.index < declarationEnd
+        && delimiter.braceDepth === braceDepth
+        && delimiter.parenthesisDepth === 0
+        && delimiter.bracketDepth === 0);
+    if (!separator) continue;
+    const property = syntax.source.slice(declarationStart, separator.index).trim().toLowerCase();
+    const value = syntax.source.slice(separator.index + 1, declarationEnd).trim();
     if (property) declarations.set(property, value);
+    start = declarationEnd + 1;
   }
   return declarations;
+}
+
+function splitCssRange(syntax, start, end, character, braceDepth) {
+  const parts = [];
+  let cursor = start;
+  const separators = syntax.delimiters.filter((delimiter) =>
+    delimiter.character === character
+      && delimiter.index >= start
+      && delimiter.index < end
+      && delimiter.braceDepth === braceDepth
+      && delimiter.parenthesisDepth === 0
+      && delimiter.bracketDepth === 0);
+  for (const separator of separators) {
+    parts.push(syntax.source.slice(cursor, separator.index));
+    cursor = separator.index + 1;
+  }
+  parts.push(syntax.source.slice(cursor, end));
+  return parts;
 }
 
 function findCssRule(rules, selector, atRuleFragments = []) {
@@ -761,6 +1098,45 @@ function assertCssDeclarations(rules, selector, expected, atRuleFragments = []) 
       canonicalCssValue(rule.declarations.get(property)) === canonicalCssValue(value),
       `${selector} must set ${property}: ${value}`,
     );
+  }
+}
+
+function assertCssCascadeDeclarations(rules, selector, expected, atRuleFragments = []) {
+  const normalizedSelector = selector.trim().replace(/\s+/gu, " ");
+  const matching = rules.filter((rule) =>
+    rule.selectors.includes(normalizedSelector)
+      && atRuleFragments.every((fragment) => rule.atRules.some((atRule) => atRule.includes(fragment))));
+  assert(matching.length > 0, `stylesheet must contain ${normalizedSelector} under ${atRuleFragments.join(" and ")}`);
+  for (const [property, value] of Object.entries(expected)) {
+    const declaration = matching.reduce((result, rule) => rule.declarations.get(property) ?? result, undefined);
+    assert(
+      canonicalCssValue(declaration) === canonicalCssValue(value),
+      `${selector} cascade must resolve ${property}: ${value} under ${atRuleFragments.join(" and ")}`,
+    );
+  }
+}
+
+function assertArtworkVariableWhitelist(rules, whitelist) {
+  for (const [variable, approved] of whitelist) {
+    let occurrences = 0;
+    for (const rule of rules) {
+      for (const [property, value] of rule.declarations) {
+        if (!value.includes(variable)) continue;
+        occurrences += 1;
+        const approvedMedia = approved.atRuleFragments.length === 0
+          ? rule.atRules.length === 0
+          : rule.atRules.length === 1
+            && approved.atRuleFragments.every((fragment) => rule.atRules[0].includes(fragment));
+        assert(
+          property === approved.property
+            && approvedMedia
+            && rule.selectors.length === 1
+            && rule.selectors.every((selector) => selector === approved.selector),
+          `artwork variable ${variable} must stay on its approved selector, declaration, and media context`,
+        );
+      }
+    }
+    assert(occurrences === 1, `artwork variable ${variable} must occur in exactly one active declaration`);
   }
 }
 
