@@ -15,8 +15,10 @@
     "runtime": "src/denia-old-days-extension.js"
   },
   "assets": {
-    "wallpaper": "assets/denia-old-days-hero.webp",
-    "runtimeWallpaper": "assets/denia-old-days-hero.webp"
+    "wallpaper": "assets/denia-old-days-bright.webp",
+    "runtimeWallpaper": "assets/denia-old-days-bright.webp",
+    "stateArtwork": "assets/denia-old-days-dark.webp",
+    "portraitFallback": "assets/denia-old-days-portrait.webp"
   },
   "ui": {
     "brandName": "DENIA CODEX",
@@ -48,6 +50,8 @@
     "task.diary-cards",
     "task.dual-form-states",
     "runtime.preloaded-art",
+    "runtime.multi-art-preload",
+    "task.state-art-rail",
     "runtime.target-events",
     "runtime.route-observer",
     "runtime.cleanup"

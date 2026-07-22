@@ -33,23 +33,33 @@ if (manifest.schemaVersion !== 1 || manifest.id !== "denia-old-days") {
 }
 const stylePath = path.resolve(extensionDir, manifest.entrypoints.style);
 const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
-const artPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
-for (const candidate of [stylePath, runtimePath, artPath]) {
+const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
+const darkPath = path.resolve(extensionDir, manifest.assets.stateArtwork);
+const portraitPath = path.resolve(extensionDir, manifest.assets.portraitFallback);
+for (const candidate of [stylePath, runtimePath, brightPath, darkPath, portraitPath]) {
   if (!candidate.startsWith(`${extensionDir}${path.sep}`)) throw new Error("Extension entrypoint escapes its package directory");
 }
-const [cssText, runtimeTemplate, art] = await Promise.all([
+const [cssText, runtimeTemplate, bright, dark, portrait] = await Promise.all([
   fs.readFile(stylePath, "utf8"),
   fs.readFile(runtimePath, "utf8"),
-  fs.readFile(artPath),
+  fs.readFile(brightPath),
+  fs.readFile(darkPath),
+  fs.readFile(portraitPath),
 ]);
-const artExtension = path.extname(artPath).toLowerCase();
-const artMime = artExtension === ".png" ? "image/png"
-  : artExtension === ".webp" ? "image/webp" : "image/jpeg";
-const artDataUrl = `data:${artMime};base64,${art.toString("base64")}`;
+
+const imageDataUrl = (filePath, bytes) => {
+  const extension = path.extname(filePath).toLowerCase();
+  const mime = extension === ".png" ? "image/png"
+    : extension === ".webp" ? "image/webp" : "image/jpeg";
+  return `data:${mime};base64,${bytes.toString("base64")}`;
+};
+
 const installPayload = runtimeTemplate
   .replace("__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__", JSON.stringify(cssText))
   .replace("__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__", JSON.stringify(manifest))
-  .replace("__DENIA_OLD_DAYS_EXTENSION_ART_JSON__", JSON.stringify(artDataUrl));
+  .replace("__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__", JSON.stringify(imageDataUrl(brightPath, bright)))
+  .replace("__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__", JSON.stringify(imageDataUrl(darkPath, dark)))
+  .replace("__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__", JSON.stringify(imageDataUrl(portraitPath, portrait)));
 
 const cleanupExpression = `(() => {
   const state = window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
@@ -66,6 +76,9 @@ const cleanupExpression = `(() => {
   root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home');
   delete root.dataset.deniaOldDaysExtensionVersion;
   delete root.dataset.deniaFormState;
+  root.style.removeProperty('--denia-old-days-art-bright');
+  root.style.removeProperty('--denia-old-days-art-dark');
+  root.style.removeProperty('--denia-old-days-art-portrait');
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
     for (const property of ['background-image', 'background-position', 'background-size', 'background-repeat', 'background-color']) node.style.removeProperty(property);
   });
@@ -87,7 +100,7 @@ const verifyExpression = `(() => {
   const root = document.documentElement;
   const home = root.classList.contains('denia-old-days-ds-home');
   const hero = document.querySelector('.denia-old-days-ds-hero');
-  const runtimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-ds-art').trim();
+  const runtimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-bright').trim();
   const runtimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(runtimeArt)?.[1] || '';
   const heroBackgroundImage = hero ? getComputedStyle(hero).backgroundImage : '';
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');

@@ -1,7 +1,9 @@
 (() => {
   const manifest = __DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__;
   const cssText = __DENIA_OLD_DAYS_EXTENSION_CSS_JSON__;
-  const artDataUrl = __DENIA_OLD_DAYS_EXTENSION_ART_JSON__;
+  const brightArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__;
+  const darkArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__;
+  const portraitArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__;
   const stateKey = "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__";
   const styleId = "denia-old-days-dream-skin-extension-style";
   const rootClass = "denia-old-days-ds-extension";
@@ -26,21 +28,26 @@
   style.textContent = cssText;
   document.head.append(style);
 
-  const artUrl = dataUrlToObjectUrl(artDataUrl);
+  const artUrls = Object.freeze({
+    bright: dataUrlToObjectUrl(brightArtDataUrl),
+    dark: dataUrlToObjectUrl(darkArtDataUrl),
+    portrait: dataUrlToObjectUrl(portraitArtDataUrl),
+  });
   root.classList.add(rootClass);
   root.dataset.deniaOldDaysExtensionVersion = manifest.version;
-  root.style.setProperty("--denia-old-days-art", `url("${artUrl}")`);
+  root.style.setProperty("--denia-old-days-art-bright", `url("${artUrls.bright}")`);
+  root.style.setProperty("--denia-old-days-art-dark", `url("${artUrls.dark}")`);
+  root.style.setProperty("--denia-old-days-art-portrait", `url("${artUrls.portrait}")`);
 
   const state = {
     id: manifest.id,
     version: manifest.version,
-    artReady: Boolean(artUrl),
+    artReady: Object.values(artUrls).every(Boolean),
     reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     formState: "staged",
     metrics: { refreshes: 0, createdNodes: 0 },
     observer: null,
     frame: 0,
-    artUrl,
     ownedNodes,
     refresh,
     cleanup,
@@ -178,7 +185,7 @@
     const photo = document.createElement("div");
     photo.className = "denia-old-days-ds-photo";
     photo.setAttribute("aria-hidden", "true");
-    photo.innerHTML = '<span class="denia-old-days-ds-photo-front"></span><span class="denia-old-days-ds-photo-back"><i></i></span><span class="denia-old-days-ds-tape"></span>';
+    photo.innerHTML = '<span class="denia-old-days-ds-photo-front"></span><span class="denia-old-days-ds-tape"></span>';
     hero.append(copy, photo);
 
     const firstContent = [...main.children].find((node) => !node.classList?.contains("denia-old-days-ds-hero"));
@@ -340,8 +347,10 @@
     root.classList.remove(rootClass, "denia-old-days-ds-home", "denia-old-days-ds-task");
     delete root.dataset.deniaOldDaysExtensionVersion;
     delete root.dataset.deniaFormState;
-    root.style.removeProperty("--denia-old-days-art");
-    if (state.artUrl) URL.revokeObjectURL(state.artUrl);
+    root.style.removeProperty("--denia-old-days-art-bright");
+    root.style.removeProperty("--denia-old-days-art-dark");
+    root.style.removeProperty("--denia-old-days-art-portrait");
+    for (const artUrl of Object.values(artUrls)) URL.revokeObjectURL(artUrl);
     if (window[stateKey] === state) delete window[stateKey];
     return true;
   }

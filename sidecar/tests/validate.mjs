@@ -28,16 +28,25 @@ assert(manifest.protocol?.target === "app://-/index.html", "renderer target must
 assert(manifest.protocol?.minimumDreamSkinVersion === "1.1.2", "minimum Dream Skin version must be 1.1.2");
 assert(manifest.entrypoints?.style === "src/denia-old-days-extension.css", "unexpected style entrypoint");
 assert(manifest.entrypoints?.runtime === "src/denia-old-days-extension.js", "unexpected runtime entrypoint");
-assert(manifest.assets?.runtimeWallpaper === "assets/denia-old-days-hero.webp", "unexpected runtime art path");
+const expectedAssets = {
+  runtimeWallpaper: "assets/denia-old-days-bright.webp",
+  stateArtwork: "assets/denia-old-days-dark.webp",
+  portraitFallback: "assets/denia-old-days-portrait.webp",
+};
+for (const [key, value] of Object.entries(expectedAssets)) {
+  assert(manifest.assets?.[key] === value, `unexpected ${key}`);
+}
 assert(manifest.cleanup?.stateKey === "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__", "unexpected cleanup stateKey");
 assert(manifest.cleanup?.styleId === "denia-old-days-dream-skin-extension-style", "unexpected cleanup styleId");
 assert(manifest.cleanup?.rootClass === "denia-old-days-ds-extension", "unexpected cleanup rootClass");
 assert(Array.isArray(manifest.capabilities) && manifest.capabilities.includes("runtime.cleanup"), "runtime cleanup capability is required");
+assert(manifest.capabilities.includes("runtime.multi-art-preload"), "multi-art preload capability is required");
+assert(manifest.capabilities.includes("task.state-art-rail"), "state art rail capability is required");
 
 const required = [
   manifest.entrypoints.style,
   manifest.entrypoints.runtime,
-  manifest.assets.runtimeWallpaper,
+  ...new Set(Object.values(manifest.assets || {})),
   "runtime/loader.mjs",
   "scripts/common.sh",
   "scripts/install.sh",
@@ -71,7 +80,15 @@ assert(!loader.includes("0.0.0.0"), "loader must not use a wildcard host");
 assert(loader.includes("Target.setDiscoverTargets"), "loader must subscribe to target discovery");
 assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__"), "loader must inject CSS token");
 assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__"), "loader must inject manifest token");
-assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_ART_JSON__"), "loader must inject art token");
+for (const token of [
+  "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__",
+]) assert(loader.includes(token), `loader missing ${token}`);
+for (const assetKey of Object.keys(expectedAssets)) {
+  assert(loader.includes(`manifest.assets.${assetKey}`), `loader must resolve ${assetKey}`);
+}
+assert(loader.includes("--denia-old-days-art-bright"), "live verification must read bright artwork variable");
 
 for (const token of [
   "ensureSidebarBrand",
@@ -90,6 +107,13 @@ for (const token of [
 assert((runtime.match(/new MutationObserver\s*\(/gu) || []).length === 1, "runtime must create exactly one MutationObserver");
 assert(!runtime.includes("setInterval("), "runtime must not use setInterval");
 assert(runtime.includes("URL.revokeObjectURL"), "runtime cleanup must revoke object URL");
+assert(runtime.includes("Object.freeze({"), "runtime must freeze artwork URL map");
+assert(runtime.includes("Object.values(artUrls).every(Boolean)"), "runtime must require every artwork URL");
+assert(runtime.includes("Object.values(artUrls)"), "runtime must clean every artwork URL");
+for (const name of ["bright", "dark", "portrait"]) {
+  assert(runtime.includes(`--denia-old-days-art-${name}`), `runtime missing ${name} artwork variable`);
+}
+assert(!runtime.includes("denia-old-days-ds-photo-back"), "home hero must not include generic photo-back markup");
 assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
 assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
 
@@ -119,8 +143,13 @@ for (const relative of ["package.sh", ...["common.sh", "install.sh", "start.sh",
   assert((mode & 0o111) !== 0, `sidecar/${relative} must be executable`);
 }
 
-const hero = await fs.stat(path.join(root, manifest.assets.runtimeWallpaper));
-assert(hero.size <= 1024 * 1024, "runtime hero must stay below 1 MiB");
+for (const [key, relative] of Object.entries(manifest.assets || {})) {
+  const assetPath = path.resolve(root, relative);
+  assert(assetPath.startsWith(`${root}${path.sep}`), `asset path escapes package: ${key}`);
+  const asset = await fs.lstat(assetPath);
+  assert(!asset.isSymbolicLink() && asset.isFile(), `asset must be a regular file: ${key}`);
+  assert(asset.size < 1024 * 1024, `asset must stay below 1 MiB: ${key}`);
+}
 
 console.log(`Validated ${manifest.name} extension ${manifest.version}: ${required.length} required files, removable sidecar protocol.`);
 
