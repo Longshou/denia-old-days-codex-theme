@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "denia-old-days",
+  "name": "达妮娅 · 旧日斑斓",
+  "version": "0.1.0",
+  "description": "A removable scrapbook and dual-form component layer for Codex.",
+  "protocol": {
+    "kind": "codex-dream-skin-sidecar",
+    "transport": "cdp-loopback-v1",
+    "target": "app://-/index.html",
+    "minimumDreamSkinVersion": "1.1.2"
+  },
+  "entrypoints": {
+    "style": "src/denia-old-days-extension.css",
+    "runtime": "src/denia-old-days-extension.js"
+  },
+  "assets": {
+    "wallpaper": "assets/denia-old-days-hero.webp",
+    "runtimeWallpaper": "assets/denia-old-days-hero.webp"
+  },
+  "ui": {
+    "brandName": "DENIA CODEX",
+    "brandSubtitle": "旧日斑斓 · MEMORY ALBUM",
+    "sidebarSubtitle": "达妮娅 · 旧日斑斓",
+    "statusText": "布景之形 · 记录中",
+    "darkStatusText": "幻灭之形 · 观察中",
+    "eyebrow": "DENIA · OLD DAYS IN COLOR",
+    "headline": "今天要把什么写进手账？",
+    "description": "让思绪显影，也让每一步留下记录。",
+    "projectPrefix": "翻到项目 · ",
+    "projectFallback": "选择项目",
+    "brandMark": "✦",
+    "cardLabels": [
+      "翻阅并理解代码",
+      "写下新的实现",
+      "校对这页改动",
+      "修补未完成的记录"
+    ]
+  },
+  "capabilities": [
+    "sidebar.brand-overlay",
+    "sidebar.visual-states",
+    "home.brand-status",
+    "home.hero-copy",
+    "home.suggestion-cards",
+    "home.project-selector",
+    "composer.skin",
+    "task.diary-cards",
+    "task.dual-form-states",
+    "runtime.preloaded-art",
+    "runtime.target-events",
+    "runtime.route-observer",
+    "runtime.cleanup"
+  ],
+  "cleanup": {
+    "stateKey": "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__",
+    "styleId": "denia-old-days-dream-skin-extension-style",
+    "rootClass": "denia-old-days-ds-extension"
+  }
+}
