@@ -168,6 +168,132 @@ for (const token of [
   ":focus-visible",
 ]) assert(styles.includes(token), `stylesheet missing ${token}`);
 
+const activeStyles = stripCssComments(styles);
+assert(!activeStyles.includes(".denia-old-days-ds-photo-back"), "default hero must not contain a dark reverse");
+for (const token of [
+  "--denia-old-days-art-bright",
+  "--denia-old-days-art-dark",
+  "--denia-old-days-art-portrait",
+  ".denia-old-days-ds-photo-front",
+  ".denia-old-days-ds-task .denia-old-days-ds-chrome::after",
+  "prefers-reduced-transparency: reduce",
+]) assert(activeStyles.includes(token), `stylesheet missing ${token}`);
+
+const stylesheetRules = parseCssRules(activeStyles);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
+  "grid-template-columns": "minmax(340px, .9fr) minmax(430px, 1.1fr)",
+  "column-gap": "clamp(32px, 4vw, 58px)",
+});
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
+  position: "relative",
+  isolation: "isolate",
+  "align-self": "center",
+  width: "min(100%, 610px)",
+  "aspect-ratio": "16 / 10",
+  "min-height": "0",
+  margin: "0",
+  padding: "18px 18px 52px",
+  "border-radius": "8px",
+  background: "#fffef8",
+  "box-shadow": "0 22px 44px rgba(38, 53, 72, .14)",
+  transform: "rotate(-1.2deg)",
+  "pointer-events": "none",
+});
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
+  position: "absolute",
+  inset: "18px 18px 52px",
+  "border-radius": "4px",
+  background: "var(--denia-old-days-art-bright) center / cover no-repeat",
+});
+assert(
+  !stylesheetRules.some((rule) => rule.selectors.some((selector) => selector.includes(":hover") && selector.includes("denia-old-days-ds-photo"))),
+  "home photo must not use hover flip selectors",
+);
+assert(
+  !stylesheetRules.some((rule) => rule.selectors.some((selector) => selector.includes("denia-old-days-ds-bubble"))),
+  "large decorative bubbles must be removed",
+);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-tape", {
+  top: "auto",
+  bottom: "12px",
+  "z-index": "2",
+});
+
+const taskRailSelector = ".denia-old-days-ds-task .denia-old-days-ds-chrome::after";
+assertCssDeclarations(stylesheetRules, taskRailSelector, {
+  content: '""',
+  position: "absolute",
+  inset: "0 0 0 auto",
+  width: "min(12vw, 180px)",
+  "pointer-events": "none",
+  opacity: "0",
+  transform: "translateX(24%)",
+  transition: "opacity 320ms ease, transform 320ms ease",
+});
+const taskRail = findCssRule(stylesheetRules, taskRailSelector);
+assert(
+  canonicalCssValue(taskRail.declarations.get("background")).includes(canonicalCssValue("var(--denia-old-days-art-dark) 18% center / auto 100% no-repeat")),
+  "task rail must render the dark artwork outside the reading column",
+);
+const darkArtworkRules = stylesheetRules.filter((rule) => [...rule.declarations.values()].some((value) => value.includes("--denia-old-days-art-dark")));
+assert(
+  darkArtworkRules.length === 1
+    && darkArtworkRules[0].selectors.length === 1
+    && darkArtworkRules[0].selectors[0] === taskRailSelector,
+  "dark artwork must only be declared on the fixed task chrome rail",
+);
+const forbiddenArtworkHosts = /(?:^|[\s>+~])(?:main|article|code)\b|\[role\s*=\s*["']?main|message|diff|terminal|composer/iu;
+assert(
+  !darkArtworkRules.some((rule) => rule.selectors.some((selector) => forbiddenArtworkHosts.test(selector))),
+  "dark artwork must not overlap main, messages, code, diff, terminal, or composer content",
+);
+for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-days-ds-task main"]) {
+  assertCssDeclarations(stylesheetRules, selector, { position: "relative", "z-index": "3" });
+}
+for (const [state, opacity] of [["working", ".12"], ["approval", ".18"], ["error", ".28"]]) {
+  assertCssDeclarations(
+    stylesheetRules,
+    `.denia-old-days-ds-extension[data-denia-form-state="${state}"] .denia-old-days-ds-chrome::after`,
+    { opacity, transform: "none" },
+  );
+}
+for (const state of ["staged", "complete"]) {
+  assertCssDeclarations(
+    stylesheetRules,
+    `.denia-old-days-ds-extension[data-denia-form-state="${state}"] .denia-old-days-ds-chrome::after`,
+    { opacity: "0" },
+  );
+}
+
+const compactMedia = ["max-width: 1199px", "max-height: 759px"];
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
+  display: "block",
+  "aspect-ratio": "3 / 4",
+}, compactMedia);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
+  background: "var(--denia-old-days-art-portrait) center bottom / contain no-repeat",
+}, compactMedia);
+const portraitArtworkRules = stylesheetRules.filter((rule) => [...rule.declarations.values()].some((value) => value.includes("--denia-old-days-art-portrait")));
+assert(
+  portraitArtworkRules.length === 1 && compactMedia.every((fragment) => portraitArtworkRules[0].atRules.some((atRule) => atRule.includes(fragment))),
+  "portrait artwork must be limited to the compact hero breakpoint",
+);
+const narrowMedia = ["max-width: 919px"];
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", { display: "none" }, narrowMedia);
+assertCssDeclarations(stylesheetRules, taskRailSelector, { display: "none" }, narrowMedia);
+
+const transparencyMedia = ["prefers-reduced-transparency: reduce"];
+for (const [selector, background] of [
+  [".denia-old-days-ds-hero", "#f9ffff"],
+  [".denia-old-days-ds-card-deck button", "#f9ffff"],
+  [".denia-old-days-ds-composer", "#f9ffff !important"],
+  [".denia-old-days-ds-final-card", "#fffdf1 !important"],
+]) assertCssDeclarations(stylesheetRules, selector, { background }, transparencyMedia);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-extension *", {
+  animation: "none !important",
+  "transition-duration": "0.01ms !important",
+}, ["prefers-reduced-motion: reduce"]);
+
 const publicText = [JSON.stringify(manifest), loader, styles, runtime, ...scripts].join("\n");
 assert(!/miku|hatsune|bocchi|hutao|tariz|初音|胡桃|孤独摇滚/iu.test(publicText), "public Sidecar contains another theme's branding");
 assert(!/app\.asar|codesign\s|defaults\s+write\s+com\.openai\.codex/iu.test(publicText), "Sidecar must not patch Codex");
@@ -570,6 +696,76 @@ function assertPublicStateUrlCollectionCoverage() {
   assert(publicStateContainsUrl(collections.setWithMap), "public state URL scan must inspect cross-realm Set and nested Map values");
   assert(!publicStateContainsUrl(collections.safeMap), "public state URL scan must terminate on collection cycles without URLs");
   assert(publicStateContainsUrl({ nested: ["blob:ordinary-object-array"] }), "public state URL scan must retain ordinary object and array coverage");
+}
+
+function stripCssComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//gu, "");
+}
+
+function parseCssRules(source, atRules = [], rules = []) {
+  let cursor = 0;
+  while (cursor < source.length) {
+    const open = source.indexOf("{", cursor);
+    if (open < 0) break;
+    const header = source.slice(cursor, open).trim().replace(/\s+/gu, " ");
+    let depth = 1;
+    let close = open + 1;
+    while (close < source.length && depth > 0) {
+      if (source[close] === "{") depth += 1;
+      else if (source[close] === "}") depth -= 1;
+      close += 1;
+    }
+    assert(depth === 0, `stylesheet has an unclosed block after ${header}`);
+    const body = source.slice(open + 1, close - 1);
+    if (header.startsWith("@")) {
+      parseCssRules(body, [...atRules, header], rules);
+    } else if (header) {
+      rules.push({
+        selectors: header.split(",").map((selector) => selector.trim().replace(/\s+/gu, " ")),
+        declarations: parseCssDeclarations(body),
+        atRules,
+      });
+    }
+    cursor = close;
+  }
+  return rules;
+}
+
+function parseCssDeclarations(body) {
+  const declarations = new Map();
+  for (const declaration of body.split(";")) {
+    const separator = declaration.indexOf(":");
+    if (separator < 0) continue;
+    const property = declaration.slice(0, separator).trim().toLowerCase();
+    const value = declaration.slice(separator + 1).trim();
+    if (property) declarations.set(property, value);
+  }
+  return declarations;
+}
+
+function findCssRule(rules, selector, atRuleFragments = []) {
+  const normalizedSelector = selector.trim().replace(/\s+/gu, " ");
+  const matching = rules.filter((rule) =>
+    rule.selectors.includes(normalizedSelector)
+      && (atRuleFragments.length > 0
+        ? atRuleFragments.every((fragment) => rule.atRules.some((atRule) => atRule.includes(fragment)))
+        : rule.atRules.length === 0));
+  assert(matching.length === 1, `stylesheet must contain exactly one ${normalizedSelector} rule${atRuleFragments.length ? ` under ${atRuleFragments.join(" and ")}` : " at the top level"}`);
+  return matching[0];
+}
+
+function assertCssDeclarations(rules, selector, expected, atRuleFragments = []) {
+  const rule = findCssRule(rules, selector, atRuleFragments);
+  for (const [property, value] of Object.entries(expected)) {
+    assert(
+      canonicalCssValue(rule.declarations.get(property)) === canonicalCssValue(value),
+      `${selector} must set ${property}: ${value}`,
+    );
+  }
+}
+
+function canonicalCssValue(value = "") {
+  return value.toLowerCase().replace(/\s+/gu, "");
 }
 
 function assert(condition, message) {

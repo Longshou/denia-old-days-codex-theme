@@ -71,42 +71,18 @@
     radial-gradient(ellipse at center, transparent 0 36%, rgba(89, 132, 145, 0.24) 38% 48%, transparent 50%) center 70px / 36px 124px repeat-y;
 }
 
-.denia-old-days-ds-chrome::after {
+.denia-old-days-ds-task .denia-old-days-ds-chrome::after {
   content: "";
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(18vw, 250px);
-  opacity: 0;
-  transform: translateX(18%);
+  inset: 0 0 0 auto;
+  width: min(12vw, 180px);
+  pointer-events: none;
   background:
-    linear-gradient(172deg, transparent 0 18%, rgba(228, 90, 168, 0.5) 18.5% 19.2%, transparent 19.8% 47%, rgba(117, 86, 217, 0.46) 47.5% 48.1%, transparent 49%),
-    linear-gradient(90deg, transparent, rgba(17, 22, 47, 0.86));
+    linear-gradient(90deg, rgba(234, 247, 247, 1), rgba(234, 247, 247, 0.08) 28%, transparent 58%),
+    var(--denia-old-days-art-dark) 18% center / auto 100% no-repeat;
+  opacity: 0;
+  transform: translateX(24%);
   transition: opacity 320ms ease, transform 320ms ease;
-}
-
-.denia-old-days-ds-bubble {
-  position: absolute;
-  display: block;
-  border: 1px solid rgba(111, 184, 231, 0.55);
-  border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.88), rgba(143, 210, 221, 0.2) 46%, rgba(117, 86, 217, 0.04));
-  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.75);
-}
-
-.denia-old-days-ds-bubble-a {
-  top: 12%;
-  right: 7%;
-  width: 96px;
-  height: 96px;
-}
-
-.denia-old-days-ds-bubble-b {
-  right: 17%;
-  bottom: 15%;
-  width: 42px;
-  height: 42px;
 }
 
 .denia-old-days-ds-star {
@@ -176,7 +152,8 @@
 .denia-old-days-ds-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(340px, 0.88fr) minmax(400px, 1.12fr);
+  grid-template-columns: minmax(340px, .9fr) minmax(430px, 1.1fr);
+  column-gap: clamp(32px, 4vw, 58px);
   width: min(1120px, calc(100vw - 330px));
   min-height: 370px;
   margin: clamp(28px, 6vh, 76px) auto 20px;
@@ -199,20 +176,6 @@
   width: 24px;
   transform: translateX(-50%);
   background: radial-gradient(ellipse, transparent 0 35%, rgba(91, 136, 149, 0.24) 38% 48%, transparent 51%) center 42px / 24px 92px repeat-y;
-  pointer-events: none;
-}
-
-.denia-old-days-ds-hero::after {
-  content: "";
-  position: absolute;
-  right: 48px;
-  bottom: 34px;
-  width: 56px;
-  height: 56px;
-  opacity: 0.52;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, rgba(143, 210, 221, 0.3) 42%, rgba(111, 184, 231, 0.07));
-  border: 1px solid rgba(111, 184, 231, 0.48);
   pointer-events: none;
 }
 
@@ -274,66 +237,37 @@
 
 .denia-old-days-ds-photo {
   position: relative;
+  isolation: isolate;
   z-index: 1;
-  width: min(100%, 560px);
-  min-height: 320px;
-  margin: -26px -38px -30px auto;
-  perspective: 1200px;
+  align-self: center;
+  width: min(100%, 610px);
+  aspect-ratio: 16 / 10;
+  min-height: 0;
+  margin: 0;
+  padding: 18px 18px 52px;
+  border-radius: 8px;
+  background: #fffef8;
+  box-shadow: 0 22px 44px rgba(38, 53, 72, .14);
+  transform: rotate(-1.2deg);
   pointer-events: none;
 }
 
-.denia-old-days-ds-photo-front,
-.denia-old-days-ds-photo-back {
-  position: absolute;
-  inset: 0;
-  display: block;
-  border-radius: 22px;
-  backface-visibility: hidden;
-  transition: transform 520ms cubic-bezier(0.22, 0.72, 0.18, 1);
-}
-
 .denia-old-days-ds-photo-front {
-  transform: rotate(-1.8deg);
-  background: var(--denia-old-days-art) right center / contain no-repeat;
-  filter: drop-shadow(0 22px 22px rgba(38, 53, 72, 0.16));
-}
-
-.denia-old-days-ds-photo-back {
-  inset: 15% 8% 10% 28%;
-  transform: rotateY(180deg) rotate(4deg);
-  border: 10px solid rgba(255, 255, 255, 0.9);
-  background:
-    radial-gradient(ellipse at center, transparent 0 12%, var(--denia-fracture) 13% 20%, transparent 21%),
-    linear-gradient(145deg, var(--denia-violet), var(--denia-void));
-  box-shadow: 0 22px 42px rgba(17, 22, 47, 0.28);
-}
-
-.denia-old-days-ds-photo-back i {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 132px;
-  height: 52px;
-  transform: translate(-50%, -50%);
-  border: 6px solid var(--denia-crystal);
-  border-radius: 50%;
-}
-
-.denia-old-days-ds-hero:hover .denia-old-days-ds-photo-front {
-  transform: rotateY(-18deg) rotate(-2deg);
-}
-
-.denia-old-days-ds-hero:hover .denia-old-days-ds-photo-back {
-  transform: rotateY(0deg) rotate(4deg);
+  inset: 18px 18px 52px;
+  border-radius: 4px;
+  background: var(--denia-old-days-art-bright) center / cover no-repeat;
 }
 
 .denia-old-days-ds-tape {
   position: absolute;
-  top: 15px;
-  left: 33%;
-  width: 150px;
-  height: 36px;
-  transform: rotate(-7deg);
+  z-index: 2;
+  top: auto;
+  bottom: 12px;
+  left: 50%;
+  width: 116px;
+  height: 24px;
+  transform: translateX(-50%) rotate(-4deg);
   border-radius: 4px;
   background: rgba(247, 216, 138, 0.68);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
@@ -457,6 +391,7 @@
 .denia-old-days-ds-task [role="main"],
 .denia-old-days-ds-task main {
   position: relative;
+  z-index: 3;
 }
 
 .denia-old-days-ds-observation {
@@ -514,17 +449,13 @@
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-chrome::after {
-  opacity: 0.24;
-  transform: translateX(0);
-}
-
-.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-bubble-a {
-  animation: denia-old-days-bubble 2.4s ease-in-out infinite;
+  opacity: .12;
+  transform: none;
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-chrome::after {
-  opacity: 0.55;
-  transform: translateX(0);
+  opacity: .18;
+  transform: none;
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-star {
@@ -533,18 +464,17 @@
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-chrome::after {
-  opacity: 0.72;
-  transform: translateX(0);
-  animation: denia-old-days-fracture 320ms 1 ease-out;
+  opacity: .28;
+  transform: none;
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-star {
   color: var(--denia-fracture);
 }
 
+.denia-old-days-ds-extension[data-denia-form-state="staged"] .denia-old-days-ds-chrome::after,
 .denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-chrome::after {
-  opacity: 0.06;
-  transform: translateX(74%);
+  opacity: 0;
 }
 
 @keyframes denia-old-days-page-intro {
@@ -554,17 +484,6 @@
   100% { opacity: 1; transform: none; filter: none; }
 }
 
-@keyframes denia-old-days-bubble {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.66; }
-  50% { transform: translate3d(-8px, 7px, 0) scale(1.06); opacity: 0.9; }
-}
-
-@keyframes denia-old-days-fracture {
-  0% { clip-path: polygon(100% 0, 100% 100%, 92% 100%, 96% 70%, 88% 54%, 95% 31%, 90% 0); }
-  55% { clip-path: polygon(100% 0, 100% 100%, 72% 100%, 88% 71%, 65% 52%, 91% 30%, 72% 0); }
-  100% { clip-path: inset(0); }
-}
-
 @keyframes denia-old-days-complete {
   from { opacity: 0.45; transform: translateY(10px); filter: saturate(0.3); }
   to { opacity: 1; transform: none; filter: none; }
@@ -572,13 +491,29 @@
 
 @media (max-width: 1199px), (max-height: 759px) {
   .denia-old-days-ds-hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+    column-gap: clamp(20px, 3vw, 36px);
     width: min(780px, calc(100vw - 100px));
     min-height: 0;
   }
 
   .denia-old-days-ds-photo {
-    display: none;
+    display: block;
+    width: min(100%, 220px);
+    aspect-ratio: 3 / 4;
+    padding: 12px 12px 32px;
+    transform: rotate(-0.8deg);
+  }
+
+  .denia-old-days-ds-photo-front {
+    inset: 12px 12px 32px;
+    background: var(--denia-old-days-art-portrait) center bottom / contain no-repeat;
+  }
+
+  .denia-old-days-ds-tape {
+    bottom: 7px;
+    width: 84px;
+    height: 18px;
   }
 
   .denia-old-days-ds-hero-text {
@@ -593,9 +528,11 @@
 
 @media (max-width: 919px) {
   .denia-old-days-ds-chrome::before,
-  .denia-old-days-ds-bubble,
-  .denia-old-days-ds-tape,
   .denia-old-days-ds-photo {
+    display: none;
+  }
+
+  .denia-old-days-ds-task .denia-old-days-ds-chrome::after {
     display: none;
   }
 
@@ -629,6 +566,25 @@
 
   .denia-old-days-ds-card-deck {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .denia-old-days-ds-hero {
+    background: #f9ffff;
+  }
+
+  .denia-old-days-ds-card-deck button {
+    background: #f9ffff;
+  }
+
+  .denia-old-days-ds-composer {
+    background: #f9ffff !important;
+    backdrop-filter: none;
+  }
+
+  .denia-old-days-ds-final-card {
+    background: #fffdf1 !important;
   }
 }
 
