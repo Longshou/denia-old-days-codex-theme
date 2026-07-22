@@ -1,0 +1,8 @@
+.DS_Store
+.runtime/
+dist/
+theme/background.jpg
+sidecar/assets/*.webp
+evidence/*.png
+evidence/*.json
+
