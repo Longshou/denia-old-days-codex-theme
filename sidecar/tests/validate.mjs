@@ -1195,8 +1195,22 @@ function assertSuggestionDeckLifecycle(payload) {
   const reordered = complete.remount([labels[3], labels[0], labels[2], labels[1]]);
   state.refresh();
   deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
-  deck.querySelectorAll("button[data-denia-old-days-card]")[0].click();
-  assert(reordered[0].clickCount === 1, "suggestion deck must forward clicks to remounted and reordered native actions");
+  const proxyButtons = deck.querySelectorAll("button[data-denia-old-days-card]");
+  const semanticTargets = [reordered[1], reordered[3], reordered[2], reordered[0]];
+  ["Explore", "Build", "Review", "Fix"].forEach((action, index) => {
+    proxyButtons[index].click();
+    assert(semanticTargets[index].clickCount === 1, `${action} proxy must bind to its semantic native action after reorder`);
+  });
+
+  reordered[3].disabled = true;
+  state.refresh();
+  const refreshedProxies = deck.querySelectorAll("button[data-denia-old-days-card]");
+  assert(refreshedProxies[1].disabled, "Build proxy disabled state must follow the semantic Build action after reorder");
+  assert([refreshedProxies[0], refreshedProxies[2], refreshedProxies[3]].every((button) => !button.disabled), "other proxies must remain enabled when only Build is disabled");
+
+  const incompleteCategories = makeHarness([labels[0], "Understand project", labels[2], labels[3]]);
+  vm.runInContext(payload, incompleteCategories.harness.context, { timeout: 1000 });
+  assert(!incompleteCategories.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck requires one native action from each semantic category");
 
   const dropped = complete.remount(labels.slice(0, 3));
   state.refresh();

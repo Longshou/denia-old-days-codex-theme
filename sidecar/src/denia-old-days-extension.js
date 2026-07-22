@@ -108,9 +108,17 @@
       const text = (button.innerText || button.textContent || "").trim();
       return text.length > 2 && text.length < 180 && approved.some((pattern) => pattern.test(text));
     });
-    const unique = [];
-    for (const button of candidates) if (!unique.includes(button)) unique.push(button);
-    return unique.slice(0, 4);
+    const semanticButtons = [];
+    for (const pattern of approved) {
+      const button = candidates.find((candidate) => {
+        if (semanticButtons.includes(candidate)) return false;
+        const text = (candidate.innerText || candidate.textContent || "").trim();
+        return pattern.test(text);
+      });
+      if (!button) return [];
+      semanticButtons.push(button);
+    }
+    return semanticButtons;
   }
 
   function isHomeView() {
