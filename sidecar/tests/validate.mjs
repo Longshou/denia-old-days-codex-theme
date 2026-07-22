@@ -97,7 +97,7 @@ const runtimeTokens = [
 ];
 for (const token of runtimeTokens) {
   assert(runtime.split(token).length - 1 === 1, `runtime template must contain ${token} exactly once`);
-  assert(loader.includes(`.replace("${token}"`), `loader must replace ${token}`);
+  assert(loader.includes(token), `loader must stage ${token}`);
 }
 const runtimeReplacements = new Map([
   [runtimeTokens[0], JSON.stringify(manifest)],
@@ -210,10 +210,24 @@ async function assertLoaderRejectsUnresolvedRuntimeTokens() {
       "normal loader must finish token replacement before entering CDP verification",
     );
 
+    const stylePath = path.join(fixtureRoot, manifest.entrypoints.style);
+    await fs.appendFile(stylePath, "\n/* __DENIA_OLD_DAYS_EXTENSION_USER_NOTE__ */\n");
+    const manifestPath = path.join(fixtureRoot, "extension.json");
+    const fixtureManifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+    fixtureManifest.description = `${fixtureManifest.description} __DENIA_OLD_DAYS_EXTENSION_MANIFEST_NOTE__`;
+    await fs.writeFile(manifestPath, `${JSON.stringify(fixtureManifest, null, 2)}\n`);
+    const tokenLikeResult = spawnSync(process.execPath, loaderArgs, { encoding: "utf8", timeout: 7000 });
+    const tokenLikeOutput = `${tokenLikeResult.stdout || ""}\n${tokenLikeResult.stderr || ""}`;
+    assert(
+      !tokenLikeOutput.includes("Unresolved Denia runtime template token")
+        && /ECONNREFUSED 127\.0\.0\.1:65533|No verified Codex renderer target|"mode":\s*"verify"/u.test(tokenLikeOutput),
+      "loader must allow token-like user data to reach CDP verification",
+    );
+
     const loaderSource = await fs.readFile(loaderPath, "utf8");
-    const brightReplacement = "  .replace(\"__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__\", JSON.stringify(imageDataUrl(brightPath, bright)))";
-    assert(loaderSource.includes(brightReplacement), "loader mutation fixture missing bright artwork replacement");
-    await fs.writeFile(loaderPath, loaderSource.replace(brightReplacement, `  // ${brightReplacement.trim()}`));
+    const brightStagingReplacement = "  .replace(templatePlaceholders.bright, templateSentinels.bright)";
+    assert(loaderSource.includes(brightStagingReplacement), "loader mutation fixture missing bright artwork staging replacement");
+    await fs.writeFile(loaderPath, loaderSource.replace(brightStagingReplacement, `  // ${brightStagingReplacement.trim()}`));
 
     const mutatedResult = spawnSync(process.execPath, loaderArgs, { encoding: "utf8", timeout: 7000 });
     const mutatedOutput = `${mutatedResult.stdout || ""}\n${mutatedResult.stderr || ""}`;

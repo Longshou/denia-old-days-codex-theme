@@ -78,15 +78,65 @@ const imageDataUrl = (filePath, bytes) => {
   return `data:${mime};base64,${bytes.toString("base64")}`;
 };
 
-const installPayload = runtimeTemplate
-  .replace("__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__", JSON.stringify(cssText))
-  .replace("__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__", JSON.stringify(manifest))
-  .replace("__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__", JSON.stringify(imageDataUrl(brightPath, bright)))
-  .replace("__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__", JSON.stringify(imageDataUrl(darkPath, dark)))
-  .replace("__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__", JSON.stringify(imageDataUrl(portraitPath, portrait)));
-const unresolvedTemplateTokens = [...new Set(installPayload.match(/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/gu) || [])];
-if (unresolvedTemplateTokens.length) {
-  throw new Error(`Unresolved Denia runtime template token(s): ${unresolvedTemplateTokens.join(", ")}`);
+const templatePlaceholders = Object.freeze({
+  manifest: "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",
+  css: "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
+  bright: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
+  dark: "__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__",
+  portrait: "__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__",
+});
+const templateSentinels = Object.freeze({
+  manifest: "@@DENIA_RUNTIME_MANIFEST_7F3A@@",
+  css: "@@DENIA_RUNTIME_CSS_7F3A@@",
+  bright: "@@DENIA_RUNTIME_BRIGHT_ART_7F3A@@",
+  dark: "@@DENIA_RUNTIME_DARK_ART_7F3A@@",
+  portrait: "@@DENIA_RUNTIME_PORTRAIT_ART_7F3A@@",
+});
+const expectedTemplatePlaceholders = Object.values(templatePlaceholders);
+const expectedTemplateSentinels = Object.values(templateSentinels);
+if (new Set(expectedTemplateSentinels).size !== expectedTemplatePlaceholders.length) {
+  throw new Error("Denia runtime template sentinels must be unique");
+}
+const templatePlaceholderMatches = runtimeTemplate.match(/__DENIA_OLD_DAYS_EXTENSION_[A-Z0-9_]+__/gu) || [];
+for (const placeholder of expectedTemplatePlaceholders) {
+  const count = templatePlaceholderMatches.filter((match) => match === placeholder).length;
+  if (count !== 1) throw new Error(`Denia runtime template placeholder must appear exactly once: ${placeholder} (found ${count})`);
+}
+const unexpectedTemplatePlaceholders = [...new Set(templatePlaceholderMatches.filter((match) => !expectedTemplatePlaceholders.includes(match)))];
+if (unexpectedTemplatePlaceholders.length) {
+  throw new Error(`Unexpected Denia runtime template placeholder(s): ${unexpectedTemplatePlaceholders.join(", ")}`);
+}
+for (const sentinel of expectedTemplateSentinels) {
+  if (runtimeTemplate.includes(sentinel)) throw new Error(`Denia runtime template contains reserved sentinel: ${sentinel}`);
+}
+
+const stagedRuntimeTemplate = runtimeTemplate
+  .replace(templatePlaceholders.manifest, templateSentinels.manifest)
+  .replace(templatePlaceholders.css, templateSentinels.css)
+  .replace(templatePlaceholders.bright, templateSentinels.bright)
+  .replace(templatePlaceholders.dark, templateSentinels.dark)
+  .replace(templatePlaceholders.portrait, templateSentinels.portrait);
+const unstagedTemplatePlaceholders = expectedTemplatePlaceholders.filter((placeholder) => stagedRuntimeTemplate.includes(placeholder));
+if (unstagedTemplatePlaceholders.length) {
+  throw new Error(`Unresolved Denia runtime template token(s): ${unstagedTemplatePlaceholders.join(", ")}`);
+}
+for (const sentinel of expectedTemplateSentinels) {
+  const count = stagedRuntimeTemplate.split(sentinel).length - 1;
+  if (count !== 1) throw new Error(`Denia runtime template sentinel must appear exactly once after staging: ${sentinel} (found ${count})`);
+}
+
+const sentinelPayloads = new Map([
+  [templateSentinels.manifest, JSON.stringify(manifest)],
+  [templateSentinels.css, JSON.stringify(cssText)],
+  [templateSentinels.bright, JSON.stringify(imageDataUrl(brightPath, bright))],
+  [templateSentinels.dark, JSON.stringify(imageDataUrl(darkPath, dark))],
+  [templateSentinels.portrait, JSON.stringify(imageDataUrl(portraitPath, portrait))],
+]);
+const sentinelPattern = new RegExp([...sentinelPayloads.keys()].join("|"), "gu");
+const installPayload = stagedRuntimeTemplate.replace(sentinelPattern, (sentinel) => sentinelPayloads.get(sentinel));
+const unresolvedSentinels = [...sentinelPayloads.keys()].filter((sentinel) => installPayload.includes(sentinel));
+if (unresolvedSentinels.length) {
+  throw new Error(`Unresolved Denia runtime template sentinel(s): ${unresolvedSentinels.join(", ")}`);
 }
 
 const cleanupExpression = `(() => {
