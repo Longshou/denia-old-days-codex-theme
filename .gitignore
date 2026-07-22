@@ -1,8 +1,8 @@
 .DS_Store
+.worktrees/
 .runtime/
 dist/
 theme/background.jpg
 sidecar/assets/*.webp
 evidence/*.png
 evidence/*.json
-
