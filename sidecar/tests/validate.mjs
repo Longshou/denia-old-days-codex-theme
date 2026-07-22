@@ -35,6 +35,7 @@ assert(manifest.cleanup?.rootClass === "denia-old-days-ds-extension", "unexpecte
 assert(Array.isArray(manifest.capabilities) && manifest.capabilities.includes("runtime.cleanup"), "runtime cleanup capability is required");
 
 const required = [
+  manifest.entrypoints.style,
   manifest.entrypoints.runtime,
   manifest.assets.runtimeWallpaper,
   "runtime/loader.mjs",
@@ -57,8 +58,9 @@ for (const relative of required) {
   await readRequired(relative);
 }
 
-const [loader, runtime, ...scripts] = await Promise.all([
+const [loader, styles, runtime, ...scripts] = await Promise.all([
   readRequired("runtime/loader.mjs"),
+  readRequired(manifest.entrypoints.style),
   readRequired(manifest.entrypoints.runtime),
   ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
@@ -91,7 +93,23 @@ assert(runtime.includes("URL.revokeObjectURL"), "runtime cleanup must revoke obj
 assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
 assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
 
-const publicText = [JSON.stringify(manifest), loader, runtime, ...scripts].join("\n");
+for (const color of ["#EAF7F7", "#8FD2DD", "#F4AFC5", "#6FB8E7", "#F7D88A", "#263548", "#11162F", "#7556D9", "#E45AA8", "#C5415D"]) {
+  assert(styles.toUpperCase().includes(color), `stylesheet missing ${color}`);
+}
+for (const token of [
+  ".denia-old-days-ds-extension",
+  "data-denia-form-state=\"working\"",
+  "data-denia-form-state=\"approval\"",
+  "data-denia-form-state=\"error\"",
+  "max-width: 1199px",
+  "max-width: 919px",
+  "max-height: 759px",
+  "prefers-reduced-motion: reduce",
+  "pointer-events: none",
+  ":focus-visible",
+]) assert(styles.includes(token), `stylesheet missing ${token}`);
+
+const publicText = [JSON.stringify(manifest), loader, styles, runtime, ...scripts].join("\n");
 assert(!/miku|hatsune|bocchi|hutao|tariz|初音|胡桃|孤独摇滚/iu.test(publicText), "public Sidecar contains another theme's branding");
 assert(!/app\.asar|codesign\s|defaults\s+write\s+com\.openai\.codex/iu.test(publicText), "Sidecar must not patch Codex");
 assert(!scripts.some((text) => /\/usr\/bin\/python3|(^|\s)eval(\s|$)|osascript/mu.test(text)), "lifecycle scripts must not use Python, eval, or AppleScript");

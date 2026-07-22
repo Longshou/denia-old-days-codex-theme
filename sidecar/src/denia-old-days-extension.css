@@ -1,0 +1,644 @@
+.denia-old-days-ds-extension {
+  --denia-paper: #EAF7F7;
+  --denia-cyan: #8FD2DD;
+  --denia-pink: #F4AFC5;
+  --denia-crystal: #6FB8E7;
+  --denia-gold: #F7D88A;
+  --denia-ink: #263548;
+  --denia-void: #11162F;
+  --denia-violet: #7556D9;
+  --denia-fracture: #E45AA8;
+  --denia-warning: #C5415D;
+  --denia-panel: rgba(249, 255, 255, 0.9);
+  --denia-line: rgba(111, 184, 231, 0.28);
+  --denia-shadow: 0 18px 48px rgba(38, 53, 72, 0.13);
+  color-scheme: light;
+  accent-color: var(--denia-crystal);
+}
+
+.denia-old-days-ds-extension body {
+  color: var(--denia-ink);
+  background:
+    linear-gradient(rgba(234, 247, 247, 0.84), rgba(234, 247, 247, 0.84)),
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, 0.055) 31px 32px),
+    #EAF7F7;
+}
+
+.denia-old-days-ds-extension body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 82%, rgba(244, 175, 197, 0.16), transparent 18%),
+    radial-gradient(circle at 91% 16%, rgba(111, 184, 231, 0.16), transparent 22%),
+    linear-gradient(125deg, rgba(255, 255, 255, 0.38), transparent 44%);
+}
+
+.denia-old-days-ds-extension ::selection {
+  color: var(--denia-ink);
+  background: rgba(244, 175, 197, 0.46);
+}
+
+.denia-old-days-ds-extension button:focus-visible,
+.denia-old-days-ds-extension a:focus-visible,
+.denia-old-days-ds-extension textarea:focus-visible,
+.denia-old-days-ds-extension [contenteditable="true"]:focus-visible {
+  outline: 3px solid var(--denia-crystal) !important;
+  outline-offset: 3px !important;
+}
+
+.denia-old-days-ds-chrome {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.denia-old-days-ds-chrome::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  opacity: 0.2;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(ellipse at center, transparent 0 36%, rgba(89, 132, 145, 0.24) 38% 48%, transparent 50%) center 70px / 36px 124px repeat-y;
+}
+
+.denia-old-days-ds-chrome::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(18vw, 250px);
+  opacity: 0;
+  transform: translateX(18%);
+  background:
+    linear-gradient(172deg, transparent 0 18%, rgba(228, 90, 168, 0.5) 18.5% 19.2%, transparent 19.8% 47%, rgba(117, 86, 217, 0.46) 47.5% 48.1%, transparent 49%),
+    linear-gradient(90deg, transparent, rgba(17, 22, 47, 0.86));
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+
+.denia-old-days-ds-bubble {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(111, 184, 231, 0.55);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.88), rgba(143, 210, 221, 0.2) 46%, rgba(117, 86, 217, 0.04));
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.75);
+}
+
+.denia-old-days-ds-bubble-a {
+  top: 12%;
+  right: 7%;
+  width: 96px;
+  height: 96px;
+}
+
+.denia-old-days-ds-bubble-b {
+  right: 17%;
+  bottom: 15%;
+  width: 42px;
+  height: 42px;
+}
+
+.denia-old-days-ds-star {
+  position: absolute;
+  top: 9%;
+  left: 4%;
+  color: var(--denia-gold);
+  font-size: 30px;
+  filter: drop-shadow(0 5px 8px rgba(38, 53, 72, 0.12));
+}
+
+.denia-old-days-ds-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 10px 10px 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(143, 210, 221, 0.56);
+  border-radius: 16px;
+  color: var(--denia-ink);
+  background: rgba(249, 255, 255, 0.82);
+  box-shadow: 0 9px 24px rgba(38, 53, 72, 0.08);
+  backdrop-filter: blur(15px);
+}
+
+.denia-old-days-ds-brand-mark {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--denia-ink);
+  background: linear-gradient(145deg, var(--denia-pink), var(--denia-gold));
+}
+
+.denia-old-days-ds-brand-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.denia-old-days-ds-brand-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  letter-spacing: 0.13em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.denia-old-days-ds-brand-copy small {
+  overflow: hidden;
+  margin-top: 4px;
+  color: rgba(38, 53, 72, 0.64);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.denia-old-days-ds-home [role="main"],
+.denia-old-days-ds-home main {
+  position: relative;
+  isolation: isolate;
+}
+
+.denia-old-days-ds-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(340px, 0.88fr) minmax(400px, 1.12fr);
+  width: min(1120px, calc(100vw - 330px));
+  min-height: 370px;
+  margin: clamp(28px, 6vh, 76px) auto 20px;
+  padding: clamp(30px, 4vw, 58px);
+  overflow: hidden;
+  border: 1px solid rgba(143, 210, 221, 0.55);
+  border-radius: 30px;
+  background:
+    linear-gradient(90deg, rgba(249, 255, 255, 0.96) 0 50%, rgba(234, 247, 247, 0.76) 50%),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgba(111, 184, 231, 0.09) 39px 40px);
+  box-shadow: var(--denia-shadow);
+}
+
+.denia-old-days-ds-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 24px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, transparent 0 35%, rgba(91, 136, 149, 0.24) 38% 48%, transparent 51%) center 42px / 24px 92px repeat-y;
+  pointer-events: none;
+}
+
+.denia-old-days-ds-hero::after {
+  content: "";
+  position: absolute;
+  right: 48px;
+  bottom: 34px;
+  width: 56px;
+  height: 56px;
+  opacity: 0.52;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, rgba(143, 210, 221, 0.3) 42%, rgba(111, 184, 231, 0.07));
+  border: 1px solid rgba(111, 184, 231, 0.48);
+  pointer-events: none;
+}
+
+.denia-old-days-ds-hero-text {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  padding-right: 28px;
+}
+
+.denia-old-days-ds-eyebrow {
+  color: #5f7c89;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.denia-old-days-ds-hero h1 {
+  max-width: 620px;
+  margin: 20px 0 14px;
+  color: var(--denia-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-size: clamp(34px, 4vw, 54px);
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.denia-old-days-ds-hero p {
+  max-width: 520px;
+  margin: 0 0 26px;
+  color: rgba(38, 53, 72, 0.7);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.denia-old-days-ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid rgba(143, 210, 221, 0.68);
+  border-radius: 999px;
+  color: #55717c;
+  background: rgba(234, 247, 247, 0.82);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.denia-old-days-ds-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--denia-pink);
+  box-shadow: 0 0 0 4px rgba(244, 175, 197, 0.2);
+}
+
+.denia-old-days-ds-photo {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  min-height: 320px;
+  margin: -26px -38px -30px auto;
+  perspective: 1200px;
+  pointer-events: none;
+}
+
+.denia-old-days-ds-photo-front,
+.denia-old-days-ds-photo-back {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 22px;
+  backface-visibility: hidden;
+  transition: transform 520ms cubic-bezier(0.22, 0.72, 0.18, 1);
+}
+
+.denia-old-days-ds-photo-front {
+  transform: rotate(-1.8deg);
+  background: var(--denia-old-days-art) right center / contain no-repeat;
+  filter: drop-shadow(0 22px 22px rgba(38, 53, 72, 0.16));
+}
+
+.denia-old-days-ds-photo-back {
+  inset: 15% 8% 10% 28%;
+  transform: rotateY(180deg) rotate(4deg);
+  border: 10px solid rgba(255, 255, 255, 0.9);
+  background:
+    radial-gradient(ellipse at center, transparent 0 12%, var(--denia-fracture) 13% 20%, transparent 21%),
+    linear-gradient(145deg, var(--denia-violet), var(--denia-void));
+  box-shadow: 0 22px 42px rgba(17, 22, 47, 0.28);
+}
+
+.denia-old-days-ds-photo-back i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 132px;
+  height: 52px;
+  transform: translate(-50%, -50%);
+  border: 6px solid var(--denia-crystal);
+  border-radius: 50%;
+}
+
+.denia-old-days-ds-hero:hover .denia-old-days-ds-photo-front {
+  transform: rotateY(-18deg) rotate(-2deg);
+}
+
+.denia-old-days-ds-hero:hover .denia-old-days-ds-photo-back {
+  transform: rotateY(0deg) rotate(4deg);
+}
+
+.denia-old-days-ds-tape {
+  position: absolute;
+  top: 15px;
+  left: 33%;
+  width: 150px;
+  height: 36px;
+  transform: rotate(-7deg);
+  border-radius: 4px;
+  background: rgba(247, 216, 138, 0.68);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+
+.denia-old-days-ds-intro {
+  animation: denia-old-days-page-intro 1.4s both cubic-bezier(0.22, 0.72, 0.18, 1);
+}
+
+.denia-old-days-ds-card-deck {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: min(1120px, calc(100vw - 330px));
+  margin: 0 auto 24px;
+}
+
+.denia-old-days-ds-card-deck button {
+  position: relative;
+  display: grid;
+  min-height: 92px;
+  padding: 18px 18px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(111, 184, 231, 0.34);
+  border-radius: 18px;
+  color: var(--denia-ink);
+  background: rgba(249, 255, 255, 0.9);
+  box-shadow: 0 10px 28px rgba(38, 53, 72, 0.08);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.denia-old-days-ds-card-deck button::after {
+  content: "";
+  position: absolute;
+  right: -12px;
+  bottom: -18px;
+  width: 62px;
+  height: 62px;
+  border: 1px solid rgba(143, 210, 221, 0.58);
+  border-radius: 50%;
+  background: rgba(244, 175, 197, 0.1);
+}
+
+.denia-old-days-ds-card-deck button:hover:not(:disabled) {
+  transform: translateY(-3px) rotate(-0.3deg);
+  border-color: var(--denia-cyan);
+  box-shadow: 0 15px 34px rgba(38, 53, 72, 0.12);
+}
+
+.denia-old-days-ds-card-deck button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+.denia-old-days-ds-card-number {
+  margin-bottom: 10px;
+  color: #728c98;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.denia-old-days-ds-native-card,
+.denia-old-days-ds-native-suggestions {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.denia-old-days-ds-composer {
+  position: relative;
+  border: 1px solid rgba(143, 210, 221, 0.76) !important;
+  border-radius: 23px !important;
+  background: rgba(249, 255, 255, 0.88) !important;
+  box-shadow: 0 16px 40px rgba(38, 53, 72, 0.12) !important;
+  backdrop-filter: blur(18px) saturate(1.05);
+}
+
+.denia-old-days-ds-composer::before {
+  content: none !important;
+  display: none !important;
+}
+
+.denia-old-days-ds-composer::after {
+  content: "MEMORY NOTE";
+  position: absolute;
+  top: -17px;
+  right: 28px;
+  padding: 4px 12px;
+  border: 1px solid rgba(247, 216, 138, 0.68);
+  border-radius: 4px;
+  color: rgba(38, 53, 72, 0.55);
+  background: rgba(247, 216, 138, 0.72);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.denia-old-days-ds-send {
+  border-radius: 50% !important;
+  color: var(--denia-gold) !important;
+  background: var(--denia-ink) !important;
+  box-shadow: 0 6px 14px rgba(38, 53, 72, 0.22) !important;
+}
+
+.denia-old-days-ds-attachment {
+  color: #617c88 !important;
+}
+
+.denia-old-days-ds-task [role="main"],
+.denia-old-days-ds-task main {
+  position: relative;
+}
+
+.denia-old-days-ds-observation {
+  position: relative;
+  margin-block: 10px !important;
+  border: 1px dashed rgba(111, 184, 231, 0.42) !important;
+  border-radius: 15px !important;
+  background: rgba(234, 247, 247, 0.34) !important;
+}
+
+.denia-old-days-ds-observation::before {
+  content: attr(data-denia-observation-label) " · OBSERVATION";
+  display: block;
+  width: fit-content;
+  margin: 10px 14px 0;
+  color: #5f7c89;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.denia-old-days-ds-final-card {
+  position: relative;
+  margin-block: 18px !important;
+  padding: clamp(20px, 3vw, 34px) !important;
+  overflow: hidden;
+  border: 1px solid rgba(220, 183, 84, 0.58) !important;
+  border-radius: 20px !important;
+  color: var(--denia-ink) !important;
+  background: #fffdf1 !important;
+  box-shadow: 0 18px 40px rgba(38, 53, 72, 0.11) !important;
+  animation: denia-old-days-complete 450ms both ease-out;
+}
+
+.denia-old-days-ds-final-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 24px;
+  background: linear-gradient(100deg, var(--denia-gold), rgba(247, 216, 138, 0.28), var(--denia-pink));
+  clip-path: polygon(0 0, 100% 0, 100% 68%, 84% 88%, 67% 62%, 49% 90%, 28% 66%, 11% 91%, 0 72%);
+  pointer-events: none;
+}
+
+.denia-old-days-ds-final-card pre,
+.denia-old-days-ds-final-card code,
+.denia-old-days-ds-final-card [data-testid*="diff"],
+.denia-old-days-ds-final-card [data-testid*="terminal"] {
+  position: relative;
+  z-index: 1;
+  color: inherit;
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-chrome::after {
+  opacity: 0.24;
+  transform: translateX(0);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-bubble-a {
+  animation: denia-old-days-bubble 2.4s ease-in-out infinite;
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-chrome::after {
+  opacity: 0.55;
+  transform: translateX(0);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-star {
+  color: var(--denia-warning);
+  filter: drop-shadow(0 0 12px rgba(197, 65, 93, 0.3));
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-chrome::after {
+  opacity: 0.72;
+  transform: translateX(0);
+  animation: denia-old-days-fracture 320ms 1 ease-out;
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-star {
+  color: var(--denia-fracture);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-chrome::after {
+  opacity: 0.06;
+  transform: translateX(74%);
+}
+
+@keyframes denia-old-days-page-intro {
+  0% { opacity: 0; transform: translateY(16px) scale(0.985); filter: saturate(0.35); }
+  42% { opacity: 1; transform: translateY(0) scale(1); filter: saturate(0.5); }
+  72% { filter: saturate(1.12); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes denia-old-days-bubble {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.66; }
+  50% { transform: translate3d(-8px, 7px, 0) scale(1.06); opacity: 0.9; }
+}
+
+@keyframes denia-old-days-fracture {
+  0% { clip-path: polygon(100% 0, 100% 100%, 92% 100%, 96% 70%, 88% 54%, 95% 31%, 90% 0); }
+  55% { clip-path: polygon(100% 0, 100% 100%, 72% 100%, 88% 71%, 65% 52%, 91% 30%, 72% 0); }
+  100% { clip-path: inset(0); }
+}
+
+@keyframes denia-old-days-complete {
+  from { opacity: 0.45; transform: translateY(10px); filter: saturate(0.3); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@media (max-width: 1199px), (max-height: 759px) {
+  .denia-old-days-ds-hero {
+    grid-template-columns: 1fr;
+    width: min(780px, calc(100vw - 100px));
+    min-height: 0;
+  }
+
+  .denia-old-days-ds-photo {
+    display: none;
+  }
+
+  .denia-old-days-ds-hero-text {
+    padding-right: 0;
+  }
+
+  .denia-old-days-ds-card-deck {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(780px, calc(100vw - 100px));
+  }
+}
+
+@media (max-width: 919px) {
+  .denia-old-days-ds-chrome::before,
+  .denia-old-days-ds-bubble,
+  .denia-old-days-ds-tape,
+  .denia-old-days-ds-photo {
+    display: none;
+  }
+
+  .denia-old-days-ds-sidebar-brand {
+    margin-inline: 6px;
+    padding-inline: 8px;
+  }
+
+  .denia-old-days-ds-brand-copy small {
+    display: none;
+  }
+
+  .denia-old-days-ds-hero,
+  .denia-old-days-ds-card-deck {
+    width: calc(100vw - 32px);
+  }
+
+  .denia-old-days-ds-hero {
+    margin-top: 16px;
+    padding: 26px 24px;
+    border-radius: 22px;
+  }
+
+  .denia-old-days-ds-hero::before {
+    display: none;
+  }
+
+  .denia-old-days-ds-hero h1 {
+    font-size: clamp(30px, 8vw, 43px);
+  }
+
+  .denia-old-days-ds-card-deck {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .denia-old-days-ds-extension *,
+  .denia-old-days-ds-extension *::before,
+  .denia-old-days-ds-extension *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
