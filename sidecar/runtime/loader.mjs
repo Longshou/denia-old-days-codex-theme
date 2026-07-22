@@ -84,6 +84,10 @@ const installPayload = runtimeTemplate
   .replace("__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__", JSON.stringify(imageDataUrl(brightPath, bright)))
   .replace("__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__", JSON.stringify(imageDataUrl(darkPath, dark)))
   .replace("__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__", JSON.stringify(imageDataUrl(portraitPath, portrait)));
+const unresolvedTemplateTokens = [...new Set(installPayload.match(/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/gu) || [])];
+if (unresolvedTemplateTokens.length) {
+  throw new Error(`Unresolved Denia runtime template token(s): ${unresolvedTemplateTokens.join(", ")}`);
+}
 
 const cleanupExpression = `(() => {
   const state = window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;

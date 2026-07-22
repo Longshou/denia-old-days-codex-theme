@@ -108,6 +108,7 @@ let runtimePayload = runtime;
 for (const [token, replacement] of runtimeReplacements) runtimePayload = runtimePayload.replace(token, replacement);
 assert(!/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/u.test(runtimePayload), "runtime payload must not retain template tokens");
 assertRuntimeArtworkLifecycle(runtimePayload);
+assertPublicStateUrlCollectionCoverage();
 
 assert(loader.includes("127.0.0.1"), "loader must bind to loopback");
 assert(!loader.includes("0.0.0.0"), "loader must not use a wildcard host");
@@ -184,6 +185,7 @@ for (const [key, relative] of Object.entries(manifest.assets || {})) {
   assert(asset.size < 1024 * 1024, `asset must stay below 1 MiB: ${key}`);
 }
 
+await assertLoaderRejectsUnresolvedRuntimeTokens();
 if (process.env.DENIA_VALIDATE_SKIP_MUTATION_FIXTURE !== "1") {
   await assertRejectsCommentedArtworkRevoke();
 }
@@ -192,6 +194,40 @@ if (process.env.DENIA_VALIDATE_SKIP_SECURITY_FIXTURE !== "1") {
 }
 
 console.log(`Validated ${manifest.name} extension ${manifest.version}: ${required.length} required files, removable sidecar protocol.`);
+
+async function assertLoaderRejectsUnresolvedRuntimeTokens() {
+  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "denia-loader-token-"));
+  try {
+    const fixtureRoot = path.join(temporaryRoot, "sidecar");
+    await fs.cp(root, fixtureRoot, { recursive: true });
+    const loaderPath = path.join(fixtureRoot, "runtime/loader.mjs");
+    const loaderArgs = [loaderPath, "--verify", "--extension-dir", fixtureRoot, "--port", "65533"];
+    const normalResult = spawnSync(process.execPath, loaderArgs, { encoding: "utf8", timeout: 7000 });
+    const normalOutput = `${normalResult.stdout || ""}\n${normalResult.stderr || ""}`;
+    assert(
+      !normalOutput.includes("Unresolved Denia runtime template token")
+        && /ECONNREFUSED 127\.0\.0\.1:65533|No verified Codex renderer target|"mode":\s*"verify"/u.test(normalOutput),
+      "normal loader must finish token replacement before entering CDP verification",
+    );
+
+    const loaderSource = await fs.readFile(loaderPath, "utf8");
+    const brightReplacement = "  .replace(\"__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__\", JSON.stringify(imageDataUrl(brightPath, bright)))";
+    assert(loaderSource.includes(brightReplacement), "loader mutation fixture missing bright artwork replacement");
+    await fs.writeFile(loaderPath, loaderSource.replace(brightReplacement, `  // ${brightReplacement.trim()}`));
+
+    const mutatedResult = spawnSync(process.execPath, loaderArgs, { encoding: "utf8", timeout: 7000 });
+    const mutatedOutput = `${mutatedResult.stdout || ""}\n${mutatedResult.stderr || ""}`;
+    assert(
+      mutatedResult.status !== 0
+        && mutatedOutput.includes("Unresolved Denia runtime template token")
+        && mutatedOutput.includes("__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__")
+        && !mutatedOutput.includes("ECONNREFUSED"),
+      "loader must reject an unresolved artwork token before entering CDP",
+    );
+  } finally {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
+  }
+}
 
 async function assertRejectsCommentedArtworkRevoke() {
   const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "denia-validator-mutation-"));
@@ -492,7 +528,34 @@ function publicStateContainsUrl(value, seen = new Set()) {
   if (typeof value === "string") return /^(?:blob|data):/u.test(value);
   if (!value || typeof value !== "object" || seen.has(value)) return false;
   seen.add(value);
+  const tag = Object.prototype.toString.call(value);
+  if (tag === "[object Map]") {
+    for (const [key, nested] of value.entries()) {
+      if (publicStateContainsUrl(key, seen) || publicStateContainsUrl(nested, seen)) return true;
+    }
+    return false;
+  }
+  if (tag === "[object Set]") {
+    for (const nested of value.values()) if (publicStateContainsUrl(nested, seen)) return true;
+    return false;
+  }
   return Object.values(value).some((nested) => publicStateContainsUrl(nested, seen));
+}
+
+function assertPublicStateUrlCollectionCoverage() {
+  const collections = vm.runInNewContext(`(() => {
+    const mapWithSet = new Map([["nested", new Set(["blob:cross-realm-map-set"])]]);
+    const setWithMap = new Set([new Map([["nested", "data:image/webp;base64,AA=="]])]);
+    const safeMap = new Map();
+    const safeSet = new Set();
+    safeMap.set("cycle", safeSet);
+    safeSet.add(safeMap);
+    return { mapWithSet, setWithMap, safeMap };
+  })()`);
+  assert(publicStateContainsUrl(collections.mapWithSet), "public state URL scan must inspect cross-realm Map and nested Set values");
+  assert(publicStateContainsUrl(collections.setWithMap), "public state URL scan must inspect cross-realm Set and nested Map values");
+  assert(!publicStateContainsUrl(collections.safeMap), "public state URL scan must terminate on collection cycles without URLs");
+  assert(publicStateContainsUrl({ nested: ["blob:ordinary-object-array"] }), "public state URL scan must retain ordinary object and array coverage");
 }
 
 function assert(condition, message) {
