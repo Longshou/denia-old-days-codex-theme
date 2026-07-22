@@ -40,3 +40,16 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `art/source/task-preview.svg` | `ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade` |
 
 上述哈希对应 `0.1.0` 首发候选原创源文件。官方源文件的固定哈希见前表；构建产物在构建时重新校验。
+
+## 生成输出
+
+以下输出由 `scripts/render-assets.mjs` 使用 bundled Sharp 确定性生成。尺寸为实际编码尺寸，哈希为 SHA-256。
+
+| 输出 | 尺寸 | SHA-256 | 渲染设置 |
+| --- | --- | --- | --- |
+| `theme/background.jpg` | 1920×1080 | `b3352709208491ffc83e8a3584d55a39b55084089935e528e7c432662413e797` | `background.svg`；resize 1920×1080、cover；flatten `#eaf7f7`；JPEG quality 88、4:4:4 |
+| `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `5ce63c2e47e899f03d48f297f5299dfa38a120e1dd2fd9dc42d1f2dc04f096d8` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 86、smartSubsample |
+| `sidecar/assets/denia-old-days-dark.webp` | 1380×810 | `231c830b54ac2f8e459a0281a5e0b3b85fb4e27baf12be764e4507b4c2b02bc0` | `denia-poster-wide.png`；resize 1380×810、cover、centre；WebP quality 84、smartSubsample |
+| `sidecar/assets/denia-old-days-portrait.webp` | 640×995 | `8b7e6b85bc9ed0379df5c5071182ab412cea7a08d7b89e15811478a762dac146` | `denia-portrait.png`；resize 边界 640×996、inside、withoutEnlargement；WebP quality 88、alphaQuality 92 |
+| `evidence/home.png` | 1600×1000 | `f9a0e866b237af0de53b83e8f491371af52d1bc9cd77bf879659b856e44a1388` | `background.svg` resize 1600×1000、cover；Bright resize 610×343、cover、centre，extend 18/18/52/18 `#fffef8`，rotate -1.2°；合成内联 UI overlay；PNG compressionLevel 9 |
+| `evidence/task.png` | 1600×1000 | `6621bd1b9c281d111be86fe117af266b0e5e21e5e5796136e2bed8490330104f` | `task-preview.svg` resize 1600×1000、cover；Dark 衍生图 resize 148×1000、cover、centre，ensureAlpha，alpha 0.16，置于 x=1452；最终 resize 1600×1000、cover；PNG compressionLevel 9 |
