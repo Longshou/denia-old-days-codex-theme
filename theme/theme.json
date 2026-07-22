@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "denia-old-days",
+  "name": "达妮娅 · 旧日斑斓",
+  "brandSubtitle": "DENIA CODEX · MEMORY ALBUM",
+  "tagline": "让思绪显影，也让每一步留下记录。",
+  "projectPrefix": "翻到项目 · ",
+  "projectLabel": "✦  选择项目",
+  "statusText": "布景之形 · 记录中",
+  "quote": "OLD DAYS IN COLOR",
+  "image": "background.jpg",
+  "colors": {
+    "background": "#eaf7f7",
+    "panel": "#f9ffff",
+    "panelAlt": "#dff1f2",
+    "accent": "#8fd2dd",
+    "accentAlt": "#f4afc5",
+    "secondary": "#6fb8e7",
+    "highlight": "#f7d88a",
+    "text": "#263548",
+    "muted": "#647789",
+    "line": "rgba(111, 184, 231, 0.28)"
+  }
+}
