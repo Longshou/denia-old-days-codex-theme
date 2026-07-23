@@ -37,6 +37,7 @@ if (fs.existsSync(path.join(root, "art/source/official/denia-portrait.png"))) {
 
 const backgroundSource = fs.readFileSync(path.join(root, "art/source/background.svg"), "utf8");
 const rendererSource = fs.readFileSync(path.join(root, "scripts/render-assets.mjs"), "utf8");
+const localReleaseBuilder = fs.readFileSync(path.join(root, "scripts/build-local-kaboo-release.mjs"), "utf8");
 const runtimeCss = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.css"), "utf8");
 const runtimeJs = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.js"), "utf8");
 const runtimeLoader = fs.readFileSync(path.join(root, "sidecar/runtime/loader.mjs"), "utf8");
@@ -73,6 +74,17 @@ for (const marker of [
 }
 if (rendererSource.includes('target: "sidecar/assets/denia-old-days-dark.webp"')) {
   throw new Error("renderer must not package the retired poster rail");
+}
+for (const marker of [
+  "codex-dream-skin-denia-old-days-0.1.0",
+  "catalog-version.json",
+  "SHA256SUMS",
+  "preview-home.webp",
+  "preview-task.webp",
+  "start-local-test.command",
+  "zip",
+]) {
+  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing ${marker}`);
 }
 for (const retiredFragment of [
   "official/denia-portrait.png",

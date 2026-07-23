@@ -30,6 +30,9 @@
 KABOO_SHARP_ENTRY=/absolute/path/to/sharp/lib/index.js node scripts/render-assets.mjs
 node scripts/check-source.mjs
 node sidecar/tests/validate.mjs sidecar
+KABOO_SHARP_ENTRY=/absolute/path/to/sharp/lib/index.js node scripts/build-local-kaboo-release.mjs
 ```
+
+完整的 Kaboo 本地包生成在 `sidecar/release/kaboo-local/`。构建器同时生成 `start-local-test.command`；完全退出 Codex 后运行它，会从本地源码安装 Dream Skin Studio 和主题，并关闭 Kaboo 自动更新。该流程不访问 Registry、CDN 或发布接口。
 
 运行时不读取网络素材，不修改 Codex.app、`app.asar`、签名、账户、模型或 API 配置。
