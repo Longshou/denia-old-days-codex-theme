@@ -26,6 +26,24 @@ if (!readme.includes("denia-old-days@0.1.0")) throw new Error("README identity m
 const theme = JSON.parse(fs.readFileSync(path.join(root, "theme/theme.json"), "utf8"));
 if (theme.id !== "denia-old-days") throw new Error("theme id mismatch");
 
+const backgroundSource = fs.readFileSync(path.join(root, "art/source/background.svg"), "utf8");
+const rendererSource = fs.readFileSync(path.join(root, "scripts/render-assets.mjs"), "utf8");
+if (!backgroundSource.includes('id="denia-bubble-field"')) {
+  throw new Error("background must define the Denia bubble field");
+}
+for (const retiredFragment of [
+  "M147 138l15 25",
+  'translate(1575 170) rotate(8)',
+  'translate(269 820)',
+]) {
+  if (backgroundSource.includes(retiredFragment)) {
+    throw new Error(`background still contains retired decoration: ${retiredFragment}`);
+  }
+}
+for (const marker of ["renderHomePreview", "P2_POLAROID", "evidence/home-compact.png"]) {
+  if (!rendererSource.includes(marker)) throw new Error(`renderer missing ${marker}`);
+}
+
 const taskPreview = fs.readFileSync(path.join(root, "art/source/task-preview.svg"), "utf8");
 if (!taskPreview.includes("观察记录 · WORKING")) throw new Error("task preview must declare the working state");
 if (["完成显影", "已归档"].some((copy) => taskPreview.includes(copy))) {
@@ -38,6 +56,7 @@ const generatedFiles = [
   "sidecar/assets/denia-old-days-dark.webp",
   "sidecar/assets/denia-old-days-portrait.webp",
   "evidence/home.png",
+  "evidence/home-compact.png",
   "evidence/task.png",
 ];
 
@@ -46,6 +65,20 @@ for (const relative of generatedFiles) {
   if (!stat.isFile() || stat.size === 0) throw new Error(`empty ${relative}`);
   if (relative.endsWith(".webp") && stat.size > 1024 * 1024) {
     throw new Error(`runtime artwork exceeds 1 MiB: ${relative}`);
+  }
+}
+
+const expectedDimensions = new Map([
+  ["evidence/home.png", [1600, 1000]],
+  ["evidence/home-compact.png", [1200, 800]],
+]);
+for (const [relative, [expectedWidth, expectedHeight]] of expectedDimensions) {
+  const bytes = fs.readFileSync(path.join(root, relative));
+  if (bytes.toString("ascii", 1, 4) !== "PNG") throw new Error(`not a PNG: ${relative}`);
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  if (width !== expectedWidth || height !== expectedHeight) {
+    throw new Error(`unexpected dimensions for ${relative}: ${width}x${height}`);
   }
 }
 
