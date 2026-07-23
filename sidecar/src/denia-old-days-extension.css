@@ -685,31 +685,9 @@
   to { opacity: 1; transform: none; filter: none; }
 }
 
-@media (min-width: 1180px) {
-  .denia-old-days-ds-task [role="main"],
-  .denia-old-days-ds-task main {
-    padding-inline-end: calc(var(--denia-state-rail-width) + 24px) !important;
-  }
-
-  .denia-old-days-ds-task .denia-old-days-ds-composer {
-    max-width: calc(100% - var(--denia-state-rail-width) - 60px) !important;
-    margin-inline-end: calc(var(--denia-state-rail-width) + 60px) !important;
-  }
-}
-
 @media (min-width: 920px) and (max-width: 1179px) {
   .denia-old-days-ds-extension {
     --denia-state-rail-width: clamp(220px, 22vw, 260px);
-  }
-
-  .denia-old-days-ds-task [role="main"],
-  .denia-old-days-ds-task main {
-    padding-inline-end: calc(var(--denia-state-rail-width) + 16px) !important;
-  }
-
-  .denia-old-days-ds-task .denia-old-days-ds-composer {
-    max-width: calc(100% - var(--denia-state-rail-width) - 40px) !important;
-    margin-inline-end: calc(var(--denia-state-rail-width) + 40px) !important;
   }
 
   .denia-old-days-ds-state-art-layer.is-active {
@@ -770,11 +748,6 @@
 
   .denia-old-days-ds-state-art {
     display: none;
-  }
-
-  .denia-old-days-ds-task [role="main"],
-  .denia-old-days-ds-task main {
-    padding-inline-end: 0 !important;
   }
 
   .denia-old-days-ds-sidebar-brand {

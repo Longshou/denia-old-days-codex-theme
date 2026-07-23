@@ -115,6 +115,29 @@ for (const marker of [
 ]) {
   if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing ${marker}`);
 }
+const localInstallIndex = localReleaseBuilder.indexOf(
+  '"$STUDIO_ROOT/scripts/install-dream-skin-macos.sh" --no-launchers --no-launch',
+);
+const themeInstallIndex = localReleaseBuilder.indexOf(
+  'codex-theme install-local "$CATALOG"',
+  localInstallIndex,
+);
+const studioStartIndex = localReleaseBuilder.indexOf(
+  '"$STUDIO_ROOT/scripts/start-dream-skin-macos.sh" --port 9341',
+  themeInstallIndex,
+);
+const themeActivateIndex = localReleaseBuilder.indexOf(
+  "codex-theme activate ${id}",
+  studioStartIndex,
+);
+if (
+  localInstallIndex < 0
+  || themeInstallIndex < localInstallIndex
+  || studioStartIndex < themeInstallIndex
+  || themeActivateIndex < studioStartIndex
+) {
+  throw new Error("local launcher must install Denia before starting Codex, then activate it");
+}
 for (const marker of [
   "四组本地角色美术",
   "warm garden-and-bubbles artwork",

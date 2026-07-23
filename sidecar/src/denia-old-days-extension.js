@@ -282,6 +282,13 @@
     return brand;
   }
 
+  function removeSidebarBrand() {
+    const brand = document.getElementById("denia-old-days-ds-sidebar-brand");
+    if (!brand) return;
+    ownedNodes.delete(brand);
+    brand.remove();
+  }
+
   function ensureHomeHero() {
     let hero = document.getElementById("denia-old-days-ds-hero-copy");
     if (hero?.isConnected) return hero;
@@ -450,16 +457,17 @@
   function refresh() {
     state.metrics.refreshes += 1;
     ensureChrome();
-    ensureSidebarBrand();
     decorateComposer();
     const home = isHomeView();
     root.classList.toggle("denia-old-days-ds-home", home);
     root.classList.toggle("denia-old-days-ds-task", !home);
     if (home) {
+      ensureSidebarBrand();
       state.formState = "staged";
       ensureHomeHero();
       ensureSuggestionDeck();
     } else {
+      removeSidebarBrand();
       removeHomeNodes();
       state.formState = deriveFormState();
       decorateTask();

@@ -85,7 +85,7 @@ Kaboo Codex Dream Skin local package \`${id}@${version}\`.
 
 The Base Theme provides the warm paper environment. The removable Sidecar adds the P2 polaroid homepage, iridescent bubbles, native action proxies, diary cards, composer treatment, and an emotion-aware right artwork rail.
 
-The task rail uses warm garden-and-bubbles artwork for staged and working; approval uses the official dual-form vertical artwork; error uses the separate official anniversary exhibition artwork with a complete unsmiling face and tense raised-arm movement; complete uses the bright anniversary direct-gaze crop. It stays decorative, reserves workspace and composer width on desktop, hides below 920px, and honors reduced-motion and reduced-transparency preferences.
+The task rail uses warm garden-and-bubbles artwork for staged and working; approval uses the official dual-form vertical artwork; error uses the separate official anniversary exhibition artwork with a complete unsmiling face and tense raised-arm movement; complete uses the bright anniversary direct-gaze crop. It stays behind the native task UI without changing workspace or composer geometry, hides below 920px, and honors reduced-motion and reduced-transparency preferences.
 
 This package does not modify Codex.app, app.asar, code signatures, accounts, models, or API configuration. It makes no runtime network request.
 
@@ -279,8 +279,10 @@ if codex_is_running; then
   exit 1
 fi
 
-"$STUDIO_ROOT/scripts/install-dream-skin-macos.sh" --no-launchers
+"$STUDIO_ROOT/scripts/install-dream-skin-macos.sh" --no-launchers --no-launch
 KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme install-local "$CATALOG"
+"$STUDIO_ROOT/scripts/start-dream-skin-macos.sh" --port 9341
+KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme activate ${id}
 KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme status ${id}
 KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme verify ${id}
 /usr/bin/printf '%s\n' '达妮娅 · 旧日斑斓已安装并通过本地验证。'

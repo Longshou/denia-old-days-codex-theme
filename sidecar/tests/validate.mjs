@@ -347,15 +347,17 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-le
 for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-days-ds-task main"]) {
   assertCssDeclarations(stylesheetRules, selector, { position: "relative", "z-index": "3" });
 }
-const taskComposerSelector = ".denia-old-days-ds-task .denia-old-days-ds-composer";
-assertCssDeclarations(stylesheetRules, taskComposerSelector, {
-  "max-width": "calc(100% - var(--denia-state-rail-width) - 60px) !important",
-  "margin-inline-end": "calc(var(--denia-state-rail-width) + 60px) !important",
-}, ["min-width: 1180px"]);
-assertCssDeclarations(stylesheetRules, taskComposerSelector, {
-  "max-width": "calc(100% - var(--denia-state-rail-width) - 40px) !important",
-  "margin-inline-end": "calc(var(--denia-state-rail-width) + 40px) !important",
-}, ["min-width: 920px", "max-width: 1179px"]);
+const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-task"))) continue;
+  for (const property of rule.declarations.keys()) {
+    assert(!taskLayoutProperties.test(property), `task stylesheet must not override native layout property ${property}`);
+  }
+}
+assert(
+  /const home = isHomeView\(\);[\s\S]*?if \(home\) \{\s*ensureSidebarBrand\(\);[\s\S]*?\} else \{\s*removeSidebarBrand\(\);/u.test(runtime),
+  "sidebar brand must be created only on home and removed on task routes",
+);
 for (const [state, family, opacity] of [
   ["staged", "taskWarm", ".11"],
   ["working", "taskWarm", ".20"],
