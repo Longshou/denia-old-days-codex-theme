@@ -55,14 +55,17 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `theme/background.jpg` | 1920×1080 | `9487911f2fea67f07cc97b8677727cacd8c4c3e35e0af971e0f0da3f9a4e473c` | `background.svg`；resize 1920×1080、cover；flatten `#f7eee9`；JPEG quality 90、4:4:4 |
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
 | `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
-| `sidecar/assets/denia-task-dark.webp` | 640×2000 | `cb0007233dd95ced53df466d8fac1fd6135519931fe084b19bb02e43f1891565` | 暗色正脸壁纸的严肃表情近景；`1530,0,691×2160`；WebP quality 86 |
+| `sidecar/assets/denia-task-approval.webp` | 640×2000 | `d8e9124ad68a04021c8911819a6e21cba51b543f480a505cb3a24b98caa347a9` | 双形态竖幅的明色正脸与暗色注视；`470,220,896×2800`；WebP quality 86、smartSubsample |
+| `sidecar/assets/denia-task-error.webp` | 640×2000 | `fda59d7601ac0937ca7962056e982dd020be60b9fbf0166d3ae0feedcac76482` | 无笑意正脸与伸手动作；`1040,80,288×900`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-complete.webp` | 640×2000 | `8328e475e0b73cd7f94b7425b85747a228fa70f78bcf9fd267c26a175bd66bc3` | 周年贺图的无字近景；`330,100,464×1450`；WebP quality 86 |
 | `evidence/home.png` | 1600×1000 | `ee899ec6e0dbd24c3cef54d13e250174dc7d9d6ce223269d2f8ff9e5b864d57f` | Bright 单一画面；P2 背纸、纸纹、显影边和虹彩泡泡；PNG compressionLevel 9 |
 | `evidence/home-compact.png` | 1200×800 | `f62fe79c5e0e5f708125394da5bf388dd3c8b6aee71ff15f90628eec9457d41b` | 与宽屏首页共用 Bright 画面，只改变拍立得尺寸和裁切 |
 | `evidence/task-staged.png` | 1600×1000 | `b4758998866ee163df300aa92ad3de2dae6720819bc220d569222e2399f604c8` | 暖日泡泡近景低透明待命态 |
 | `evidence/task.png` | 1600×1000 | `89e6fc3488c9380d686e59edf9cd2fb544c69f5cc9ee25e1c8359e05f039ab62` | 同一暖日泡泡近景提高对比、轻微靠近工作区后的工作态 |
-| `evidence/task-approval.png` | 1600×1000 | `622834b1fd07eb6f998960e5ba7267e6ea2aee3dfc1f1dbbd9d34302a2b093ac` | 暗色严肃正脸的审批态 |
-| `evidence/task-error.png` | 1600×1000 | `d8fb41376f6bc248ff4ca6008efc231f327aac2a9770298279ae6261223b2d1f` | 同一严肃正脸拉近、加深并增加洋红分界后的错误态 |
+| `evidence/task-approval.png` | 1600×1000 | `3bb6150bbe544d3901acaf612ed4e5b926dcdd7eb369aa14ef91eda7d10929f3` | 双形态审批态；源图 extract `470,220,896×2800` |
+| `evidence/task-error.png` | 1600×1000 | `60a0c13730593465017a5932489beaad62bfa8cf1f54ef0ebaf57d2c07e75bec` | 无笑意、伸手错误态；源图 extract `1040,80,288×900` |
+| `evidence/task-working-to-approval-350ms.png` | 1600×1000 | `8b1fd6fb0f4374258a249dff8b9cea2705c93fe39b212752e7019770675e47de` | Working→Approval 350ms 受控过渡；Approval 源图 extract `470,220,896×2800` |
+| `evidence/task-error-to-complete-500ms.png` | 1600×1000 | `1944eaf3576059db07f4b32bb0745ca05beb05e02d0f88715fb33ce2440ce57a` | Error→Complete 500ms 受控过渡；Error 源图 extract `1040,80,288×900` |
 | `evidence/task-complete.png` | 1600×1000 | `99b165cf277ab70ef438eca80759bb272875db4f30fbf66fd3840b3dd3a5f1e3` | 无周年宣传字样的完成态近景，右下链饰区域覆轻纸雾 |
 
 ## 2026-07-23 视觉复核
