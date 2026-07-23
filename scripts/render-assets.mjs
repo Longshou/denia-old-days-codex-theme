@@ -32,13 +32,6 @@ const runtimeArt = [
     flatten: null,
     webp: { quality: 88, smartSubsample: true },
   },
-  {
-    source: "official/denia-poster-wide.png",
-    target: "sidecar/assets/denia-old-days-dark.webp",
-    resize: { width: 1380, height: 810, fit: "cover", position: "centre" },
-    flatten: "#17172f",
-    webp: { quality: 86, smartSubsample: true },
-  },
 ];
 
 for (const item of runtimeArt) {
@@ -47,7 +40,36 @@ for (const item of runtimeArt) {
   await image.resize(item.resize).webp(item.webp).toFile(output(item.target));
 }
 
+const TASK_RAIL_SOURCES = Object.freeze({
+  warm: {
+    source: "official/denia-garden-bubbles-warm.jpg",
+    extract: { left: 245, top: 0, width: 346, height: 1080 },
+    target: "sidecar/assets/denia-task-warm.webp",
+  },
+  dark: {
+    source: "official/denia-dark-direct-gaze.jpg",
+    extract: { left: 1530, top: 0, width: 691, height: 2160 },
+    target: "sidecar/assets/denia-task-dark.webp",
+  },
+  complete: {
+    source: "official/denia-anniversary-direct-gaze.jpg",
+    extract: { left: 330, top: 100, width: 464, height: 1450 },
+    target: "sidecar/assets/denia-task-complete.webp",
+  },
+});
+
+async function renderTaskRail(spec) {
+  return sharp(source(spec.source))
+    .extract(spec.extract)
+    .resize(640, 2000, { fit: "cover", position: "centre" })
+    .webp({ quality: 86, smartSubsample: true })
+    .toFile(output(spec.target));
+}
+
+await Promise.all(Object.values(TASK_RAIL_SOURCES).map(renderTaskRail));
+
 await Promise.all([
+  fs.rm(output("sidecar/assets/denia-old-days-dark.webp"), { force: true }),
   fs.rm(output("sidecar/assets/denia-old-days-hero.webp"), { force: true }),
   fs.rm(output("sidecar/assets/denia-old-days-portrait.webp"), { force: true }),
 ]);
@@ -295,37 +317,46 @@ await Promise.all([
 ]);
 
 const TASK_STATE_ART = Object.freeze({
+  staged: {
+    family: "warm",
+    opacity: 0.11,
+    tint: "rgba(255,250,246,.12)",
+    observation: "待命记录 / STAGED",
+    page: "当前页 / 尚未开始",
+    pill: "布景之形 / 待命中",
+    accent: "#e990a6",
+  },
   working: {
-    opacity: 0,
-    cropLeft: 0,
-    tint: "rgba(115,206,217,0)",
+    family: "warm",
+    opacity: 0.20,
+    tint: "rgba(115,206,217,.08)",
     observation: "观察记录 / WORKING",
     page: "当前页 / 处理中",
     pill: "布景之形 / 记录中",
     accent: "#73ced9",
   },
   approval: {
-    opacity: 0.96,
-    cropLeft: 754,
-    tint: "rgba(117,86,217,.1)",
+    family: "dark",
+    opacity: 0.43,
+    tint: "rgba(117,86,217,.12)",
     observation: "等待确认 / APPROVAL",
     page: "当前页 / 等待确认",
     pill: "幻灭之形 / 等待确认",
     accent: "#866cdb",
   },
   error: {
-    opacity: 1,
-    cropLeft: 122,
-    tint: "rgba(228,90,168,.15)",
+    family: "dark",
+    opacity: 0.56,
+    tint: "rgba(228,90,168,.18)",
     observation: "异常记录 / ERROR",
     page: "当前页 / 检查失败项",
     pill: "幻灭之形 / 检查中",
     accent: "#d45a95",
   },
   complete: {
-    opacity: 0,
-    cropLeft: 0,
-    tint: "rgba(229,197,111,0)",
+    family: "complete",
+    opacity: 0.28,
+    tint: "rgba(229,197,111,.10)",
     observation: "记录完成 / COMPLETE",
     page: "当前页 / 已归档",
     pill: "布景之形 / 已完成",
@@ -361,56 +392,65 @@ async function renderTaskPreview(state) {
     .composite([{ input: taskStateOverlay(spec, state), left: 0, top: 0 }])
     .png()
     .toBuffer();
-  if (spec.opacity === 0) return taskBackground;
 
-  const panelWidth = 360;
-  const stage = await sharp(source("official/denia-poster-wide.png"))
-    .flatten({ background: "#17172f" })
-    .extract({ left: spec.cropLeft, top: 0, width: 389, height: 1080 })
-    .resize(panelWidth, 1000, { fit: "fill" })
+  const panelWidth = 320;
+  const stage = await sharp(output(TASK_RAIL_SOURCES[spec.family].target))
+    .resize(panelWidth, 1000, { fit: "cover", position: "centre" })
+    .ensureAlpha(spec.opacity)
     .png()
     .toBuffer();
-  const panel = Buffer.from(`
+  const panelBacking = Buffer.from(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="${panelWidth}" height="1000">
+      <rect width="${panelWidth}" height="1000" fill="#f5eeee"/>
+    </svg>`);
+  const panelOverlay = Buffer.from(`
     <svg xmlns="http://www.w3.org/2000/svg" width="${panelWidth}" height="1000">
       <defs>
         <linearGradient id="panel-fade" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stop-color="#eef9f8"/>
-          <stop offset=".11" stop-color="#eef9f8" stop-opacity=".8"/>
-          <stop offset=".24" stop-color="#17172f" stop-opacity=".42"/>
-          <stop offset=".56" stop-color="#17172f" stop-opacity=".12"/>
-          <stop offset="1" stop-color="#17172f" stop-opacity=".04"/>
+          <stop offset=".12" stop-color="#eef9f8" stop-opacity=".82"/>
+          <stop offset=".28" stop-color="#eef9f8" stop-opacity=".24"/>
+          <stop offset=".46" stop-color="#eef9f8" stop-opacity="0"/>
         </linearGradient>
       </defs>
       <rect width="${panelWidth}" height="1000" fill="${spec.tint}"/>
       <rect width="${panelWidth}" height="1000" fill="url(#panel-fade)"/>
-      <path d="M34 0C58 210 18 410 43 612C58 735 29 858 52 1000" fill="none" stroke="#73ced9" stroke-opacity=".22"/>
+      <path d="M1 0V1000" stroke="#73ced9" stroke-opacity=".28"/>
     </svg>`);
-  const rail = await sharp(stage)
-    .composite([{ input: panel, left: 0, top: 0 }])
+  const rail = await sharp(panelBacking)
+    .composite([
+      { input: stage, left: 0, top: 0 },
+      { input: panelOverlay, left: 0, top: 0 },
+    ])
     .png()
     .toBuffer();
   return sharp(taskBackground)
-    .composite([{ input: rail, left: 1240, top: 0, blend: "over" }])
+    .composite([{ input: rail, left: 1280, top: 0, blend: "over" }])
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
 
-const [taskWorking, taskApproval, taskError, taskComplete] = await Promise.all([
+const [taskStaged, taskWorking, taskApproval, taskError, taskComplete] = await Promise.all([
+  renderTaskPreview("staged"),
   renderTaskPreview("working"),
   renderTaskPreview("approval"),
   renderTaskPreview("error"),
   renderTaskPreview("complete"),
 ]);
 await Promise.all([
+  sharp(taskStaged).toFile(output("evidence/task-staged.png")),
   sharp(taskWorking).toFile(output("evidence/task.png")),
   sharp(taskApproval).toFile(output("evidence/task-approval.png")),
   sharp(taskError).toFile(output("evidence/task-error.png")),
   sharp(taskComplete).toFile(output("evidence/task-complete.png")),
 ]);
 
-for (const item of runtimeArt) {
-  const stat = await fs.stat(output(item.target));
-  if (stat.size > 1024 * 1024) throw new Error(`runtime artwork exceeds 1 MiB: ${item.target}`);
+for (const target of [
+  ...runtimeArt.map((item) => item.target),
+  ...Object.values(TASK_RAIL_SOURCES).map((item) => item.target),
+]) {
+  const stat = await fs.stat(output(target));
+  if (stat.size > 1024 * 1024) throw new Error(`runtime artwork exceeds 1 MiB: ${target}`);
 }
 
-console.log("rendered 8 Denia assets");
+console.log("rendered 12 Denia assets");

@@ -52,10 +52,13 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | --- | --- | --- | --- |
 | `theme/background.jpg` | 1920×1080 | `9487911f2fea67f07cc97b8677727cacd8c4c3e35e0af971e0f0da3f9a4e473c` | `background.svg`；resize 1920×1080、cover；flatten `#f7eee9`；JPEG quality 90、4:4:4 |
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
-| `sidecar/assets/denia-old-days-dark.webp` | 1380×810 | `7d7436bf2f9127e06744797b004ea731a2d1a93ebebb8e16c4d71b1f42164b02` | `denia-poster-wide.png`；flatten `#17172f`；resize 1380×810、cover、centre；WebP quality 86、smartSubsample |
+| `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
+| `sidecar/assets/denia-task-dark.webp` | 640×2000 | `cb0007233dd95ced53df466d8fac1fd6135519931fe084b19bb02e43f1891565` | 暗色正脸壁纸的严肃表情近景；`1530,0,691×2160`；WebP quality 86 |
+| `sidecar/assets/denia-task-complete.webp` | 640×2000 | `8328e475e0b73cd7f94b7425b85747a228fa70f78bcf9fd267c26a175bd66bc3` | 周年贺图的无字近景；`330,100,464×1450`；WebP quality 86 |
 | `evidence/home.png` | 1600×1000 | `ee899ec6e0dbd24c3cef54d13e250174dc7d9d6ce223269d2f8ff9e5b864d57f` | Bright 单一画面；P2 背纸、纸纹、显影边和虹彩泡泡；PNG compressionLevel 9 |
 | `evidence/home-compact.png` | 1200×800 | `f62fe79c5e0e5f708125394da5bf388dd3c8b6aee71ff15f90628eec9457d41b` | 与宽屏首页共用 Bright 画面，只改变拍立得尺寸和裁切 |
-| `evidence/task.png` | 1600×1000 | `f6afefa7f446fceefc6795395d0d40ef6e07ec09ec6e39fb27f3ad96d9627a8f` | 暖色 working 状态，不显示暗色舞台 |
-| `evidence/task-approval.png` | 1600×1000 | `27d0ab6ff4a6ce3028e8dec6a9e29a4c8a7f4a9deff1d25fd838a3ce66d4dc68` | 完整舞台源图中央明亮形态裁切 |
-| `evidence/task-error.png` | 1600×1000 | `fcf56f6ba5da1d0a381ab1febac95558674de52bb621e3fdbba4da6f23cf07b7` | 完整舞台源图左侧暗形态裁切 |
-| `evidence/task-complete.png` | 1600×1000 | `1545659091289e44e0498b3a8dff8e85bacf34ad57ea05b5754723e001206cd7` | 暖色 complete 状态和金色归档纸带 |
+| `evidence/task-staged.png` | 1600×1000 | `b4758998866ee163df300aa92ad3de2dae6720819bc220d569222e2399f604c8` | 暖日泡泡近景低透明待命态 |
+| `evidence/task.png` | 1600×1000 | `b337c75905ec03945207d7feacebe6641c0e4bc989944fb5c922caca5f494768` | 同一暖日泡泡近景的工作态 |
+| `evidence/task-approval.png` | 1600×1000 | `622834b1fd07eb6f998960e5ba7267e6ea2aee3dfc1f1dbbd9d34302a2b093ac` | 暗色严肃正脸的审批态 |
+| `evidence/task-error.png` | 1600×1000 | `00f70582cef73183ca39a2de2212317490e9be58d9d749c4d2c3d321a3ee6144` | 同一严肃正脸加深色调后的错误态 |
+| `evidence/task-complete.png` | 1600×1000 | `2ca6582bb4a818688fde93ed6972dd67b3097dc359cbb6b4450b22d944f52874` | 无周年宣传字样的完成态近景 |

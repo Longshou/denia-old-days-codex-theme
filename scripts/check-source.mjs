@@ -59,11 +59,20 @@ for (const marker of [
   "SINGLE_SOURCE_HOME",
   "IRIDESCENT_MEMBRANE",
   "TASK_STATE_ART",
+  "TASK_RAIL_SOURCES",
+  "renderTaskRail",
   "evidence/home-compact.png",
+  "evidence/task-staged.png",
   "evidence/task-approval.png",
   "evidence/task-error.png",
+  "denia-task-warm.webp",
+  "denia-task-dark.webp",
+  "denia-task-complete.webp",
 ]) {
   if (!rendererSource.includes(marker)) throw new Error(`renderer missing ${marker}`);
+}
+if (rendererSource.includes('target: "sidecar/assets/denia-old-days-dark.webp"')) {
+  throw new Error("renderer must not package the retired poster rail");
 }
 for (const retiredFragment of [
   "official/denia-portrait.png",
@@ -94,9 +103,12 @@ if (["完成显影", "已归档"].some((copy) => taskPreview.includes(copy))) {
 const generatedFiles = [
   "theme/background.jpg",
   "sidecar/assets/denia-old-days-bright.webp",
-  "sidecar/assets/denia-old-days-dark.webp",
+  "sidecar/assets/denia-task-warm.webp",
+  "sidecar/assets/denia-task-dark.webp",
+  "sidecar/assets/denia-task-complete.webp",
   "evidence/home.png",
   "evidence/home-compact.png",
+  "evidence/task-staged.png",
   "evidence/task.png",
   "evidence/task-approval.png",
   "evidence/task-error.png",
@@ -114,6 +126,7 @@ for (const relative of generatedFiles) {
 const expectedDimensions = new Map([
   ["evidence/home.png", [1600, 1000]],
   ["evidence/home-compact.png", [1200, 800]],
+  ["evidence/task-staged.png", [1600, 1000]],
   ["evidence/task.png", [1600, 1000]],
   ["evidence/task-approval.png", [1600, 1000]],
   ["evidence/task-error.png", [1600, 1000]],
