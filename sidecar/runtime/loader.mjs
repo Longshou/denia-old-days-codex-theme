@@ -214,9 +214,27 @@ const verifyExpression = `(() => {
   const runtimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(runtimeArt)?.[1] || '';
   const heroBackgroundImage = hero ? getComputedStyle(hero).backgroundImage : '';
   const photoFrontBackgroundImage = photoFront ? getComputedStyle(photoFront).backgroundImage : '';
-  const stateArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-dark').trim();
+  const stateArtRail = document.getElementById('denia-old-days-ds-state-art');
+  const activeStateArtLayer = stateArtRail?.querySelector('.denia-old-days-ds-state-art-layer.is-active') || null;
+  const expectedArtFamilies = {
+    staged: 'taskWarm',
+    working: 'taskWarm',
+    approval: 'taskDark',
+    error: 'taskDark',
+    complete: 'taskComplete',
+  };
+  const expectedArtProperties = {
+    taskWarm: '--denia-old-days-art-task-warm',
+    taskDark: '--denia-old-days-art-task-dark',
+    taskComplete: '--denia-old-days-art-task-complete',
+  };
+  const formState = state?.formState || root.dataset.deniaFormState || null;
+  const expectedArtFamily = expectedArtFamilies[formState] || null;
+  const expectedArtProperty = expectedArtProperties[expectedArtFamily] || '';
+  const stateArt = expectedArtProperty ? getComputedStyle(root).getPropertyValue(expectedArtProperty).trim() : '';
   const stateArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(stateArt)?.[1] || '';
-  const taskRailStyle = chrome ? getComputedStyle(chrome, '::after') : null;
+  const taskRailStyle = stateArtRail ? getComputedStyle(stateArtRail) : null;
+  const taskArtLayerStyle = activeStateArtLayer ? getComputedStyle(activeStateArtLayer) : null;
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
@@ -273,7 +291,7 @@ const verifyExpression = `(() => {
     sidebarBrand: box(document.getElementById('denia-old-days-ds-sidebar-brand')),
     home,
     taskMode: root.classList.contains('denia-old-days-ds-task'),
-    formState: state?.formState || root.dataset.deniaFormState || null,
+    formState,
     heroCopy: box(document.getElementById('denia-old-days-ds-hero-copy')),
     cards,
     suggestions: suggestions ? {
@@ -295,13 +313,12 @@ const verifyExpression = `(() => {
     task: !home ? {
       stateArtPresent: Boolean(stateArtUrl),
       rail: taskRailStyle ? {
-        backgroundImage: taskRailStyle.backgroundImage,
+        ...box(stateArtRail),
         display: taskRailStyle.display,
-        opacity: Number(taskRailStyle.opacity || 0),
-        visible: taskRailStyle.display !== 'none'
-          && taskRailStyle.visibility !== 'hidden'
-          && Number(taskRailStyle.opacity || 0) > 0
-          && Boolean(stateArtUrl && taskRailStyle.backgroundImage.includes(stateArtUrl)),
+        family: activeStateArtLayer?.dataset.deniaArtFamily || null,
+        expectedFamily: expectedArtFamily,
+        backgroundImage: taskArtLayerStyle?.backgroundImage || '',
+        usesExpectedArt: Boolean(stateArtUrl && taskArtLayerStyle?.backgroundImage.includes(stateArtUrl)),
       } : null,
       nativeObservationCount: nativeObservations.length,
       decoratedObservationCount: decoratedObservations.length,
@@ -318,11 +335,12 @@ const verifyExpression = `(() => {
   const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && Boolean(result.sidebarBrand?.visible) && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
   const homePass = !home || (result.heroUsesRuntimeArt && Boolean(result.heroCopy?.visible) && result.visibleCardCount === 4 && result.clickableCardCount === 4);
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
-  const activeRailState = ['approval', 'error'].includes(result.formState);
   const railHiddenForViewport = innerWidth <= 919;
-  const railMatchesState = home || (activeRailState && !railHiddenForViewport
-    ? result.task?.rail?.visible === true
-    : Number(result.task?.rail?.opacity || 0) === 0 || result.task?.rail?.display === 'none');
+  const railMatchesState = home || (railHiddenForViewport
+    ? result.task?.rail?.display === 'none' || result.task?.rail?.visible === false
+    : result.task?.rail?.visible === true
+      && result.task?.rail?.family === result.task?.rail?.expectedFamily
+      && result.task?.rail?.usesExpectedArt === true);
   const observationsPass = home || result.task?.nativeObservationCount === 0
     || result.task?.decoratedObservationCount >= result.task?.nativeObservationCount;
   const finalCardPass = home || (result.formState === 'complete'

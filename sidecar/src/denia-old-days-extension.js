@@ -12,6 +12,14 @@
   const touchedNodes = new Set();
   const ownedNodes = new Set();
   const listeners = [];
+  const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const stateArtSpecs = Object.freeze({
+    staged: Object.freeze({ family: "taskWarm", opacity: ".11" }),
+    working: Object.freeze({ family: "taskWarm", opacity: ".20" }),
+    approval: Object.freeze({ family: "taskDark", opacity: ".43" }),
+    error: Object.freeze({ family: "taskDark", opacity: ".56" }),
+    complete: Object.freeze({ family: "taskComplete", opacity: ".28" }),
+  });
   const removableClasses = [
     "denia-old-days-ds-native-card",
     "denia-old-days-ds-native-suggestions",
@@ -46,8 +54,12 @@
     id: manifest.id,
     version: manifest.version,
     artReady: Object.values(artUrls).every(Boolean),
-    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    reducedMotion: motionPreference.matches,
     formState: "staged",
+    artGeneration: 0,
+    artFamily: "",
+    artCurrent: null,
+    artNext: null,
     metrics: { refreshes: 0, createdNodes: 0 },
     observer: null,
     frame: 0,
@@ -134,14 +146,114 @@
 
   function ensureChrome() {
     let chrome = document.getElementById("denia-old-days-ds-chrome");
-    if (chrome) return chrome;
-    chrome = own(document.createElement("div"));
-    chrome.id = "denia-old-days-ds-chrome";
-    chrome.className = "denia-old-days-ds-chrome";
-    chrome.setAttribute("aria-hidden", "true");
-    chrome.innerHTML = '<span class="denia-old-days-ds-state-bubble" aria-hidden="true"></span>';
-    document.body.append(chrome);
+    if (!chrome) {
+      chrome = own(document.createElement("div"));
+      chrome.id = "denia-old-days-ds-chrome";
+      chrome.className = "denia-old-days-ds-chrome";
+      chrome.setAttribute("aria-hidden", "true");
+      document.body.append(chrome);
+    }
+    if (!chrome.querySelector(".denia-old-days-ds-state-bubble")) {
+      const bubble = document.createElement("span");
+      bubble.className = "denia-old-days-ds-state-bubble";
+      bubble.setAttribute("aria-hidden", "true");
+      chrome.append(bubble);
+    }
+    ensureStateArt(chrome);
     return chrome;
+  }
+
+  function ensureStateArt(chrome) {
+    let rail = document.getElementById("denia-old-days-ds-state-art");
+    if (rail && !chrome.contains(rail)) rail.remove();
+    if (!rail || !chrome.contains(rail)) {
+      rail = document.createElement("div");
+      rail.id = "denia-old-days-ds-state-art";
+      rail.className = "denia-old-days-ds-state-art";
+      rail.setAttribute("aria-hidden", "true");
+
+      const current = document.createElement("span");
+      current.className = "denia-old-days-ds-state-art-layer denia-old-days-ds-state-art-current";
+      const next = document.createElement("span");
+      next.className = "denia-old-days-ds-state-art-layer denia-old-days-ds-state-art-next";
+      const tint = document.createElement("span");
+      tint.className = "denia-old-days-ds-state-art-tint";
+      rail.append(current, next, tint);
+      chrome.append(rail);
+
+      for (const layer of [current, next]) {
+        on(layer, "transitionend", (event) => {
+          if (event.propertyName && event.propertyName !== "opacity") return;
+          if (layer === state.artCurrent || !layer.classList.contains("is-leaving")) return;
+          clearStateArtLayer(layer);
+        });
+      }
+    }
+
+    if (!state.artCurrent || !rail.contains(state.artCurrent)) {
+      const current = rail.querySelector(".denia-old-days-ds-state-art-current");
+      const next = rail.querySelector(".denia-old-days-ds-state-art-next");
+      const active = rail.querySelector(".denia-old-days-ds-state-art-layer.is-active");
+      state.artCurrent = active || current;
+      state.artNext = state.artCurrent === current ? next : current;
+      state.artFamily = active?.dataset.deniaArtFamily || "";
+    }
+    return rail;
+  }
+
+  function clearStateArtLayer(layer) {
+    if (!layer) return;
+    layer.classList.remove("is-active", "is-leaving");
+    delete layer.dataset.deniaArtFamily;
+    delete layer.dataset.deniaArtGeneration;
+    layer.style.removeProperty("--denia-state-art-opacity");
+  }
+
+  function configureStateArtLayer(layer, spec, generation) {
+    clearStateArtLayer(layer);
+    layer.dataset.deniaArtFamily = spec.family;
+    layer.dataset.deniaArtGeneration = String(generation);
+    layer.style.setProperty("--denia-state-art-opacity", spec.opacity);
+  }
+
+  function syncStateArt(formState) {
+    const spec = stateArtSpecs[formState] || stateArtSpecs.staged;
+    const rail = ensureStateArt(ensureChrome());
+    rail.dataset.deniaArtState = formState;
+
+    if (!state.artFamily) {
+      state.artGeneration += 1;
+      configureStateArtLayer(state.artCurrent, spec, state.artGeneration);
+      state.artCurrent.classList.add("is-active");
+      state.artFamily = spec.family;
+      return;
+    }
+
+    if (state.artFamily === spec.family) {
+      state.artCurrent.style.setProperty("--denia-state-art-opacity", spec.opacity);
+      state.artCurrent.classList.remove("is-leaving");
+      state.artCurrent.classList.add("is-active");
+      return;
+    }
+
+    state.artGeneration += 1;
+    const outgoing = state.artCurrent;
+    const incoming = state.artNext;
+    configureStateArtLayer(incoming, spec, state.artGeneration);
+    incoming.getBoundingClientRect();
+
+    if (state.reducedMotion) {
+      clearStateArtLayer(outgoing);
+      incoming.classList.add("is-active");
+    } else {
+      outgoing.classList.remove("is-active");
+      outgoing.classList.add("is-leaving");
+      incoming.classList.add("is-active");
+    }
+
+    state.artCurrent = incoming;
+    state.artNext = outgoing;
+    state.artFamily = spec.family;
   }
 
   function ensureSidebarBrand() {
@@ -350,6 +462,7 @@
       decorateTask();
     }
     root.dataset.deniaFormState = state.formState;
+    syncStateArt(state.formState);
   }
 
   function scheduleRefresh() {
@@ -392,6 +505,16 @@
 
   on(window, "popstate", scheduleRefresh);
   on(window, "hashchange", scheduleRefresh);
+  if (typeof motionPreference.addEventListener === "function") {
+    on(motionPreference, "change", (event) => {
+      state.reducedMotion = event.matches;
+      if (event.matches) {
+        clearStateArtLayer(state.artNext);
+        state.artCurrent?.classList.remove("is-leaving");
+        state.artCurrent?.classList.add("is-active");
+      }
+    });
+  }
   state.observer = new MutationObserver(scheduleRefresh);
   state.observer.observe(document.body || root, {
     childList: true,
