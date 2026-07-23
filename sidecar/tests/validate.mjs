@@ -188,7 +188,7 @@ assert(!runtime.includes("denia-old-days-ds-tape"), "P2 polaroid must not use ge
 assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
 assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
 
-for (const color of ["#EAF7F7", "#8FD2DD", "#F4AFC5", "#6FB8E7", "#F7D88A", "#263548", "#11162F", "#7556D9", "#E45AA8", "#C5415D"]) {
+for (const color of ["#EAF7F7", "#8FD2DD", "#F29AAB", "#6FB8E7", "#F7D88A", "#263548", "#11162F", "#7556D9", "#E45AA8", "#C5415D"]) {
   assert(styles.toUpperCase().includes(color), `stylesheet missing ${color}`);
 }
 for (const token of [
@@ -301,6 +301,24 @@ for (const state of ["staged", "complete"]) {
     { opacity: "0" },
   );
 }
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-bubble',
+  { "border-color": "var(--denia-crystal)", background: "rgba(17, 22, 47, .18)" },
+);
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-state-bubble',
+  { "border-color": "var(--denia-violet)", background: "rgba(117, 86, 217, .26)" },
+);
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-bubble',
+  { "border-color": "var(--denia-fracture)", background: "rgba(228, 90, 168, .32)" },
+);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-final-card::before", {
+  background: "linear-gradient(100deg, var(--denia-gold), rgba(143, 210, 221, .28), var(--denia-pink))",
+});
 
 const compactMedia = ["max-width: 1199px", "max-height: 759px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
