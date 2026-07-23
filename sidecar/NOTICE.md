@@ -6,7 +6,8 @@ The immutable official source inputs are:
 
 - Bright: an approximately 00:01:42 frame from Kuro's official `Old Days in Color` animation, 1920×1080, SHA-256 `d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd`.
 - Dark: Kuro's official wide Denia poster, 1840×1080, SHA-256 `1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1`.
-- Compact: Kuro's official transparent Denia portrait, 1186×1844, SHA-256 `95ad359595edc790084194504dbbd7a5245c6428b9ec78a1aca4dc7bab994245`.
+
+Compact layouts reuse the Bright source with a responsive crop. No standalone portrait is distributed.
 
 This package is an internal, unofficial fan theme. No ownership of, or redistribution license for, the official material is claimed. At runtime, Codex uses package-local WebP derivatives only and makes no remote request for artwork.
 

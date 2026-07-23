@@ -10,9 +10,9 @@
   "quote": "OLD DAYS IN COLOR",
   "image": "background.jpg",
   "colors": {
-    "background": "#eaf7f7",
-    "panel": "#f9ffff",
-    "panelAlt": "#dff1f2",
+    "background": "#f7eee9",
+    "panel": "#fffaf6",
+    "panelAlt": "#eaf7f7",
     "accent": "#8fd2dd",
     "accentAlt": "#f29aab",
     "secondary": "#6fb8e7",

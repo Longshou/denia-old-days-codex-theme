@@ -11,7 +11,6 @@ for (const relative of ["canon", "art/source", "theme", "sidecar", "evidence"]) 
 const officialSources = new Map([
   ["art/source/official/old-days-bright-102s.jpg", "d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd"],
   ["art/source/official/denia-poster-wide.png", "1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1"],
-  ["art/source/official/denia-portrait.png", "95ad359595edc790084194504dbbd7a5245c6428b9ec78a1aca4dc7bab994245"],
 ]);
 
 for (const [relative, expected] of officialSources) {
@@ -25,9 +24,18 @@ if (!readme.includes("denia-old-days@0.1.0")) throw new Error("README identity m
 
 const theme = JSON.parse(fs.readFileSync(path.join(root, "theme/theme.json"), "utf8"));
 if (theme.id !== "denia-old-days") throw new Error("theme id mismatch");
+if (theme.colors?.background !== "#f7eee9" || theme.colors?.panel !== "#fffaf6") {
+  throw new Error("base theme must use the warm Denia paper palette");
+}
+if (fs.existsSync(path.join(root, "art/source/official/denia-portrait.png"))) {
+  throw new Error("retired isolated portrait source must not remain in the theme");
+}
 
 const backgroundSource = fs.readFileSync(path.join(root, "art/source/background.svg"), "utf8");
 const rendererSource = fs.readFileSync(path.join(root, "scripts/render-assets.mjs"), "utf8");
+const runtimeCss = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.css"), "utf8");
+const runtimeJs = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.js"), "utf8");
+const runtimeLoader = fs.readFileSync(path.join(root, "sidecar/runtime/loader.mjs"), "utf8");
 if (!backgroundSource.includes('id="denia-bubble-field"')) {
   throw new Error("background must define the Denia bubble field");
 }
@@ -40,8 +48,37 @@ for (const retiredFragment of [
     throw new Error(`background still contains retired decoration: ${retiredFragment}`);
   }
 }
-for (const marker of ["renderHomePreview", "P2_POLAROID", "evidence/home-compact.png"]) {
+for (const marker of [
+  "renderHomePreview",
+  "renderTaskPreview",
+  "P2_POLAROID",
+  "SINGLE_SOURCE_HOME",
+  "IRIDESCENT_MEMBRANE",
+  "TASK_STATE_ART",
+  "evidence/home-compact.png",
+  "evidence/task-approval.png",
+  "evidence/task-error.png",
+]) {
   if (!rendererSource.includes(marker)) throw new Error(`renderer missing ${marker}`);
+}
+for (const retiredFragment of [
+  "official/denia-portrait.png",
+  "--denia-old-days-art-portrait",
+  "portraitFallback",
+  "__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__",
+]) {
+  if ([rendererSource, runtimeCss, runtimeJs, runtimeLoader].some((sourceText) => sourceText.includes(retiredFragment))) {
+    throw new Error(`implementation still uses retired isolated portrait asset: ${retiredFragment}`);
+  }
+}
+if (!runtimeCss.includes("conic-gradient")) {
+  throw new Error("runtime bubbles must use an iridescent membrane treatment");
+}
+if (!runtimeCss.includes(".denia-old-days-ds-photo::before")) {
+  throw new Error("runtime polaroid must include a separate paper backing layer");
+}
+if (runtimeCss.includes("aspect-ratio: 3 / 4")) {
+  throw new Error("compact home must preserve the shared cinematic source instead of switching to portrait framing");
 }
 
 const taskPreview = fs.readFileSync(path.join(root, "art/source/task-preview.svg"), "utf8");
@@ -54,10 +91,12 @@ const generatedFiles = [
   "theme/background.jpg",
   "sidecar/assets/denia-old-days-bright.webp",
   "sidecar/assets/denia-old-days-dark.webp",
-  "sidecar/assets/denia-old-days-portrait.webp",
   "evidence/home.png",
   "evidence/home-compact.png",
   "evidence/task.png",
+  "evidence/task-approval.png",
+  "evidence/task-error.png",
+  "evidence/task-complete.png",
 ];
 
 for (const relative of generatedFiles) {
@@ -71,6 +110,10 @@ for (const relative of generatedFiles) {
 const expectedDimensions = new Map([
   ["evidence/home.png", [1600, 1000]],
   ["evidence/home-compact.png", [1200, 800]],
+  ["evidence/task.png", [1600, 1000]],
+  ["evidence/task-approval.png", [1600, 1000]],
+  ["evidence/task-error.png", [1600, 1000]],
+  ["evidence/task-complete.png", [1600, 1000]],
 ]);
 for (const [relative, [expectedWidth, expectedHeight]] of expectedDimensions) {
   const bytes = fs.readFileSync(path.join(root, relative));

@@ -3,7 +3,6 @@
   const cssText = __DENIA_OLD_DAYS_EXTENSION_CSS_JSON__;
   const brightArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__;
   const darkArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__;
-  const portraitArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__;
   const stateKey = "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__";
   const styleId = "denia-old-days-dream-skin-extension-style";
   const rootClass = "denia-old-days-ds-extension";
@@ -31,13 +30,11 @@
   const artUrls = Object.freeze({
     bright: dataUrlToObjectUrl(brightArtDataUrl),
     dark: dataUrlToObjectUrl(darkArtDataUrl),
-    portrait: dataUrlToObjectUrl(portraitArtDataUrl),
   });
   root.classList.add(rootClass);
   root.dataset.deniaOldDaysExtensionVersion = manifest.version;
   root.style.setProperty("--denia-old-days-art-bright", `url("${artUrls.bright}")`);
   root.style.setProperty("--denia-old-days-art-dark", `url("${artUrls.dark}")`);
-  root.style.setProperty("--denia-old-days-art-portrait", `url("${artUrls.portrait}")`);
 
   const state = {
     id: manifest.id,
@@ -380,7 +377,6 @@
     delete root.dataset.deniaFormState;
     root.style.removeProperty("--denia-old-days-art-bright");
     root.style.removeProperty("--denia-old-days-art-dark");
-    root.style.removeProperty("--denia-old-days-art-portrait");
     for (const artUrl of Object.values(artUrls)) URL.revokeObjectURL(artUrl);
     if (window[stateKey] === state) delete window[stateKey];
     return true;

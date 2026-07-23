@@ -17,8 +17,7 @@
   "assets": {
     "wallpaper": "assets/denia-old-days-bright.webp",
     "runtimeWallpaper": "assets/denia-old-days-bright.webp",
-    "stateArtwork": "assets/denia-old-days-dark.webp",
-    "portraitFallback": "assets/denia-old-days-portrait.webp"
+    "stateArtwork": "assets/denia-old-days-dark.webp"
   },
   "ui": {
     "brandName": "DENIA CODEX",

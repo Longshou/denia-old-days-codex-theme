@@ -55,20 +55,17 @@ const stylePath = path.resolve(extensionDir, manifest.entrypoints.style);
 const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
 const darkPath = path.resolve(extensionDir, manifest.assets.stateArtwork);
-const portraitPath = path.resolve(extensionDir, manifest.assets.portraitFallback);
-const [styleRealPath, runtimeRealPath, brightRealPath, darkRealPath, portraitRealPath] = await Promise.all([
+const [styleRealPath, runtimeRealPath, brightRealPath, darkRealPath] = await Promise.all([
   resolveExtensionFile(stylePath, manifest.entrypoints.style),
   resolveExtensionFile(runtimePath, manifest.entrypoints.runtime),
   resolveExtensionFile(brightPath, manifest.assets.runtimeWallpaper),
   resolveExtensionFile(darkPath, manifest.assets.stateArtwork),
-  resolveExtensionFile(portraitPath, manifest.assets.portraitFallback),
 ]);
-const [cssText, runtimeTemplate, bright, dark, portrait] = await Promise.all([
+const [cssText, runtimeTemplate, bright, dark] = await Promise.all([
   fs.readFile(styleRealPath, "utf8"),
   fs.readFile(runtimeRealPath, "utf8"),
   fs.readFile(brightRealPath),
   fs.readFile(darkRealPath),
-  fs.readFile(portraitRealPath),
 ]);
 
 const imageDataUrl = (filePath, bytes) => {
@@ -83,14 +80,12 @@ const templatePlaceholders = Object.freeze({
   css: "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   bright: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
   dark: "__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__",
-  portrait: "__DENIA_OLD_DAYS_EXTENSION_PORTRAIT_ART_JSON__",
 });
 const templateSentinels = Object.freeze({
   manifest: "@@DENIA_RUNTIME_MANIFEST_7F3A@@",
   css: "@@DENIA_RUNTIME_CSS_7F3A@@",
   bright: "@@DENIA_RUNTIME_BRIGHT_ART_7F3A@@",
   dark: "@@DENIA_RUNTIME_DARK_ART_7F3A@@",
-  portrait: "@@DENIA_RUNTIME_PORTRAIT_ART_7F3A@@",
 });
 const expectedTemplatePlaceholders = Object.values(templatePlaceholders);
 const expectedTemplateSentinels = Object.values(templateSentinels);
@@ -114,8 +109,7 @@ const stagedRuntimeTemplate = runtimeTemplate
   .replace(templatePlaceholders.manifest, templateSentinels.manifest)
   .replace(templatePlaceholders.css, templateSentinels.css)
   .replace(templatePlaceholders.bright, templateSentinels.bright)
-  .replace(templatePlaceholders.dark, templateSentinels.dark)
-  .replace(templatePlaceholders.portrait, templateSentinels.portrait);
+  .replace(templatePlaceholders.dark, templateSentinels.dark);
 const unstagedTemplatePlaceholders = expectedTemplatePlaceholders.filter((placeholder) => stagedRuntimeTemplate.includes(placeholder));
 if (unstagedTemplatePlaceholders.length) {
   throw new Error(`Unresolved Denia runtime template token(s): ${unstagedTemplatePlaceholders.join(", ")}`);
@@ -130,7 +124,6 @@ const sentinelPayloads = new Map([
   [templateSentinels.css, JSON.stringify(cssText)],
   [templateSentinels.bright, JSON.stringify(imageDataUrl(brightPath, bright))],
   [templateSentinels.dark, JSON.stringify(imageDataUrl(darkPath, dark))],
-  [templateSentinels.portrait, JSON.stringify(imageDataUrl(portraitPath, portrait))],
 ]);
 const sentinelPattern = new RegExp([...sentinelPayloads.keys()].join("|"), "gu");
 const installPayload = stagedRuntimeTemplate.replace(sentinelPattern, (sentinel) => sentinelPayloads.get(sentinel));
@@ -158,7 +151,6 @@ const cleanupExpression = `(() => {
   delete root.dataset.deniaFormState;
   root.style.removeProperty('--denia-old-days-art-bright');
   root.style.removeProperty('--denia-old-days-art-dark');
-  root.style.removeProperty('--denia-old-days-art-portrait');
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
     for (const property of ['background-image', 'background-position', 'background-size', 'background-repeat', 'background-color']) node.style.removeProperty(property);
   });
@@ -302,7 +294,7 @@ const verifyExpression = `(() => {
   const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && Boolean(result.sidebarBrand?.visible) && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
   const homePass = !home || (result.heroUsesRuntimeArt && Boolean(result.heroCopy?.visible) && result.visibleCardCount === 4 && result.clickableCardCount === 4);
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
-  const activeRailState = ['working', 'approval', 'error'].includes(result.formState);
+  const activeRailState = ['approval', 'error'].includes(result.formState);
   const railHiddenForViewport = innerWidth <= 919;
   const railMatchesState = home || (activeRailState && !railHiddenForViewport
     ? result.task?.rail?.visible === true

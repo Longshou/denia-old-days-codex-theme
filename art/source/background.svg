@@ -1,20 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
   <defs>
     <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#dff3f4"/>
-      <stop offset="0.52" stop-color="#edf9f8"/>
-      <stop offset="1" stop-color="#d7eaf0"/>
+      <stop offset="0" stop-color="#f7e8e5"/>
+      <stop offset="0.46" stop-color="#f7f2ed"/>
+      <stop offset="1" stop-color="#dceff0"/>
     </linearGradient>
     <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fbffff"/>
-      <stop offset="1" stop-color="#eaf7f7"/>
+      <stop offset="0" stop-color="#fffaf6"/>
+      <stop offset="1" stop-color="#eef8f7"/>
     </linearGradient>
     <radialGradient id="bubble" cx="35%" cy="30%" r="65%">
-      <stop offset="0" stop-color="#fff" stop-opacity=".9"/>
-      <stop offset=".38" stop-color="#bdebf0" stop-opacity=".42"/>
-      <stop offset=".72" stop-color="#f29aab" stop-opacity=".16"/>
-      <stop offset="1" stop-color="#6fb8e7" stop-opacity=".04"/>
+      <stop offset="0" stop-color="#fffdf9" stop-opacity=".92"/>
+      <stop offset=".18" stop-color="#fffdf9" stop-opacity=".12"/>
+      <stop offset=".46" stop-color="#bdebf0" stop-opacity=".3"/>
+      <stop offset=".72" stop-color="#f29aab" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#7556d9" stop-opacity=".04"/>
     </radialGradient>
+    <linearGradient id="bubbleEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7d88a" stop-opacity=".45"/>
+      <stop offset=".28" stop-color="#86d5df" stop-opacity=".9"/>
+      <stop offset=".58" stop-color="#7556d9" stop-opacity=".42"/>
+      <stop offset=".82" stop-color="#f29aab" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#86d5df" stop-opacity=".52"/>
+    </linearGradient>
     <filter id="paperShadow" x="-20%" y="-20%" width="140%" height="150%">
       <feDropShadow dx="0" dy="26" stdDeviation="34" flood-color="#31586c" flood-opacity=".14"/>
     </filter>
@@ -26,14 +34,16 @@
   </defs>
   <rect width="1920" height="1080" fill="url(#desk)"/>
   <rect width="1920" height="1080" fill="url(#grain)"/>
-  <path d="M55 135C315 58 520 112 713 90" fill="none" stroke="#6fb8e7" stroke-width="3" stroke-dasharray="5 16" opacity=".25"/>
-  <path d="M1284 974c165-84 338-39 563-125" fill="none" stroke="#f4afc5" stroke-width="3" stroke-dasharray="5 16" opacity=".25"/>
+  <path d="M55 135C315 58 520 112 713 90" fill="none" stroke="#6fb8e7" stroke-width="3" stroke-dasharray="5 16" opacity=".2"/>
+  <path d="M1284 974c165-84 338-39 563-125" fill="none" stroke="#e990a6" stroke-width="3" stroke-dasharray="5 16" opacity=".22"/>
+  <path d="M-80 252C126 91 245 89 420 180" fill="none" stroke="#f0a4bb" stroke-width="18" opacity=".08"/>
+  <path d="M-90 277C111 122 252 116 428 203" fill="none" stroke="#73ced9" stroke-width="12" opacity=".1"/>
   <g filter="url(#paperShadow)">
     <path d="M206 122Q185 122 185 148V939Q185 964 211 964H948V142Q721 96 512 127Z" fill="url(#paper)" stroke="#9ccfd8" stroke-opacity=".45"/>
     <path d="M948 142V964H1697Q1724 964 1724 937V153Q1724 126 1697 128L1367 105Q1142 100 948 142Z" fill="url(#paper)" stroke="#9ccfd8" stroke-opacity=".45"/>
   </g>
   <path d="M948 145V960" stroke="#88bdc8" stroke-width="2" opacity=".45"/>
-  <path d="M965 154V953" stroke="#fff" stroke-width="8" opacity=".75"/>
+  <path d="M965 154V953" stroke="#fffdf9" stroke-width="8" opacity=".75"/>
   <g fill="none" stroke="#6e9aa8" stroke-width="8" opacity=".6">
     <path d="M923 234c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
     <path d="M923 358c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
@@ -46,13 +56,16 @@
     <path d="M272 286H826M272 356H826M272 426H826M272 496H826M272 566H826M272 636H826M272 706H826M272 776H826"/>
     <path d="M1087 286H1614M1087 356H1614M1087 426H1614M1087 496H1614M1087 566H1614M1087 636H1614M1087 706H1614M1087 776H1614" opacity=".55"/>
   </g>
-  <g id="denia-bubble-field" opacity=".62" fill="none" stroke="#86d5df">
+  <g id="denia-bubble-field" opacity=".7" fill="none" stroke="url(#bubbleEdge)">
     <g transform="translate(1714 245)">
       <circle r="72" fill="url(#bubble)" stroke-width="2"/>
+      <path d="M-42-28A55 55 0 0 1-8-58" stroke="#fffdf9" stroke-width="7" stroke-linecap="round" opacity=".68"/>
+      <path d="M18 62A55 55 0 0 0 58 18" stroke="#f29aab" stroke-width="4" stroke-linecap="round" opacity=".48"/>
       <circle cx="-78" cy="92" r="28" fill="url(#bubble)"/>
     </g>
     <g transform="translate(140 720)">
       <circle r="48" fill="url(#bubble)" stroke-width="2"/>
+      <path d="M-28-18A38 38 0 0 1-4-39" stroke="#fffdf9" stroke-width="5" stroke-linecap="round" opacity=".7"/>
       <circle cx="62" cy="-48" r="20" fill="url(#bubble)"/>
     </g>
     <g transform="translate(1500 855)" opacity=".7">
