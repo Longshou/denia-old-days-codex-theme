@@ -68,7 +68,7 @@ assert(manifest.capabilities.includes("task.state-art-rail"), "state art rail ca
 if (canonSources) {
   const officialRows = new Map(
     canonSources.split("\n")
-      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene) \|/u.test(line))
+      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene|Approval rail|Error rail) \|/u.test(line))
       .map((line) => [line.split("|")[1].trim(), line]),
   );
   const officialSourceUrls = {
@@ -78,10 +78,19 @@ if (canonSources) {
     "Dark rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
     "Complete rail": ["https://x.com/WW_JP_Official/status/2049081192532557960"],
     "Wide scene": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
+    "Approval rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
+    "Error rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
   };
   for (const [form, urls] of Object.entries(officialSourceUrls)) {
     const row = officialRows.get(form) || "";
     for (const url of urls) assert(row.includes(url), `${form} official source row must include ${url}`);
+  }
+  const exactSourceHashes = {
+    "Approval rail": "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
+    "Error rail": "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
+  };
+  for (const [form, hash] of Object.entries(exactSourceHashes)) {
+    assert(officialRows.get(form)?.includes(`\`${hash}\``), `${form} official source row must include exact SHA-256 ${hash}`);
   }
 }
 
@@ -109,13 +118,23 @@ for (const relative of required) {
   await readRequired(relative);
 }
 
-const [loader, styles, runtime, ...scripts] = await Promise.all([
+const [loader, styles, runtime, packageReadme, packageNotice, ...scripts] = await Promise.all([
   readRequired("runtime/loader.mjs"),
   readRequired(manifest.entrypoints.style),
   readRequired(manifest.entrypoints.runtime),
+  readRequired("README.md"),
+  readRequired("NOTICE.md"),
   ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
 ]);
+const packageDocumentation = `${packageReadme}\n${packageNotice}`;
+assert(!/同一暗色图|approval\s*\/\s*error|approval\s+and\s+error[^.\n]*(?:same|shared)/iu.test(packageDocumentation), "README/NOTICE must not claim approval and error share one image");
+for (const hash of [
+  "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
+  "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
+]) {
+  assert(packageNotice.includes(hash), `NOTICE must include official source SHA-256 ${hash}`);
+}
 
 const runtimeTokens = [
   "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",

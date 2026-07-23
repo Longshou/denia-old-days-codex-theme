@@ -64,7 +64,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `evidence/task.png` | 1600×1000 | `89e6fc3488c9380d686e59edf9cd2fb544c69f5cc9ee25e1c8359e05f039ab62` | 同一暖日泡泡近景提高对比、轻微靠近工作区后的工作态 |
 | `evidence/task-approval.png` | 1600×1000 | `3bb6150bbe544d3901acaf612ed4e5b926dcdd7eb369aa14ef91eda7d10929f3` | 双形态审批态；源图 extract `470,220,896×2800` |
 | `evidence/task-error.png` | 1600×1000 | `60a0c13730593465017a5932489beaad62bfa8cf1f54ef0ebaf57d2c07e75bec` | 无笑意、伸手错误态；源图 extract `1040,80,288×900` |
-| `evidence/task-working-to-approval-350ms.png` | 1600×1000 | `8b1fd6fb0f4374258a249dff8b9cea2705c93fe39b212752e7019770675e47de` | Working→Approval 350ms 受控过渡；Approval 源图 extract `470,220,896×2800` |
+| `evidence/task-working-to-approval-350ms.png` | 1600×1000 | `5dc44274e6afc140eb838ebb4a0d63291a732f615503300bb3f2fe3001b49e68` | Working→Approval 350ms 受控过渡；Approval 源图 extract `470,220,896×2800` |
 | `evidence/task-error-to-complete-500ms.png` | 1600×1000 | `1944eaf3576059db07f4b32bb0745ca05beb05e02d0f88715fb33ce2440ce57a` | Error→Complete 500ms 受控过渡；Error 源图 extract `1040,80,288×900` |
 | `evidence/task-complete.png` | 1600×1000 | `99b165cf277ab70ef438eca80759bb272875db4f30fbf66fd3840b3dd3a5f1e3` | 无周年宣传字样的完成态近景，右下链饰区域覆轻纸雾 |
 

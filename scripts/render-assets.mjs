@@ -396,11 +396,22 @@ function taskStateOverlay(spec, state) {
 async function renderTaskRailPanel(state) {
   const spec = TASK_STATE_ART[state];
   const panelWidth = 320;
+  const scale = spec.scale || 1;
+  const stageWidth = Math.round(panelWidth * scale);
+  const stageHeight = Math.round(1000 * scale);
+  const stageLeft = Math.round((panelWidth - stageWidth) / 2 + (spec.shiftX || 0));
+  const stageTop = Math.round((1000 - stageHeight) / 2);
   let stagePipeline = sharp(output(TASK_RAIL_SOURCES[spec.family].target))
-    .resize(panelWidth, 1000, { fit: "cover", position: "centre" });
+    .resize(stageWidth, stageHeight, { fit: "cover", position: "centre" });
   if (spec.modulate) stagePipeline = stagePipeline.modulate(spec.modulate);
   if (spec.linear) stagePipeline = stagePipeline.linear(spec.linear.gain, spec.linear.offset);
-  const stage = await stagePipeline.ensureAlpha(spec.opacity).png().toBuffer();
+  const scaledStage = await stagePipeline.ensureAlpha(spec.opacity).png().toBuffer();
+  const stage = scale === 1
+    ? scaledStage
+    : await sharp(scaledStage)
+      .extract({ left: -stageLeft, top: -stageTop, width: panelWidth, height: 1000 })
+      .png()
+      .toBuffer();
   const panelBacking = Buffer.from(`
     <svg xmlns="http://www.w3.org/2000/svg" width="${panelWidth}" height="1000">
       <rect width="${panelWidth}" height="1000" fill="#f5eeee"/>

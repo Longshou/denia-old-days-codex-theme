@@ -41,7 +41,7 @@ const manifest = {
   displayName: "达妮娅 · 旧日斑斓",
   version,
   summary: "达妮娅双形态学院手账，以暖色记忆页和情绪状态美术栏陪伴 Codex 任务。",
-  description: "暖色 P2 拍立得首页配合虹彩泡泡；任务页按等待、工作、审批、错误和完成状态切换三组本地角色美术。明暗形态只在匹配的情绪场景出现，工作区与右侧美术保持清晰分隔。",
+  description: "暖色 P2 拍立得首页配合虹彩泡泡；任务页按等待、工作、审批、错误和完成状态切换四组本地角色美术。明暗形态只在匹配的情绪场景出现，工作区与右侧美术保持清晰分隔。",
   publisher: {
     id: "gongwenkang",
     displayName: "gongwenkang",
@@ -85,7 +85,7 @@ Kaboo Codex Dream Skin local package \`${id}@${version}\`.
 
 The Base Theme provides the warm paper environment. The removable Sidecar adds the P2 polaroid homepage, iridescent bubbles, native action proxies, diary cards, composer treatment, and an emotion-aware right artwork rail.
 
-The task rail uses warm published artwork for staged/working, a serious dark direct-gaze crop for approval/error, and a bright direct-gaze crop for complete. It stays decorative, reserves workspace width on desktop, hides below 920px, and honors reduced-motion and reduced-transparency preferences.
+The task rail uses warm garden-and-bubbles artwork for staged and working; approval uses the official dual-form vertical artwork; error uses the separate official anniversary exhibition artwork with an unsmiling face and reaching gesture; complete uses the bright anniversary direct-gaze crop. It stays decorative, reserves workspace width on desktop, hides below 920px, and honors reduced-motion and reduced-transparency preferences.
 
 This package does not modify Codex.app, app.asar, code signatures, accounts, models, or API configuration. It makes no runtime network request.
 
@@ -110,8 +110,11 @@ The package contains local WebP derivatives of reviewed official published artwo
 
 - Old Days in Color homepage story exception: \`d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd\`.
 - Warm garden and bubbles rail: \`481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b\`.
-- Serious dark direct-gaze rail: \`aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292\`.
+- Approval dual-form vertical rail: \`3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0\`.
+- Separate error anniversary exhibition rail with an unsmiling face and reaching gesture: \`42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4\`.
 - Anniversary complete rail: \`dea27e716f9561131e2b5255ea60a84de2512e8e81886073f09c64e02739fc6e\`.
+
+The old dark direct-gaze source \`aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292\` remains only as a legacy source in the source repository; it is not the current approval or error runtime artwork.
 
 Character PV and combat-demo frames are not used. Promotional text and logos are excluded from runtime crops. Registry publication remains blocked on a separate rights review.
 `;

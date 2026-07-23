@@ -78,6 +78,23 @@ for (const marker of [
 ]) {
   if (!rendererSource.includes(marker)) throw new Error(`renderer missing ${marker}`);
 }
+for (const geometry of [
+  "const scale = spec.scale || 1;",
+  "const stageWidth = Math.round(panelWidth * scale);",
+  "const stageHeight = Math.round(1000 * scale);",
+  "const stageLeft = Math.round((panelWidth - stageWidth) / 2 + (spec.shiftX || 0));",
+  "const stageTop = Math.round((1000 - stageHeight) / 2);",
+  '.resize(stageWidth, stageHeight, { fit: "cover", position: "centre" })',
+  ".extract({ left: -stageLeft, top: -stageTop, width: panelWidth, height: 1000 })",
+]) {
+  if (!rendererSource.includes(geometry)) {
+    throw new Error(`renderer missing task rail scale/shift geometry: ${geometry}`);
+  }
+}
+const errorStateSpec = rendererSource.match(/\n  error: \{(?<body>[\s\S]*?)\n  \},\n  complete: \{/u)?.groups?.body || "";
+if (!errorStateSpec || /\b(?:scale|shiftX)\s*:/u.test(errorStateSpec)) {
+  throw new Error("error task art spec must not define scale or shiftX");
+}
 if (rendererSource.includes('target: "sidecar/assets/denia-old-days-dark.webp"')) {
   throw new Error("renderer must not package the retired poster rail");
 }
@@ -94,6 +111,20 @@ for (const marker of [
   "zip",
 ]) {
   if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing ${marker}`);
+}
+for (const marker of [
+  "四组本地角色美术",
+  "warm garden-and-bubbles artwork",
+  "approval uses the official dual-form vertical artwork",
+  "error uses the separate official anniversary exhibition artwork with an unsmiling face and reaching gesture",
+  "complete uses the bright anniversary direct-gaze crop",
+  "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
+  "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
+]) {
+  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing separate task-art provenance: ${marker}`);
+}
+if (/approval\s*\/\s*error/iu.test(localReleaseBuilder)) {
+  throw new Error("local Kaboo release builder must not describe approval/error as shared artwork");
 }
 for (const retiredFragment of [
   "official/denia-portrait.png",
@@ -166,6 +197,12 @@ for (const [relative, [expectedWidth, expectedHeight]] of expectedDimensions) {
   if (width !== expectedWidth || height !== expectedHeight) {
     throw new Error(`unexpected dimensions for ${relative}: ${width}x${height}`);
   }
+}
+
+const workingEvidence = fs.readFileSync(path.join(root, "evidence/task.png"));
+const workingEvidenceHash = crypto.createHash("sha256").update(workingEvidence).digest("hex");
+if (workingEvidenceHash !== "89e6fc3488c9380d686e59edf9cd2fb544c69f5cc9ee25e1c8359e05f039ab62") {
+  throw new Error(`working evidence hash mismatch: ${workingEvidenceHash}`);
 }
 
 console.log("source structure ok");
