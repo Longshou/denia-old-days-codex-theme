@@ -31,7 +31,7 @@
     "description": "让思绪显影，也让每一步留下记录。",
     "projectPrefix": "翻到项目 · ",
     "projectFallback": "选择项目",
-    "brandMark": "✦",
+    "brandMark": "",
     "cardLabels": [
       "翻阅并理解代码",
       "写下新的实现",

@@ -136,7 +136,7 @@
     chrome.id = "denia-old-days-ds-chrome";
     chrome.className = "denia-old-days-ds-chrome";
     chrome.setAttribute("aria-hidden", "true");
-    chrome.innerHTML = '<span class="denia-old-days-ds-star">✦</span>';
+    chrome.innerHTML = '<span class="denia-old-days-ds-state-bubble" aria-hidden="true"></span>';
     document.body.append(chrome);
     return chrome;
   }
@@ -151,7 +151,6 @@
     brand.className = "denia-old-days-ds-sidebar-brand";
     const mark = document.createElement("span");
     mark.className = "denia-old-days-ds-brand-mark";
-    mark.textContent = manifest.ui.brandMark;
     mark.setAttribute("aria-hidden", "true");
     const copy = document.createElement("span");
     copy.className = "denia-old-days-ds-brand-copy";
@@ -193,8 +192,12 @@
     const photo = document.createElement("div");
     photo.className = "denia-old-days-ds-photo";
     photo.setAttribute("aria-hidden", "true");
-    photo.innerHTML = '<span class="denia-old-days-ds-photo-front"></span><span class="denia-old-days-ds-tape"></span>';
-    hero.append(copy, photo);
+    photo.innerHTML = '<span class="denia-old-days-ds-photo-front"></span>';
+    const bubbles = document.createElement("span");
+    bubbles.className = "denia-old-days-ds-memory-bubbles";
+    bubbles.setAttribute("aria-hidden", "true");
+    bubbles.innerHTML = "<i></i><i></i><i></i>";
+    hero.append(copy, photo, bubbles);
 
     const firstContent = [...main.children].find((node) => !node.classList?.contains("denia-old-days-ds-hero"));
     main.insertBefore(hero, firstContent || null);

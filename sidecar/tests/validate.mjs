@@ -181,7 +181,10 @@ for (const name of ["bright", "dark", "portrait"]) {
   assert(runtime.includes(`--denia-old-days-art-${name}`), `runtime missing ${name} artwork variable`);
 }
 assert(!runtime.includes("denia-old-days-ds-photo-back"), "home hero must not include generic photo-back markup");
-assert(!runtime.includes("denia-old-days-ds-bubble"), "fixed chrome must not retain empty decorative bubble markup");
+assert(runtime.includes("denia-old-days-ds-memory-bubbles"), "home hero must own its memory bubbles");
+assert(runtime.includes("denia-old-days-ds-state-bubble"), "chrome must use a bubble state mark");
+assert(!runtime.includes("denia-old-days-ds-star"), "runtime must retire the star state mark");
+assert(!runtime.includes("denia-old-days-ds-tape"), "P2 polaroid must not use generic tape");
 assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
 assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
 
@@ -227,18 +230,21 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   "aspect-ratio": "16 / 10",
   "min-height": "0",
   margin: "0",
-  padding: "18px 18px 52px",
-  "border-radius": "8px",
-  background: "#fffef8",
-  "box-shadow": "0 22px 44px rgba(38, 53, 72, .14)",
-  transform: "rotate(-1.2deg)",
+  padding: "13px 13px 57px",
+  "border-radius": "5px",
+  transform: "rotate(-1.3deg)",
   "pointer-events": "none",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
   position: "absolute",
-  inset: "18px 18px 52px",
-  "border-radius": "4px",
+  inset: "13px 13px 57px",
   background: "var(--denia-old-days-art-bright) center / cover no-repeat",
+});
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo::after", {
+  "pointer-events": "none",
+});
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-memory-bubbles", {
+  "pointer-events": "none",
 });
 assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-bright", {
@@ -261,15 +267,6 @@ assert(
   !stylesheetRules.some((rule) => rule.selectors.some((selector) => selector.includes(":hover") && selector.includes("denia-old-days-ds-photo"))),
   "home photo must not use hover flip selectors",
 );
-assert(
-  !stylesheetRules.some((rule) => rule.selectors.some((selector) => selector.includes("denia-old-days-ds-bubble"))),
-  "large decorative bubbles must be removed",
-);
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-tape", {
-  top: "auto",
-  bottom: "12px",
-  "z-index": "2",
-});
 
 const taskRailSelector = ".denia-old-days-ds-task .denia-old-days-ds-chrome::after";
 assertCssDeclarations(stylesheetRules, taskRailSelector, {
@@ -315,6 +312,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
 }, compactMedia);
 const narrowMedia = ["max-width: 919px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", { display: "none" }, narrowMedia);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-memory-bubbles", { display: "none" }, narrowMedia);
 assertCssDeclarations(stylesheetRules, taskRailSelector, { display: "none" }, narrowMedia);
 assertCssCascadeDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   "grid-template-columns": "1fr",
@@ -552,8 +550,8 @@ async function assertRejectsStylesheetMutations() {
     },
     {
       prefix: "denia-validator-css-portrait-host-",
-      target: "  .denia-old-days-ds-photo-front {\n    inset: 12px 12px 32px;",
-      replacement: "  .denia-old-days-ds-photo-front,\n  article {\n    inset: 12px 12px 32px;",
+      target: "  .denia-old-days-ds-photo-front {\n    inset: 11px 11px 42px;",
+      replacement: "  .denia-old-days-ds-photo-front,\n  article {\n    inset: 11px 11px 42px;",
       name: "compact portrait selector",
       expected: "artwork variable --denia-old-days-art-portrait must stay on its approved selector",
       failure: "validator must reject compact portrait artwork added to an article through a combined selector",
