@@ -54,18 +54,31 @@ if (manifest.schemaVersion !== 1 || manifest.id !== "denia-old-days") {
 const stylePath = path.resolve(extensionDir, manifest.entrypoints.style);
 const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
-const darkPath = path.resolve(extensionDir, manifest.assets.stateArtwork);
-const [styleRealPath, runtimeRealPath, brightRealPath, darkRealPath] = await Promise.all([
+const taskWarmPath = path.resolve(extensionDir, manifest.assets.taskWarmArtwork);
+const taskDarkPath = path.resolve(extensionDir, manifest.assets.taskDarkArtwork);
+const taskCompletePath = path.resolve(extensionDir, manifest.assets.taskCompleteArtwork);
+const [
+  styleRealPath,
+  runtimeRealPath,
+  brightRealPath,
+  taskWarmRealPath,
+  taskDarkRealPath,
+  taskCompleteRealPath,
+] = await Promise.all([
   resolveExtensionFile(stylePath, manifest.entrypoints.style),
   resolveExtensionFile(runtimePath, manifest.entrypoints.runtime),
   resolveExtensionFile(brightPath, manifest.assets.runtimeWallpaper),
-  resolveExtensionFile(darkPath, manifest.assets.stateArtwork),
+  resolveExtensionFile(taskWarmPath, manifest.assets.taskWarmArtwork),
+  resolveExtensionFile(taskDarkPath, manifest.assets.taskDarkArtwork),
+  resolveExtensionFile(taskCompletePath, manifest.assets.taskCompleteArtwork),
 ]);
-const [cssText, runtimeTemplate, bright, dark] = await Promise.all([
+const [cssText, runtimeTemplate, bright, taskWarm, taskDark, taskComplete] = await Promise.all([
   fs.readFile(styleRealPath, "utf8"),
   fs.readFile(runtimeRealPath, "utf8"),
   fs.readFile(brightRealPath),
-  fs.readFile(darkRealPath),
+  fs.readFile(taskWarmRealPath),
+  fs.readFile(taskDarkRealPath),
+  fs.readFile(taskCompleteRealPath),
 ]);
 
 const imageDataUrl = (filePath, bytes) => {
@@ -79,13 +92,17 @@ const templatePlaceholders = Object.freeze({
   manifest: "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",
   css: "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   bright: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
-  dark: "__DENIA_OLD_DAYS_EXTENSION_DARK_ART_JSON__",
+  taskWarm: "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
+  taskDark: "__DENIA_OLD_DAYS_EXTENSION_TASK_DARK_ART_JSON__",
+  taskComplete: "__DENIA_OLD_DAYS_EXTENSION_TASK_COMPLETE_ART_JSON__",
 });
 const templateSentinels = Object.freeze({
   manifest: "@@DENIA_RUNTIME_MANIFEST_7F3A@@",
   css: "@@DENIA_RUNTIME_CSS_7F3A@@",
   bright: "@@DENIA_RUNTIME_BRIGHT_ART_7F3A@@",
-  dark: "@@DENIA_RUNTIME_DARK_ART_7F3A@@",
+  taskWarm: "@@DENIA_RUNTIME_TASK_WARM_ART_7F3A@@",
+  taskDark: "@@DENIA_RUNTIME_TASK_DARK_ART_7F3A@@",
+  taskComplete: "@@DENIA_RUNTIME_TASK_COMPLETE_ART_7F3A@@",
 });
 const expectedTemplatePlaceholders = Object.values(templatePlaceholders);
 const expectedTemplateSentinels = Object.values(templateSentinels);
@@ -109,7 +126,9 @@ const stagedRuntimeTemplate = runtimeTemplate
   .replace(templatePlaceholders.manifest, templateSentinels.manifest)
   .replace(templatePlaceholders.css, templateSentinels.css)
   .replace(templatePlaceholders.bright, templateSentinels.bright)
-  .replace(templatePlaceholders.dark, templateSentinels.dark);
+  .replace(templatePlaceholders.taskWarm, templateSentinels.taskWarm)
+  .replace(templatePlaceholders.taskDark, templateSentinels.taskDark)
+  .replace(templatePlaceholders.taskComplete, templateSentinels.taskComplete);
 const unstagedTemplatePlaceholders = expectedTemplatePlaceholders.filter((placeholder) => stagedRuntimeTemplate.includes(placeholder));
 if (unstagedTemplatePlaceholders.length) {
   throw new Error(`Unresolved Denia runtime template token(s): ${unstagedTemplatePlaceholders.join(", ")}`);
@@ -123,7 +142,9 @@ const sentinelPayloads = new Map([
   [templateSentinels.manifest, JSON.stringify(manifest)],
   [templateSentinels.css, JSON.stringify(cssText)],
   [templateSentinels.bright, JSON.stringify(imageDataUrl(brightPath, bright))],
-  [templateSentinels.dark, JSON.stringify(imageDataUrl(darkPath, dark))],
+  [templateSentinels.taskWarm, JSON.stringify(imageDataUrl(taskWarmPath, taskWarm))],
+  [templateSentinels.taskDark, JSON.stringify(imageDataUrl(taskDarkPath, taskDark))],
+  [templateSentinels.taskComplete, JSON.stringify(imageDataUrl(taskCompletePath, taskComplete))],
 ]);
 const sentinelPattern = new RegExp([...sentinelPayloads.keys()].join("|"), "gu");
 const installPayload = stagedRuntimeTemplate.replace(sentinelPattern, (sentinel) => sentinelPayloads.get(sentinel));
@@ -145,12 +166,15 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-stage-pass',
     'denia-old-days-ds-custom-card',
     'denia-old-days-ds-card-deck',
+    'denia-old-days-ds-state-art',
   ]) document.getElementById(id)?.remove();
   root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home', 'denia-old-days-ds-task');
   delete root.dataset.deniaOldDaysExtensionVersion;
   delete root.dataset.deniaFormState;
   root.style.removeProperty('--denia-old-days-art-bright');
-  root.style.removeProperty('--denia-old-days-art-dark');
+  root.style.removeProperty('--denia-old-days-art-task-warm');
+  root.style.removeProperty('--denia-old-days-art-task-dark');
+  root.style.removeProperty('--denia-old-days-art-task-complete');
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
     for (const property of ['background-image', 'background-position', 'background-size', 'background-repeat', 'background-color']) node.style.removeProperty(property);
   });

@@ -17,7 +17,9 @@
   "assets": {
     "wallpaper": "assets/denia-old-days-bright.webp",
     "runtimeWallpaper": "assets/denia-old-days-bright.webp",
-    "stateArtwork": "assets/denia-old-days-dark.webp"
+    "taskWarmArtwork": "assets/denia-task-warm.webp",
+    "taskDarkArtwork": "assets/denia-task-dark.webp",
+    "taskCompleteArtwork": "assets/denia-task-complete.webp"
   },
   "ui": {
     "brandName": "DENIA CODEX",
