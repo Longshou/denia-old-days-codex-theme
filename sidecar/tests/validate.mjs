@@ -347,6 +347,15 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-le
 for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-days-ds-task main"]) {
   assertCssDeclarations(stylesheetRules, selector, { position: "relative", "z-index": "3" });
 }
+const taskComposerSelector = ".denia-old-days-ds-task .denia-old-days-ds-composer";
+assertCssDeclarations(stylesheetRules, taskComposerSelector, {
+  "max-width": "calc(100% - var(--denia-state-rail-width) - 60px) !important",
+  "margin-inline-end": "calc(var(--denia-state-rail-width) + 60px) !important",
+}, ["min-width: 1180px"]);
+assertCssDeclarations(stylesheetRules, taskComposerSelector, {
+  "max-width": "calc(100% - var(--denia-state-rail-width) - 40px) !important",
+  "margin-inline-end": "calc(var(--denia-state-rail-width) + 40px) !important",
+}, ["min-width: 920px", "max-width: 1179px"]);
 for (const [state, family, opacity] of [
   ["staged", "taskWarm", ".11"],
   ["working", "taskWarm", ".20"],

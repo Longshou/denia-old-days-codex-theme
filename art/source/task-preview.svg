@@ -51,10 +51,10 @@
       <text x="52" y="708" fill="#55717c" font-family="Arial, sans-serif" font-size="12">幻灭之形 · 观察中</text>
     </g>
   </g>
-  <g transform="translate(444 892)">
-    <rect width="895" height="76" rx="24" fill="#fff" fill-opacity=".86" stroke="#8fd2dd" stroke-width="2"/>
+  <g id="task-composer-safe" transform="translate(444 892)">
+    <rect width="776" height="76" rx="24" fill="#fff" fill-opacity=".86" stroke="#8fd2dd" stroke-width="2"/>
     <text x="28" y="45" fill="#8da0a8" font-family="Arial, sans-serif" font-size="15">继续写下这页记录…</text>
-    <circle cx="847" cy="38" r="25" fill="#263548"/>
-    <path d="M836 38h22M847 27v22" stroke="#f7d88a" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="728" cy="38" r="25" fill="#263548"/>
+    <path d="M717 38h22M728 27v22" stroke="#f7d88a" stroke-width="3" stroke-linecap="round"/>
   </g>
 </svg>

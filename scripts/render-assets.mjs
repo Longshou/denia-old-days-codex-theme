@@ -53,7 +53,7 @@ const TASK_RAIL_SOURCES = Object.freeze({
   },
   error: {
     source: "official/denia-error-reaching.jpg",
-    extract: { left: 1040, top: 80, width: 288, height: 900 },
+    extract: { left: 1140, top: 100, width: 282, height: 880 },
     target: "sidecar/assets/denia-task-error.webp",
   },
   complete: {

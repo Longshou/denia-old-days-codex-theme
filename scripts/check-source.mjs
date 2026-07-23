@@ -95,6 +95,9 @@ const errorStateSpec = rendererSource.match(/\n  error: \{(?<body>[\s\S]*?)\n  \
 if (!errorStateSpec || /\b(?:scale|shiftX)\s*:/u.test(errorStateSpec)) {
   throw new Error("error task art spec must not define scale or shiftX");
 }
+if (!rendererSource.includes("extract: { left: 1140, top: 100, width: 282, height: 880 }")) {
+  throw new Error("error rail must keep the complete face inside the text-free artwork crop");
+}
 if (rendererSource.includes('target: "sidecar/assets/denia-old-days-dark.webp"')) {
   throw new Error("renderer must not package the retired poster rail");
 }
@@ -116,7 +119,7 @@ for (const marker of [
   "四组本地角色美术",
   "warm garden-and-bubbles artwork",
   "approval uses the official dual-form vertical artwork",
-  "error uses the separate official anniversary exhibition artwork with an unsmiling face and reaching gesture",
+  "error uses the separate official anniversary exhibition artwork with a complete unsmiling face and tense raised-arm movement",
   "complete uses the bright anniversary direct-gaze crop",
   "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
   "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
@@ -150,6 +153,14 @@ const taskPreview = fs.readFileSync(path.join(root, "art/source/task-preview.svg
 if (!taskPreview.includes("观察记录 · WORKING")) throw new Error("task preview must declare the working state");
 if (["完成显影", "已归档"].some((copy) => taskPreview.includes(copy))) {
   throw new Error("task preview must not mix working and complete states");
+}
+const composerBounds = taskPreview.match(
+  /<g id="task-composer-safe" transform="translate\((?<left>\d+) (?<top>\d+)\)">\s*<rect width="(?<width>\d+)" height="(?<height>\d+)"/u,
+)?.groups;
+if (!composerBounds) throw new Error("task preview must expose deterministic composer bounds");
+const composerRight = Number(composerBounds.left) + Number(composerBounds.width);
+if (composerRight > 1220) {
+  throw new Error(`task preview composer enters the rail safety zone: right edge ${composerRight}`);
 }
 
 const generatedFiles = [
@@ -201,8 +212,13 @@ for (const [relative, [expectedWidth, expectedHeight]] of expectedDimensions) {
 
 const workingEvidence = fs.readFileSync(path.join(root, "evidence/task.png"));
 const workingEvidenceHash = crypto.createHash("sha256").update(workingEvidence).digest("hex");
-if (workingEvidenceHash !== "89e6fc3488c9380d686e59edf9cd2fb544c69f5cc9ee25e1c8359e05f039ab62") {
+if (workingEvidenceHash !== "7719c000b70ed5f94858ebe4bf341c756fee77c1776bc43b47ec32d27f21d3e4") {
   throw new Error(`working evidence hash mismatch: ${workingEvidenceHash}`);
+}
+const errorRail = fs.readFileSync(path.join(root, "sidecar/assets/denia-task-error.webp"));
+const errorRailHash = crypto.createHash("sha256").update(errorRail).digest("hex");
+if (errorRailHash !== "55ebb464e95001b96f6a68c5a18054e80e0764450551e4e912a4c4b525f1c8c6") {
+  throw new Error(`error rail face-safe crop hash mismatch: ${errorRailHash}`);
 }
 
 console.log("source structure ok");

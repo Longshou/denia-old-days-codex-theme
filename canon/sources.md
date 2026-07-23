@@ -24,7 +24,7 @@
 | Approval rail | `art/source/official/denia-approval-dual-form.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)的周年双形态竖幅贺图 | 1871×3327 | `3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0` |
 | Error rail | `art/source/official/denia-error-reaching.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)的周年插画展发布图 | 1920×1080 | `42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4` |
 
-紧凑首页复用 Home 源文件，通过同一画面的裁切保持视觉连续，不再使用单独立绘。任务侧栏按状态使用独立的 `rail-portrait` 衍生图；Approval rail 保留明色正脸和上方暗色注视，Error rail 保留无笑意正脸和伸手动作；Wide scene 保持完整横图，仅用于适合宽幅叙事的版式。
+紧凑首页复用 Home 源文件，通过同一画面的裁切保持视觉连续，不再使用单独立绘。任务侧栏按状态使用独立的 `rail-portrait` 衍生图；Approval rail 保留明色正脸和上方暗色注视，Error rail 优先保留完整无笑意正脸与抬臂动势；Wide scene 保持完整横图，仅用于适合宽幅叙事的版式。
 
 这些文件是不可变的构建输入。项目仅作内部非官方粉丝主题使用，不主张对官方素材的所有权或再分发许可，也不隶属于、不受 OpenAI、库洛游戏或《鸣潮》权利方认可或赞助。
 
@@ -42,7 +42,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | 文件 | SHA-256 |
 | --- | --- |
 | `art/source/background.svg` | `e5e48058261a5ed08ad628afbe477cfa0f2ad075a8712a84c17b5a1da136c9b2` |
-| `art/source/task-preview.svg` | `73f2e2309f8fafb70a5f5e3071cea610148541a8388e340e4883038ac85f6c92` |
+| `art/source/task-preview.svg` | `79a6b9698cacca28c58c9165ad69074c5bbd92a8866df512a93b41e35ea8b53e` |
 
 上述哈希对应 `0.1.0` 首发候选原创源文件。官方源文件的固定哈希见前表；构建产物在构建时重新校验。
 
@@ -56,22 +56,22 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
 | `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
 | `sidecar/assets/denia-task-approval.webp` | 640×2000 | `d8e9124ad68a04021c8911819a6e21cba51b543f480a505cb3a24b98caa347a9` | 双形态竖幅的明色正脸与暗色注视；`470,220,896×2800`；WebP quality 86、smartSubsample |
-| `sidecar/assets/denia-task-error.webp` | 640×2000 | `fda59d7601ac0937ca7962056e982dd020be60b9fbf0166d3ae0feedcac76482` | 无笑意正脸与伸手动作；`1040,80,288×900`；WebP quality 86、smartSubsample |
+| `sidecar/assets/denia-task-error.webp` | 640×2000 | `55ebb464e95001b96f6a68c5a18054e80e0764450551e4e912a4c4b525f1c8c6` | 完整无笑意正脸与抬臂动势；`1140,100,282×880`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-complete.webp` | 640×2000 | `8328e475e0b73cd7f94b7425b85747a228fa70f78bcf9fd267c26a175bd66bc3` | 周年贺图的无字近景；`330,100,464×1450`；WebP quality 86 |
 | `evidence/home.png` | 1600×1000 | `ee899ec6e0dbd24c3cef54d13e250174dc7d9d6ce223269d2f8ff9e5b864d57f` | Bright 单一画面；P2 背纸、纸纹、显影边和虹彩泡泡；PNG compressionLevel 9 |
 | `evidence/home-compact.png` | 1200×800 | `f62fe79c5e0e5f708125394da5bf388dd3c8b6aee71ff15f90628eec9457d41b` | 与宽屏首页共用 Bright 画面，只改变拍立得尺寸和裁切 |
-| `evidence/task-staged.png` | 1600×1000 | `b4758998866ee163df300aa92ad3de2dae6720819bc220d569222e2399f604c8` | 暖日泡泡近景低透明待命态 |
-| `evidence/task.png` | 1600×1000 | `89e6fc3488c9380d686e59edf9cd2fb544c69f5cc9ee25e1c8359e05f039ab62` | 同一暖日泡泡近景提高对比、轻微靠近工作区后的工作态 |
-| `evidence/task-approval.png` | 1600×1000 | `3bb6150bbe544d3901acaf612ed4e5b926dcdd7eb369aa14ef91eda7d10929f3` | 双形态审批态；源图 extract `470,220,896×2800` |
-| `evidence/task-error.png` | 1600×1000 | `60a0c13730593465017a5932489beaad62bfa8cf1f54ef0ebaf57d2c07e75bec` | 无笑意、伸手错误态；源图 extract `1040,80,288×900` |
-| `evidence/task-working-to-approval-350ms.png` | 1600×1000 | `5dc44274e6afc140eb838ebb4a0d63291a732f615503300bb3f2fe3001b49e68` | Working→Approval 350ms 受控过渡；Approval 源图 extract `470,220,896×2800` |
-| `evidence/task-error-to-complete-500ms.png` | 1600×1000 | `1944eaf3576059db07f4b32bb0745ca05beb05e02d0f88715fb33ce2440ce57a` | Error→Complete 500ms 受控过渡；Error 源图 extract `1040,80,288×900` |
-| `evidence/task-complete.png` | 1600×1000 | `99b165cf277ab70ef438eca80759bb272875db4f30fbf66fd3840b3dd3a5f1e3` | 无周年宣传字样的完成态近景，右下链饰区域覆轻纸雾 |
+| `evidence/task-staged.png` | 1600×1000 | `6c013fb586d4c63a4bb1b95784a1cc1c327112d0b4318400e6e563272676f3d9` | 暖日泡泡近景低透明待命态，输入框止于右栏安全区 |
+| `evidence/task.png` | 1600×1000 | `7719c000b70ed5f94858ebe4bf341c756fee77c1776bc43b47ec32d27f21d3e4` | 同一暖日泡泡近景提高对比、轻微靠近工作区后的工作态，输入框止于右栏安全区 |
+| `evidence/task-approval.png` | 1600×1000 | `84501cff187d8f40d480fef78e5235870ba75eb7e47867d0791faf33b7ed895a` | 双形态审批态；源图 extract `470,220,896×2800`；输入框止于右栏安全区 |
+| `evidence/task-error.png` | 1600×1000 | `84e27bd6ef607523423e48cde5d3cbb392da03f052cc286dc7d21eb341c4a6ff` | 完整无笑意正脸错误态；源图 extract `1140,100,282×880`；输入框止于右栏安全区 |
+| `evidence/task-working-to-approval-350ms.png` | 1600×1000 | `425d398bb5142607335ee0d9f68e387bdaebc9de265faaedfe540c8b199ed5d2` | Working→Approval 350ms 受控过渡；Approval 源图 extract `470,220,896×2800` |
+| `evidence/task-error-to-complete-500ms.png` | 1600×1000 | `bf3ae02c230c529b64b62f9ba266fef19e37b82d5228693480b6233749a12d2c` | Error→Complete 500ms 受控过渡；Error 源图 extract `1140,100,282×880` |
+| `evidence/task-complete.png` | 1600×1000 | `978d6a9657abb4261c21d02ddbbe9711a5f7426ac138ddd1c28174fcee159246` | 无周年宣传字样的完成态近景，右下链饰区域覆轻纸雾，输入框止于右栏安全区 |
 
 ## 2026-07-23 视觉复核
 
 - 七张首页与任务截图均无宣传文字、Logo 或多图叠放污染。
 - `staged`、`working`、`complete` 保持暖亮形态；`approval`、`error` 限定为严肃暗形态。
-- 审批与错误使用独立官方图：审批保留明暗双形态等待感，错误保留无笑意正脸与伸手动作；错误不使用 glitch、抖动或额外文字。
-- 右栏与工作区保持单向纸雾过渡，桌面端预留安全间距，窄屏隐藏。
+- 审批与错误使用独立官方图：审批保留明暗双形态等待感，错误优先保全无笑意正脸并保留抬臂动势；错误不使用 glitch、抖动或额外文字。
+- 右栏与工作区保持单向纸雾过渡，桌面与中等宽度均为主内容和输入框预留安全间距，窄屏隐藏。
 - UI/UX 审查无 P0；完成两项 P1 微调后进入本地小范围体验测试。
