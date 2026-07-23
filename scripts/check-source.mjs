@@ -69,13 +69,20 @@ for (const marker of [
   "evidence/task-approval.png",
   "evidence/task-error.png",
   "denia-task-warm.webp",
-  "denia-task-dark.webp",
+  "denia-task-approval.webp",
+  "denia-task-error.webp",
   "denia-task-complete.webp",
+  "renderTaskTransition",
+  "evidence/task-working-to-approval-350ms.png",
+  "evidence/task-error-to-complete-500ms.png",
 ]) {
   if (!rendererSource.includes(marker)) throw new Error(`renderer missing ${marker}`);
 }
 if (rendererSource.includes('target: "sidecar/assets/denia-old-days-dark.webp"')) {
   throw new Error("renderer must not package the retired poster rail");
+}
+if (rendererSource.includes('target: "sidecar/assets/denia-task-dark.webp"')) {
+  throw new Error("renderer must not retain the shared approval/error rail asset");
 }
 for (const marker of [
   "codex-dream-skin-denia-old-days-0.1.0",
@@ -118,7 +125,8 @@ const generatedFiles = [
   "theme/background.jpg",
   "sidecar/assets/denia-old-days-bright.webp",
   "sidecar/assets/denia-task-warm.webp",
-  "sidecar/assets/denia-task-dark.webp",
+  "sidecar/assets/denia-task-approval.webp",
+  "sidecar/assets/denia-task-error.webp",
   "sidecar/assets/denia-task-complete.webp",
   "evidence/home.png",
   "evidence/home-compact.png",
@@ -126,6 +134,8 @@ const generatedFiles = [
   "evidence/task.png",
   "evidence/task-approval.png",
   "evidence/task-error.png",
+  "evidence/task-working-to-approval-350ms.png",
+  "evidence/task-error-to-complete-500ms.png",
   "evidence/task-complete.png",
 ];
 
@@ -144,6 +154,8 @@ const expectedDimensions = new Map([
   ["evidence/task.png", [1600, 1000]],
   ["evidence/task-approval.png", [1600, 1000]],
   ["evidence/task-error.png", [1600, 1000]],
+  ["evidence/task-working-to-approval-350ms.png", [1600, 1000]],
+  ["evidence/task-error-to-complete-500ms.png", [1600, 1000]],
   ["evidence/task-complete.png", [1600, 1000]],
 ]);
 for (const [relative, [expectedWidth, expectedHeight]] of expectedDimensions) {

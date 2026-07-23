@@ -46,10 +46,15 @@ const TASK_RAIL_SOURCES = Object.freeze({
     extract: { left: 245, top: 0, width: 346, height: 1080 },
     target: "sidecar/assets/denia-task-warm.webp",
   },
-  dark: {
-    source: "official/denia-dark-direct-gaze.jpg",
-    extract: { left: 1530, top: 0, width: 691, height: 2160 },
-    target: "sidecar/assets/denia-task-dark.webp",
+  approval: {
+    source: "official/denia-approval-dual-form.jpg",
+    extract: { left: 470, top: 220, width: 896, height: 2800 },
+    target: "sidecar/assets/denia-task-approval.webp",
+  },
+  error: {
+    source: "official/denia-error-reaching.jpg",
+    extract: { left: 1040, top: 80, width: 288, height: 900 },
+    target: "sidecar/assets/denia-task-error.webp",
   },
   complete: {
     source: "official/denia-anniversary-direct-gaze.jpg",
@@ -69,6 +74,7 @@ async function renderTaskRail(spec) {
 await Promise.all(Object.values(TASK_RAIL_SOURCES).map(renderTaskRail));
 
 await Promise.all([
+  fs.rm(output("sidecar/assets/denia-task-dark.webp"), { force: true }),
   fs.rm(output("sidecar/assets/denia-old-days-dark.webp"), { force: true }),
   fs.rm(output("sidecar/assets/denia-old-days-hero.webp"), { force: true }),
   fs.rm(output("sidecar/assets/denia-old-days-portrait.webp"), { force: true }),
@@ -340,22 +346,20 @@ const TASK_STATE_ART = Object.freeze({
     accent: "#73ced9",
   },
   approval: {
-    family: "dark",
+    family: "approval",
     opacity: 0.43,
     tint: "rgba(117,86,217,.12)",
     observation: "等待确认 / APPROVAL",
     page: "当前页 / 等待确认",
-    pill: "幻灭之形 / 等待确认",
+    pill: "双形之页 / 等待决定",
     accent: "#866cdb",
   },
   error: {
-    family: "dark",
+    family: "error",
     opacity: 0.56,
     tint: "rgba(228,90,168,.18)",
-    scale: 1.055,
-    shiftX: -7,
-    modulate: { brightness: 0.88, saturation: 1.06 },
-    linear: { gain: 1.14, offset: -14 },
+    modulate: { brightness: 0.92, saturation: 1.04 },
+    linear: { gain: 1.08, offset: -8 },
     observation: "异常记录 / ERROR",
     page: "当前页 / 检查失败项",
     pill: "幻灭之形 / 检查中",
@@ -389,35 +393,14 @@ function taskStateOverlay(spec, state) {
     </svg>`);
 }
 
-async function renderTaskPreview(state) {
+async function renderTaskRailPanel(state) {
   const spec = TASK_STATE_ART[state];
-  const taskBase = await sharp(source("task-preview.svg"))
-    .resize(1600, 1000, { fit: "cover" })
-    .png()
-    .toBuffer();
-  if (!spec) return taskBase;
-  const taskBackground = await sharp(taskBase)
-    .composite([{ input: taskStateOverlay(spec, state), left: 0, top: 0 }])
-    .png()
-    .toBuffer();
-
   const panelWidth = 320;
-  const scale = spec.scale || 1;
-  const stageWidth = Math.round(panelWidth * scale);
-  const stageHeight = Math.round(1000 * scale);
-  const stageLeft = Math.round((panelWidth - stageWidth) / 2 + (spec.shiftX || 0));
-  const stageTop = Math.round((1000 - stageHeight) / 2);
   let stagePipeline = sharp(output(TASK_RAIL_SOURCES[spec.family].target))
-    .resize(stageWidth, stageHeight, { fit: "cover", position: "centre" });
+    .resize(panelWidth, 1000, { fit: "cover", position: "centre" });
   if (spec.modulate) stagePipeline = stagePipeline.modulate(spec.modulate);
   if (spec.linear) stagePipeline = stagePipeline.linear(spec.linear.gain, spec.linear.offset);
-  const scaledStage = await stagePipeline.ensureAlpha(spec.opacity).png().toBuffer();
-  const stage = scale === 1
-    ? scaledStage
-    : await sharp(scaledStage)
-      .extract({ left: -stageLeft, top: -stageTop, width: panelWidth, height: 1000 })
-      .png()
-      .toBuffer();
+  const stage = await stagePipeline.ensureAlpha(spec.opacity).png().toBuffer();
   const panelBacking = Buffer.from(`
     <svg xmlns="http://www.w3.org/2000/svg" width="${panelWidth}" height="1000">
       <rect width="${panelWidth}" height="1000" fill="#f5eeee"/>
@@ -437,15 +420,45 @@ async function renderTaskPreview(state) {
       <rect width="${panelWidth}" height="1000" fill="url(#panel-fade)"/>
       <path d="M1 0V1000" stroke="${state === "error" ? "#e45aa8" : "#73ced9"}" stroke-opacity="${state === "error" ? ".32" : ".28"}"/>
     </svg>`);
-  const rail = await sharp(panelBacking)
+  return sharp(panelBacking)
     .composite([
       { input: stage, left: 0, top: 0 },
       { input: panelOverlay, left: 0, top: 0 },
     ])
     .png()
     .toBuffer();
+}
+
+async function renderTaskPreview(state) {
+  const spec = TASK_STATE_ART[state];
+  const taskBase = await sharp(source("task-preview.svg"))
+    .resize(1600, 1000, { fit: "cover" })
+    .png()
+    .toBuffer();
+  if (!spec) return taskBase;
+  const [taskBackground, rail] = await Promise.all([
+    sharp(taskBase)
+      .composite([{ input: taskStateOverlay(spec, state), left: 0, top: 0 }])
+      .png()
+      .toBuffer(),
+    renderTaskRailPanel(state),
+  ]);
   return sharp(taskBackground)
     .composite([{ input: rail, left: 1280, top: 0, blend: "over" }])
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+async function renderTaskTransition(fromState, toState, progress) {
+  const fromPreview = await renderTaskPreview(fromState);
+  const toRail = await renderTaskRailPanel(toState);
+  const fadedRail = await sharp(toRail)
+    .removeAlpha()
+    .ensureAlpha(progress)
+    .png()
+    .toBuffer();
+  return sharp(fromPreview)
+    .composite([{ input: fadedRail, left: 1280, top: 0 }])
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
@@ -465,6 +478,15 @@ await Promise.all([
   sharp(taskComplete).toFile(output("evidence/task-complete.png")),
 ]);
 
+const [taskWorkingToApproval, taskErrorToComplete] = await Promise.all([
+  renderTaskTransition("working", "approval", 0.82),
+  renderTaskTransition("error", "complete", 0.92),
+]);
+await Promise.all([
+  sharp(taskWorkingToApproval).toFile(output("evidence/task-working-to-approval-350ms.png")),
+  sharp(taskErrorToComplete).toFile(output("evidence/task-error-to-complete-500ms.png")),
+]);
+
 for (const target of [
   ...runtimeArt.map((item) => item.target),
   ...Object.values(TASK_RAIL_SOURCES).map((item) => item.target),
@@ -473,4 +495,4 @@ for (const target of [
   if (stat.size > 1024 * 1024) throw new Error(`runtime artwork exceeds 1 MiB: ${target}`);
 }
 
-console.log("rendered 12 Denia assets");
+console.log("rendered 15 Denia assets");
