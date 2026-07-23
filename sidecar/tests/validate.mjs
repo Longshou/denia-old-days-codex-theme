@@ -51,7 +51,8 @@ assert(manifest.entrypoints?.runtime === "src/denia-old-days-extension.js", "une
 const expectedAssets = {
   runtimeWallpaper: "assets/denia-old-days-bright.webp",
   taskWarmArtwork: "assets/denia-task-warm.webp",
-  taskDarkArtwork: "assets/denia-task-dark.webp",
+  taskApprovalArtwork: "assets/denia-task-approval.webp",
+  taskErrorArtwork: "assets/denia-task-error.webp",
   taskCompleteArtwork: "assets/denia-task-complete.webp",
 };
 for (const [key, value] of Object.entries(expectedAssets)) {
@@ -121,7 +122,8 @@ const runtimeTokens = [
   "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
-  "__DENIA_OLD_DAYS_EXTENSION_TASK_DARK_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_COMPLETE_ART_JSON__",
 ];
 for (const token of runtimeTokens) {
@@ -179,7 +181,7 @@ assert(runtime.includes("URL.revokeObjectURL"), "runtime cleanup must revoke obj
 assert(runtime.includes("Object.freeze({"), "runtime must freeze artwork URL map");
 assert(runtime.includes("Object.values(artUrls).every(Boolean)"), "runtime must require every artwork URL");
 assert(runtime.includes("Object.values(artUrls)"), "runtime must clean every artwork URL");
-for (const name of ["bright", "task-warm", "task-dark", "task-complete"]) {
+for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
   assert(runtime.includes(`--denia-old-days-art-${name}`), `runtime missing ${name} artwork variable`);
 }
 assert(!runtime.includes("denia-old-days-ds-photo-back"), "home hero must not include generic photo-back markup");
@@ -212,7 +214,8 @@ assert(!activeStyles.includes(".denia-old-days-ds-photo-back"), "default hero mu
 for (const token of [
   "--denia-old-days-art-bright",
   "--denia-old-days-art-task-warm",
-  "--denia-old-days-art-task-dark",
+  "--denia-old-days-art-task-approval",
+  "--denia-old-days-art-task-error",
   "--denia-old-days-art-task-complete",
   ".denia-old-days-ds-photo-front",
   ".denia-old-days-ds-state-art",
@@ -269,8 +272,13 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
     property: "--denia-state-art-image",
     atRuleFragments: [],
   }],
-  ["--denia-old-days-art-task-dark", {
-    selector: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskDark"]',
+  ["--denia-old-days-art-task-approval", {
+    selector: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskApproval"]',
+    property: "--denia-state-art-image",
+    atRuleFragments: [],
+  }],
+  ["--denia-old-days-art-task-error", {
+    selector: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskError"]',
     property: "--denia-state-art-image",
     atRuleFragments: [],
   }],
@@ -305,7 +313,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer", {
   "background-size": "cover",
   opacity: "0",
   transform: "translateX(12px) scale(.985)",
-  transition: "opacity 420ms cubic-bezier(.22, 1, .36, 1), transform 500ms cubic-bezier(.22, 1, .36, 1), filter 500ms cubic-bezier(.22, 1, .36, 1)",
+  transition: "opacity 300ms cubic-bezier(.22, 1, .36, 1), transform 360ms cubic-bezier(.22, 1, .36, 1), filter 360ms cubic-bezier(.22, 1, .36, 1)",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-active", {
   opacity: "var(--denia-state-art-opacity)",
@@ -314,7 +322,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-ac
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-leaving", {
   opacity: "0",
   transform: "translateX(8px)",
-  "transition-duration": "240ms",
+  "transition-duration": "180ms",
   "transition-delay": "0ms",
 });
 for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-days-ds-task main"]) {
@@ -323,8 +331,8 @@ for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-d
 for (const [state, family, opacity] of [
   ["staged", "taskWarm", ".11"],
   ["working", "taskWarm", ".20"],
-  ["approval", "taskDark", ".43"],
-  ["error", "taskDark", ".56"],
+  ["approval", "taskApproval", ".43"],
+  ["error", "taskError", ".56"],
   ["complete", "taskComplete", ".28"],
 ]) {
   assert(
@@ -354,8 +362,8 @@ assertCssDeclarations(
 );
 assertCssDeclarations(
   stylesheetRules,
-  '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskDark"].is-active',
-  { filter: "brightness(.88) saturate(1.06) contrast(1.14)", transform: "translateX(-7px) scale(1.055)" },
+  '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskError"].is-active',
+  { filter: "brightness(.92) saturate(1.04) contrast(1.08)", transform: "translateX(-2px) scale(1.015)", "transition-duration": "220ms, 260ms, 260ms" },
 );
 assertCssDeclarations(
   stylesheetRules,
@@ -612,12 +620,12 @@ async function assertRejectsStylesheetMutations() {
       failure: "validator must reject bright artwork added to an article through a combined selector",
     },
     {
-      prefix: "denia-validator-css-dark-host-",
-      target: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskDark"] {\n  --denia-state-art-image: var(--denia-old-days-art-task-dark);',
-      replacement: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskDark"],\nmain {\n  --denia-state-art-image: var(--denia-old-days-art-task-dark);',
-      name: "dark artwork selector",
-      expected: "artwork variable --denia-old-days-art-task-dark must stay on its approved selector",
-      failure: "validator must reject dark artwork added to main through a combined selector",
+      prefix: "denia-validator-css-approval-host-",
+      target: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskApproval"] {\n  --denia-state-art-image: var(--denia-old-days-art-task-approval);',
+      replacement: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskApproval"],\nmain {\n  --denia-state-art-image: var(--denia-old-days-art-task-approval);',
+      name: "approval artwork selector",
+      expected: "artwork variable --denia-old-days-art-task-approval must stay on its approved selector",
+      failure: "validator must reject approval artwork added to main through a combined selector",
     },
     {
       prefix: "denia-validator-css-transparency-",
@@ -727,21 +735,21 @@ function spawnStylesheetFixture(fixtureRoot) {
 }
 
 function assertRuntimeArtworkLifecycle(payload) {
-  const propertyNames = ["bright", "task-warm", "task-dark", "task-complete"]
+  const propertyNames = ["bright", "task-warm", "task-approval", "task-error", "task-complete"]
     .map((name) => `--denia-old-days-art-${name}`);
   const successful = createRuntimeHarness((index) => `blob:denia-${index + 1}`);
 
   vm.runInContext(payload, successful.context, { timeout: 1000 });
   const firstState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const firstArtworkMaps = successful.freezeCalls.filter((value) =>
-    Object.keys(value).join(",") === "bright,taskWarm,taskDark,taskComplete");
-  assert(successful.created.length === 4, "runtime install must create four artwork URLs");
+    Object.keys(value).join(",") === "bright,taskWarm,taskApproval,taskError,taskComplete");
+  assert(successful.created.length === 5, "runtime install must create five artwork URLs");
   assert(firstArtworkMaps.length === 1 && Object.isFrozen(firstArtworkMaps[0]), "runtime must freeze the artwork URL map");
   assert(firstState?.artReady === true, "runtime artReady must be true when every artwork URL succeeds");
   assert(!publicStateContainsUrl(firstState), "runtime public state must not expose artwork URLs");
   assert(
-    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 4,
-    "runtime install must set exactly four CSS artwork variables",
+    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 5,
+    "runtime install must set exactly five CSS artwork variables",
   );
   for (const [index, property] of propertyNames.entries()) {
     assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 1}")`, `runtime install must set ${property}`);
@@ -751,35 +759,35 @@ function assertRuntimeArtworkLifecycle(payload) {
   vm.runInContext(payload, successful.context, { timeout: 1000 });
   const secondState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const secondArtworkMaps = successful.freezeCalls.filter((value) =>
-    Object.keys(value).join(",") === "bright,taskWarm,taskDark,taskComplete");
-  assert(successful.created.length === 8, "runtime reinstall must create four replacement artwork URLs");
+    Object.keys(value).join(",") === "bright,taskWarm,taskApproval,taskError,taskComplete");
+  assert(successful.created.length === 10, "runtime reinstall must create five replacement artwork URLs");
   assert(secondArtworkMaps.length === 2 && secondArtworkMaps.every(Object.isFrozen), "runtime reinstall must freeze its replacement artwork URL map");
-  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3,blob:denia-4", "runtime reinstall must revoke previous artwork URLs");
-  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-5");
+  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3,blob:denia-4,blob:denia-5", "runtime reinstall must revoke previous artwork URLs");
+  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-6");
   const reinstallCleanupEvents = successful.events.slice(firstInstallEventCount, firstReplacementCreate);
   assert(propertyNames.every((property) => reinstallCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime reinstall must remove each previous CSS artwork variable before creating replacements");
   assert(
     reinstallCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",")
-      === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3,revoke:blob:denia-4",
+      === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3,revoke:blob:denia-4,revoke:blob:denia-5",
     "runtime reinstall must clean previous artwork URLs before creating replacements",
   );
   assert(
-    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 8,
-    "runtime reinstall must set exactly four replacement CSS artwork variables",
+    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 10,
+    "runtime reinstall must set exactly five replacement CSS artwork variables",
   );
   assert(secondState?.artReady === true && !publicStateContainsUrl(secondState), "runtime reinstall must retain ready state without exposing URLs");
   for (const [index, property] of propertyNames.entries()) {
-    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 5}")`, `runtime reinstall must reset ${property}`);
+    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 6}")`, `runtime reinstall must reset ${property}`);
   }
 
   const finalCleanupEventCount = successful.events.length;
   secondState.cleanup();
   const finalCleanupEvents = successful.events.slice(finalCleanupEventCount);
-  assert(successful.revoked.join(",") === [1, 2, 3, 4, 5, 6, 7, 8].map((number) => `blob:denia-${number}`).join(","), "runtime cleanup must revoke current artwork URLs");
+  assert(successful.revoked.join(",") === [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => `blob:denia-${number}`).join(","), "runtime cleanup must revoke current artwork URLs");
   assert(propertyNames.every((property) => finalCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime cleanup must remove each current CSS artwork variable exactly once");
   assert(
     finalCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",")
-      === "revoke:blob:denia-5,revoke:blob:denia-6,revoke:blob:denia-7,revoke:blob:denia-8",
+      === "revoke:blob:denia-6,revoke:blob:denia-7,revoke:blob:denia-8,revoke:blob:denia-9,revoke:blob:denia-10",
     "runtime cleanup must revoke each current artwork URL exactly once",
   );
   assert(propertyNames.every((property) => successful.root.style.getPropertyValue(property) === ""), "runtime cleanup must remove every CSS artwork variable");
@@ -1167,13 +1175,14 @@ function assertLiveTaskVerification(loaderSource) {
   const familyForState = {
     staged: "taskWarm",
     working: "taskWarm",
-    approval: "taskDark",
-    error: "taskDark",
+    approval: "taskApproval",
+    error: "taskError",
     complete: "taskComplete",
   };
   const artUrlForFamily = {
     taskWarm: "blob:warm",
-    taskDark: "blob:dark",
+    taskApproval: "blob:approval",
+    taskError: "blob:error",
     taskComplete: "blob:complete",
   };
 
@@ -1237,7 +1246,8 @@ function assertLiveTaskVerification(loaderSource) {
             getPropertyValue: (name) => ({
               "--denia-old-days-art-bright": 'url("blob:bright")',
               "--denia-old-days-art-task-warm": 'url("blob:warm")',
-              "--denia-old-days-art-task-dark": 'url("blob:dark")',
+              "--denia-old-days-art-task-approval": 'url("blob:approval")',
+              "--denia-old-days-art-task-error": 'url("blob:error")',
               "--denia-old-days-art-task-complete": 'url("blob:complete")',
             }[name] || ""),
           };
@@ -1283,7 +1293,7 @@ function assertLiveTaskVerification(loaderSource) {
   );
   assert(
     runCase({ formState: "approval" }).taskPass === true,
-    "live task verification must accept approval with the serious dark artwork",
+    "live task verification must accept approval with its dedicated artwork",
   );
   assert(
     runCase({ formState: "error", artFamily: "taskWarm" }).taskPass === false,
@@ -1356,7 +1366,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.classList.add("denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task");
   harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.0";
   harness.root.dataset.deniaFormState = "working";
-  for (const name of ["bright", "task-warm", "task-dark", "task-complete"]) {
+  for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
     harness.root.style.setProperty(`--denia-old-days-art-${name}`, `url(blob:${name})`);
   }
 
@@ -1366,7 +1376,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
   }
   assert(!("deniaOldDaysExtensionVersion" in harness.root.dataset), "fallback cleanup must remove the extension version marker");
   assert(!("deniaFormState" in harness.root.dataset), "fallback cleanup must remove the form state marker");
-  for (const name of ["bright", "task-warm", "task-dark", "task-complete"]) {
+  for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
     assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
   }
   for (const id of ownedIds) assert(!harness.document.getElementById(id), `fallback cleanup must remove owned node ${id}`);
@@ -1483,26 +1493,28 @@ function assertStateArtRailLifecycle(payload) {
   working.remove();
   const approval = appendMarker(animated, main, { "data-state": "approval" });
   state.refresh();
-  const dark = activeLayer(rail);
+  const approvalLayer = activeLayer(rail);
   const warmLeaving = rail.querySelector('.denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"]');
-  assert(dark?.dataset.deniaArtFamily === "taskDark", "approval must transition to the serious dark artwork");
-  assert(dark?.style.getPropertyValue("--denia-state-art-opacity") === ".43", "approval must use the restrained dark opacity");
+  assert(approvalLayer?.dataset.deniaArtFamily === "taskApproval", "approval must transition to its dedicated artwork");
+  assert(approvalLayer?.style.getPropertyValue("--denia-state-art-opacity") === ".43", "approval must use the restrained approval opacity");
   assert(warmLeaving?.classList.contains("is-leaving"), "cross-family transitions must leave the previous layer visible for its fade");
   assert(state.artGeneration === 2, "cross-family approval must create a new art generation");
 
   approval.remove();
   const error = appendMarker(animated, main, { "data-state": "error" });
   state.refresh();
-  active = activeLayer(rail);
-  assert(active === dark && active?.dataset.deniaArtFamily === "taskDark", "error must retain the serious approval artwork family");
-  assert(active?.style.getPropertyValue("--denia-state-art-opacity") === ".56", "error must deepen the dark artwork without swapping it");
-  assert(state.artGeneration === 2, "same-family error updates must not restart the transition");
+  const errorLayer = activeLayer(rail);
+  const approvalLeaving = rail.querySelector('.denia-old-days-ds-state-art-layer[data-denia-art-family="taskApproval"]');
+  assert(errorLayer?.dataset.deniaArtFamily === "taskError", "error must use separate disrupted artwork");
+  assert(errorLayer?.style.getPropertyValue("--denia-state-art-opacity") === ".56", "error must use the restrained error opacity");
+  assert(approvalLeaving?.classList.contains("is-leaving"), "approval must crossfade out during error");
+  assert(state.artGeneration === 3, "error must create its own artwork generation");
 
-  for (const handler of warmLeaving.listeners.get("transitionend") || []) {
-    handler.call(warmLeaving, { currentTarget: warmLeaving, propertyName: "opacity", target: warmLeaving });
+  for (const handler of approvalLeaving.listeners.get("transitionend") || []) {
+    handler.call(approvalLeaving, { currentTarget: approvalLeaving, propertyName: "opacity", target: approvalLeaving });
   }
-  assert(!warmLeaving.dataset.deniaArtFamily, "transitionend must clear the retired artwork layer");
-  assert(!warmLeaving.classList.contains("is-leaving"), "transitionend must retire the leaving class");
+  assert(!approvalLeaving.dataset.deniaArtFamily, "error transitionend must clear the retired approval artwork layer");
+  assert(!approvalLeaving.classList.contains("is-leaving"), "error transitionend must retire the approval leaving class");
 
   error.remove();
   const assistant = appendMarker(animated, main, { "data-content-search-unit-key": "turn:assistant" });
@@ -1511,7 +1523,7 @@ function assertStateArtRailLifecycle(payload) {
   assert(active?.dataset.deniaArtFamily === "taskComplete", "complete must transition to its direct-gaze artwork");
   assert(active?.style.getPropertyValue("--denia-state-art-opacity") === ".28", "complete artwork must remain secondary to the response");
   assert(assistant.classList.contains("denia-old-days-ds-final-card"), "complete artwork must accompany the latest assistant final card");
-  assert(state.artGeneration === 3, "complete must create the third cross-family art generation");
+  assert(state.artGeneration === 4, "complete must create the fourth cross-family art generation");
 
   const reduced = createRuntimeHarness((index) => `blob:reduced-art-${index + 1}`);
   reduced.sandbox.matchMedia = () => ({ matches: true });
@@ -1522,9 +1534,9 @@ function assertStateArtRailLifecycle(payload) {
   appendMarker(reduced, reducedMain, { "data-state": "approval" });
   reducedState.refresh();
   const reducedRail = reduced.document.getElementById("denia-old-days-ds-state-art");
-  const reducedDark = activeLayer(reducedRail);
+  const reducedApproval = activeLayer(reducedRail);
   const reducedWarm = reducedRail.querySelector('.denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"]');
-  assert(reducedDark?.dataset.deniaArtFamily === "taskDark", "reduced motion must still switch to the correct artwork");
+  assert(reducedApproval?.dataset.deniaArtFamily === "taskApproval", "reduced motion must still switch to the correct artwork");
   assert(!reducedWarm, "reduced motion must clear the outgoing layer immediately");
   assert(!reducedRail.querySelector(".denia-old-days-ds-state-art-layer.is-leaving"), "reduced motion must not leave a fading layer");
 }

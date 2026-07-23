@@ -18,7 +18,8 @@
     "wallpaper": "assets/denia-old-days-bright.webp",
     "runtimeWallpaper": "assets/denia-old-days-bright.webp",
     "taskWarmArtwork": "assets/denia-task-warm.webp",
-    "taskDarkArtwork": "assets/denia-task-dark.webp",
+    "taskApprovalArtwork": "assets/denia-task-approval.webp",
+    "taskErrorArtwork": "assets/denia-task-error.webp",
     "taskCompleteArtwork": "assets/denia-task-complete.webp"
   },
   "ui": {

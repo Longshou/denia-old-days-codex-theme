@@ -3,7 +3,8 @@
   const cssText = __DENIA_OLD_DAYS_EXTENSION_CSS_JSON__;
   const brightArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__;
   const taskWarmArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__;
-  const taskDarkArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_DARK_ART_JSON__;
+  const taskApprovalArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__;
+  const taskErrorArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__;
   const taskCompleteArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_COMPLETE_ART_JSON__;
   const stateKey = "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__";
   const styleId = "denia-old-days-dream-skin-extension-style";
@@ -16,8 +17,8 @@
   const stateArtSpecs = Object.freeze({
     staged: Object.freeze({ family: "taskWarm", opacity: ".11" }),
     working: Object.freeze({ family: "taskWarm", opacity: ".20" }),
-    approval: Object.freeze({ family: "taskDark", opacity: ".43" }),
-    error: Object.freeze({ family: "taskDark", opacity: ".56" }),
+    approval: Object.freeze({ family: "taskApproval", opacity: ".43" }),
+    error: Object.freeze({ family: "taskError", opacity: ".56" }),
     complete: Object.freeze({ family: "taskComplete", opacity: ".28" }),
   });
   const removableClasses = [
@@ -40,14 +41,16 @@
   const artUrls = Object.freeze({
     bright: dataUrlToObjectUrl(brightArtDataUrl),
     taskWarm: dataUrlToObjectUrl(taskWarmArtDataUrl),
-    taskDark: dataUrlToObjectUrl(taskDarkArtDataUrl),
+    taskApproval: dataUrlToObjectUrl(taskApprovalArtDataUrl),
+    taskError: dataUrlToObjectUrl(taskErrorArtDataUrl),
     taskComplete: dataUrlToObjectUrl(taskCompleteArtDataUrl),
   });
   root.classList.add(rootClass);
   root.dataset.deniaOldDaysExtensionVersion = manifest.version;
   root.style.setProperty("--denia-old-days-art-bright", `url("${artUrls.bright}")`);
   root.style.setProperty("--denia-old-days-art-task-warm", `url("${artUrls.taskWarm}")`);
-  root.style.setProperty("--denia-old-days-art-task-dark", `url("${artUrls.taskDark}")`);
+  root.style.setProperty("--denia-old-days-art-task-approval", `url("${artUrls.taskApproval}")`);
+  root.style.setProperty("--denia-old-days-art-task-error", `url("${artUrls.taskError}")`);
   root.style.setProperty("--denia-old-days-art-task-complete", `url("${artUrls.taskComplete}")`);
 
   const state = {
@@ -494,10 +497,9 @@
     root.classList.remove(rootClass, "denia-old-days-ds-home", "denia-old-days-ds-task");
     delete root.dataset.deniaOldDaysExtensionVersion;
     delete root.dataset.deniaFormState;
-    root.style.removeProperty("--denia-old-days-art-bright");
-    root.style.removeProperty("--denia-old-days-art-task-warm");
-    root.style.removeProperty("--denia-old-days-art-task-dark");
-    root.style.removeProperty("--denia-old-days-art-task-complete");
+    for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
+      root.style.removeProperty(`--denia-old-days-art-${name}`);
+    }
     for (const artUrl of Object.values(artUrls)) URL.revokeObjectURL(artUrl);
     if (window[stateKey] === state) delete window[stateKey];
     return true;

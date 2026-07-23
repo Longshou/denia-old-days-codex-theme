@@ -55,29 +55,33 @@ const stylePath = path.resolve(extensionDir, manifest.entrypoints.style);
 const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
 const taskWarmPath = path.resolve(extensionDir, manifest.assets.taskWarmArtwork);
-const taskDarkPath = path.resolve(extensionDir, manifest.assets.taskDarkArtwork);
+const taskApprovalPath = path.resolve(extensionDir, manifest.assets.taskApprovalArtwork);
+const taskErrorPath = path.resolve(extensionDir, manifest.assets.taskErrorArtwork);
 const taskCompletePath = path.resolve(extensionDir, manifest.assets.taskCompleteArtwork);
 const [
   styleRealPath,
   runtimeRealPath,
   brightRealPath,
   taskWarmRealPath,
-  taskDarkRealPath,
+  taskApprovalRealPath,
+  taskErrorRealPath,
   taskCompleteRealPath,
 ] = await Promise.all([
   resolveExtensionFile(stylePath, manifest.entrypoints.style),
   resolveExtensionFile(runtimePath, manifest.entrypoints.runtime),
   resolveExtensionFile(brightPath, manifest.assets.runtimeWallpaper),
   resolveExtensionFile(taskWarmPath, manifest.assets.taskWarmArtwork),
-  resolveExtensionFile(taskDarkPath, manifest.assets.taskDarkArtwork),
+  resolveExtensionFile(taskApprovalPath, manifest.assets.taskApprovalArtwork),
+  resolveExtensionFile(taskErrorPath, manifest.assets.taskErrorArtwork),
   resolveExtensionFile(taskCompletePath, manifest.assets.taskCompleteArtwork),
 ]);
-const [cssText, runtimeTemplate, bright, taskWarm, taskDark, taskComplete] = await Promise.all([
+const [cssText, runtimeTemplate, bright, taskWarm, taskApproval, taskError, taskComplete] = await Promise.all([
   fs.readFile(styleRealPath, "utf8"),
   fs.readFile(runtimeRealPath, "utf8"),
   fs.readFile(brightRealPath),
   fs.readFile(taskWarmRealPath),
-  fs.readFile(taskDarkRealPath),
+  fs.readFile(taskApprovalRealPath),
+  fs.readFile(taskErrorRealPath),
   fs.readFile(taskCompleteRealPath),
 ]);
 
@@ -93,7 +97,8 @@ const templatePlaceholders = Object.freeze({
   css: "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   bright: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
   taskWarm: "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
-  taskDark: "__DENIA_OLD_DAYS_EXTENSION_TASK_DARK_ART_JSON__",
+  taskApproval: "__DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__",
+  taskError: "__DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__",
   taskComplete: "__DENIA_OLD_DAYS_EXTENSION_TASK_COMPLETE_ART_JSON__",
 });
 const templateSentinels = Object.freeze({
@@ -101,7 +106,8 @@ const templateSentinels = Object.freeze({
   css: "@@DENIA_RUNTIME_CSS_7F3A@@",
   bright: "@@DENIA_RUNTIME_BRIGHT_ART_7F3A@@",
   taskWarm: "@@DENIA_RUNTIME_TASK_WARM_ART_7F3A@@",
-  taskDark: "@@DENIA_RUNTIME_TASK_DARK_ART_7F3A@@",
+  taskApproval: "@@DENIA_RUNTIME_TASK_APPROVAL_ART_7F3A@@",
+  taskError: "@@DENIA_RUNTIME_TASK_ERROR_ART_7F3A@@",
   taskComplete: "@@DENIA_RUNTIME_TASK_COMPLETE_ART_7F3A@@",
 });
 const expectedTemplatePlaceholders = Object.values(templatePlaceholders);
@@ -127,7 +133,8 @@ const stagedRuntimeTemplate = runtimeTemplate
   .replace(templatePlaceholders.css, templateSentinels.css)
   .replace(templatePlaceholders.bright, templateSentinels.bright)
   .replace(templatePlaceholders.taskWarm, templateSentinels.taskWarm)
-  .replace(templatePlaceholders.taskDark, templateSentinels.taskDark)
+  .replace(templatePlaceholders.taskApproval, templateSentinels.taskApproval)
+  .replace(templatePlaceholders.taskError, templateSentinels.taskError)
   .replace(templatePlaceholders.taskComplete, templateSentinels.taskComplete);
 const unstagedTemplatePlaceholders = expectedTemplatePlaceholders.filter((placeholder) => stagedRuntimeTemplate.includes(placeholder));
 if (unstagedTemplatePlaceholders.length) {
@@ -143,7 +150,8 @@ const sentinelPayloads = new Map([
   [templateSentinels.css, JSON.stringify(cssText)],
   [templateSentinels.bright, JSON.stringify(imageDataUrl(brightPath, bright))],
   [templateSentinels.taskWarm, JSON.stringify(imageDataUrl(taskWarmPath, taskWarm))],
-  [templateSentinels.taskDark, JSON.stringify(imageDataUrl(taskDarkPath, taskDark))],
+  [templateSentinels.taskApproval, JSON.stringify(imageDataUrl(taskApprovalPath, taskApproval))],
+  [templateSentinels.taskError, JSON.stringify(imageDataUrl(taskErrorPath, taskError))],
   [templateSentinels.taskComplete, JSON.stringify(imageDataUrl(taskCompletePath, taskComplete))],
 ]);
 const sentinelPattern = new RegExp([...sentinelPayloads.keys()].join("|"), "gu");
@@ -173,6 +181,8 @@ const cleanupExpression = `(() => {
   delete root.dataset.deniaFormState;
   root.style.removeProperty('--denia-old-days-art-bright');
   root.style.removeProperty('--denia-old-days-art-task-warm');
+  root.style.removeProperty('--denia-old-days-art-task-approval');
+  root.style.removeProperty('--denia-old-days-art-task-error');
   root.style.removeProperty('--denia-old-days-art-task-dark');
   root.style.removeProperty('--denia-old-days-art-task-complete');
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
@@ -219,13 +229,14 @@ const verifyExpression = `(() => {
   const expectedArtFamilies = {
     staged: 'taskWarm',
     working: 'taskWarm',
-    approval: 'taskDark',
-    error: 'taskDark',
+    approval: 'taskApproval',
+    error: 'taskError',
     complete: 'taskComplete',
   };
   const expectedArtProperties = {
     taskWarm: '--denia-old-days-art-task-warm',
-    taskDark: '--denia-old-days-art-task-dark',
+    taskApproval: '--denia-old-days-art-task-approval',
+    taskError: '--denia-old-days-art-task-error',
     taskComplete: '--denia-old-days-art-task-complete',
   };
   const formState = state?.formState || root.dataset.deniaFormState || null;
