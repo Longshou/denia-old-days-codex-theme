@@ -347,6 +347,21 @@ assertCssDeclarations(
   '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-bubble',
   { "border-color": "var(--denia-fracture)", background: "rgba(228, 90, 168, .32)" },
 );
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"].is-active',
+  { filter: "saturate(1) contrast(1.1)", transform: "translateX(-3px) scale(1.015)" },
+);
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskDark"].is-active',
+  { filter: "brightness(.88) saturate(1.06) contrast(1.14)", transform: "translateX(-7px) scale(1.055)" },
+);
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art',
+  { "border-inline-start-color": "rgba(228, 90, 168, .32)" },
+);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-final-card::before", {
   background: "linear-gradient(100deg, var(--denia-gold), rgba(143, 210, 221, .28), var(--denia-pink))",
 });

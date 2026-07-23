@@ -330,6 +330,10 @@ const TASK_STATE_ART = Object.freeze({
     family: "warm",
     opacity: 0.20,
     tint: "rgba(115,206,217,.08)",
+    scale: 1.015,
+    shiftX: -3,
+    modulate: { saturation: 1 },
+    linear: { gain: 1.1, offset: -12 },
     observation: "观察记录 / WORKING",
     page: "当前页 / 处理中",
     pill: "布景之形 / 记录中",
@@ -348,6 +352,10 @@ const TASK_STATE_ART = Object.freeze({
     family: "dark",
     opacity: 0.56,
     tint: "rgba(228,90,168,.18)",
+    scale: 1.055,
+    shiftX: -7,
+    modulate: { brightness: 0.88, saturation: 1.06 },
+    linear: { gain: 1.14, offset: -14 },
     observation: "异常记录 / ERROR",
     page: "当前页 / 检查失败项",
     pill: "幻灭之形 / 检查中",
@@ -394,11 +402,22 @@ async function renderTaskPreview(state) {
     .toBuffer();
 
   const panelWidth = 320;
-  const stage = await sharp(output(TASK_RAIL_SOURCES[spec.family].target))
-    .resize(panelWidth, 1000, { fit: "cover", position: "centre" })
-    .ensureAlpha(spec.opacity)
-    .png()
-    .toBuffer();
+  const scale = spec.scale || 1;
+  const stageWidth = Math.round(panelWidth * scale);
+  const stageHeight = Math.round(1000 * scale);
+  const stageLeft = Math.round((panelWidth - stageWidth) / 2 + (spec.shiftX || 0));
+  const stageTop = Math.round((1000 - stageHeight) / 2);
+  let stagePipeline = sharp(output(TASK_RAIL_SOURCES[spec.family].target))
+    .resize(stageWidth, stageHeight, { fit: "cover", position: "centre" });
+  if (spec.modulate) stagePipeline = stagePipeline.modulate(spec.modulate);
+  if (spec.linear) stagePipeline = stagePipeline.linear(spec.linear.gain, spec.linear.offset);
+  const scaledStage = await stagePipeline.ensureAlpha(spec.opacity).png().toBuffer();
+  const stage = scale === 1
+    ? scaledStage
+    : await sharp(scaledStage)
+      .extract({ left: -stageLeft, top: -stageTop, width: panelWidth, height: 1000 })
+      .png()
+      .toBuffer();
   const panelBacking = Buffer.from(`
     <svg xmlns="http://www.w3.org/2000/svg" width="${panelWidth}" height="1000">
       <rect width="${panelWidth}" height="1000" fill="#f5eeee"/>
@@ -414,8 +433,9 @@ async function renderTaskPreview(state) {
         </linearGradient>
       </defs>
       <rect width="${panelWidth}" height="1000" fill="${spec.tint}"/>
+      ${state === "complete" ? '<radialGradient id="paper-fog" cx="92%" cy="92%" r="36%"><stop offset="0" stop-color="#f7eee9" stop-opacity=".34"/><stop offset="1" stop-color="#f7eee9" stop-opacity="0"/></radialGradient><rect width="320" height="1000" fill="url(#paper-fog)"/>' : ""}
       <rect width="${panelWidth}" height="1000" fill="url(#panel-fade)"/>
-      <path d="M1 0V1000" stroke="#73ced9" stroke-opacity=".28"/>
+      <path d="M1 0V1000" stroke="${state === "error" ? "#e45aa8" : "#73ced9"}" stroke-opacity="${state === "error" ? ".32" : ".28"}"/>
     </svg>`);
   const rail = await sharp(panelBacking)
     .composite([

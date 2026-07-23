@@ -4,5 +4,6 @@
 dist/
 theme/background.jpg
 sidecar/assets/*.webp
+sidecar/release/
 evidence/*.png
 evidence/*.json

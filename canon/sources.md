@@ -58,7 +58,15 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `evidence/home.png` | 1600×1000 | `ee899ec6e0dbd24c3cef54d13e250174dc7d9d6ce223269d2f8ff9e5b864d57f` | Bright 单一画面；P2 背纸、纸纹、显影边和虹彩泡泡；PNG compressionLevel 9 |
 | `evidence/home-compact.png` | 1200×800 | `f62fe79c5e0e5f708125394da5bf388dd3c8b6aee71ff15f90628eec9457d41b` | 与宽屏首页共用 Bright 画面，只改变拍立得尺寸和裁切 |
 | `evidence/task-staged.png` | 1600×1000 | `b4758998866ee163df300aa92ad3de2dae6720819bc220d569222e2399f604c8` | 暖日泡泡近景低透明待命态 |
-| `evidence/task.png` | 1600×1000 | `b337c75905ec03945207d7feacebe6641c0e4bc989944fb5c922caca5f494768` | 同一暖日泡泡近景的工作态 |
+| `evidence/task.png` | 1600×1000 | `89e6fc3488c9380d686e59edf9cd2fb544c69f5cc9ee25e1c8359e05f039ab62` | 同一暖日泡泡近景提高对比、轻微靠近工作区后的工作态 |
 | `evidence/task-approval.png` | 1600×1000 | `622834b1fd07eb6f998960e5ba7267e6ea2aee3dfc1f1dbbd9d34302a2b093ac` | 暗色严肃正脸的审批态 |
-| `evidence/task-error.png` | 1600×1000 | `00f70582cef73183ca39a2de2212317490e9be58d9d749c4d2c3d321a3ee6144` | 同一严肃正脸加深色调后的错误态 |
-| `evidence/task-complete.png` | 1600×1000 | `2ca6582bb4a818688fde93ed6972dd67b3097dc359cbb6b4450b22d944f52874` | 无周年宣传字样的完成态近景 |
+| `evidence/task-error.png` | 1600×1000 | `d8fb41376f6bc248ff4ca6008efc231f327aac2a9770298279ae6261223b2d1f` | 同一严肃正脸拉近、加深并增加洋红分界后的错误态 |
+| `evidence/task-complete.png` | 1600×1000 | `99b165cf277ab70ef438eca80759bb272875db4f30fbf66fd3840b3dd3a5f1e3` | 无周年宣传字样的完成态近景，右下链饰区域覆轻纸雾 |
+
+## 2026-07-23 视觉复核
+
+- 七张首页与任务截图均无宣传文字、Logo 或多图叠放污染。
+- `staged`、`working`、`complete` 保持暖亮形态；`approval`、`error` 限定为严肃暗形态。
+- 审批与错误复用同一官方图，但错误通过近景、对比和洋红分界形成可辨差异，不使用 glitch、抖动或额外文字。
+- 右栏与工作区保持单向纸雾过渡，桌面端预留安全间距，窄屏隐藏。
+- UI/UX 审查无 P0；完成两项 P1 微调后进入本地小范围体验测试。

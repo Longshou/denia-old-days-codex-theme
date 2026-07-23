@@ -155,6 +155,11 @@
     linear-gradient(180deg, rgba(111, 184, 231, .16), rgba(143, 210, 221, .08));
 }
 
+.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"].is-active {
+  filter: saturate(1) contrast(1.1);
+  transform: translateX(-3px) scale(1.015);
+}
+
 .denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-state-art-tint {
   background:
     linear-gradient(90deg, rgba(247, 238, 233, .96) 0, rgba(17, 22, 47, .28) 35%, rgba(17, 22, 47, .08) 72%),
@@ -167,8 +172,18 @@
     linear-gradient(180deg, rgba(228, 90, 168, .18), rgba(17, 22, 47, .28));
 }
 
+.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art {
+  border-inline-start-color: rgba(228, 90, 168, .32);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskDark"].is-active {
+  filter: brightness(.88) saturate(1.06) contrast(1.14);
+  transform: translateX(-7px) scale(1.055);
+}
+
 .denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-state-art-tint {
   background:
+    radial-gradient(circle at 92% 92%, rgba(247, 238, 233, .3), transparent 32%),
     linear-gradient(90deg, rgba(247, 238, 233, .97) 0, rgba(255, 253, 241, .26) 30%, transparent 62%),
     linear-gradient(180deg, rgba(247, 216, 138, .14), rgba(242, 154, 171, .08));
 }
