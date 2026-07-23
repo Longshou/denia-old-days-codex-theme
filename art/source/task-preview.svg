@@ -41,14 +41,14 @@
     <circle cx="34" cy="389" r="8" fill="#f7d88a"/>
     <rect x="58" y="381" width="442" height="12" rx="6" fill="#7f9ba5" opacity=".28"/>
     <g filter="url(#shadow)">
-      <rect x="0" y="459" width="815" height="290" rx="22" fill="#fffdf1" stroke="#e8c970"/>
-      <path d="M0 459h815v32c-181 21-337-20-493 1-127 18-207 24-322-4z" fill="#f7d88a" opacity=".68"/>
-      <text x="30" y="536" fill="#263548" font-family="Arial, sans-serif" font-size="15" font-weight="700">完成显影</text>
+      <rect x="0" y="459" width="815" height="290" rx="22" fill="#f9ffff" stroke="#b8dde3"/>
+      <path d="M0 459h815v32c-181 21-337-20-493 1-127 18-207 24-322-4z" fill="#8fd2dd" opacity=".24"/>
+      <text x="30" y="536" fill="#263548" font-family="Arial, sans-serif" font-size="15" font-weight="700">当前页 · 处理中</text>
       <rect x="30" y="573" width="654" height="13" rx="7" fill="#7c939e" opacity=".45"/>
       <rect x="30" y="607" width="722" height="12" rx="6" fill="#7c939e" opacity=".28"/>
       <rect x="30" y="640" width="603" height="12" rx="6" fill="#7c939e" opacity=".26"/>
       <rect x="30" y="685" width="214" height="35" rx="17" fill="#dff1f2"/>
-      <text x="52" y="708" fill="#55717c" font-family="Arial, sans-serif" font-size="12">布景之形 · 已归档</text>
+      <text x="52" y="708" fill="#55717c" font-family="Arial, sans-serif" font-size="12">幻灭之形 · 观察中</text>
     </g>
   </g>
   <g transform="translate(444 892)">

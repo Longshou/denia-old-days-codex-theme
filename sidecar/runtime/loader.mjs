@@ -191,15 +191,30 @@ const verifyExpression = `(() => {
   const state = window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const root = document.documentElement;
   const home = root.classList.contains('denia-old-days-ds-home');
+  const chrome = document.getElementById('denia-old-days-ds-chrome');
   const hero = document.querySelector('.denia-old-days-ds-hero');
   const photoFront = document.querySelector('.denia-old-days-ds-photo-front');
   const runtimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-bright').trim();
   const runtimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(runtimeArt)?.[1] || '';
   const heroBackgroundImage = hero ? getComputedStyle(hero).backgroundImage : '';
   const photoFrontBackgroundImage = photoFront ? getComputedStyle(photoFront).backgroundImage : '';
+  const stateArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-dark').trim();
+  const stateArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(stateArt)?.[1] || '';
+  const taskRailStyle = chrome ? getComputedStyle(chrome, '::after') : null;
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
+  const nativeObservations = [...document.querySelectorAll([
+    '[data-content-search-unit-key*="tool"]',
+    '[data-content-search-unit-key*="reasoning"]',
+    '[data-testid*="tool"]',
+    '[data-testid*="reasoning"]',
+    'details',
+  ].join(','))].filter((node) => box(node)?.visible);
+  const decoratedObservations = [...document.querySelectorAll('.denia-old-days-ds-observation')]
+    .filter((node) => box(node)?.visible);
+  const assistants = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')];
+  const finalCard = document.querySelector('.denia-old-days-ds-final-card');
   const cards = suggestions ? [...suggestions.querySelectorAll('button[data-denia-old-days-card]')].map((button) => {
     const item = box(button);
     if (!item) return null;
@@ -238,7 +253,7 @@ const verifyExpression = `(() => {
     metrics: state?.metrics || null,
     installed: root.classList.contains('denia-old-days-ds-extension'),
     stylePresent: Boolean(document.getElementById('denia-old-days-dream-skin-extension-style')),
-    chromePresent: Boolean(document.getElementById('denia-old-days-ds-chrome')),
+    chromePresent: Boolean(chrome),
     sidebarBrand: box(document.getElementById('denia-old-days-ds-sidebar-brand')),
     home,
     taskMode: root.classList.contains('denia-old-days-ds-task'),
@@ -261,6 +276,22 @@ const verifyExpression = `(() => {
       height: composerBeforeStyle.height,
       position: composerBeforeStyle.position,
     } : null,
+    task: !home ? {
+      stateArtPresent: Boolean(stateArtUrl),
+      rail: taskRailStyle ? {
+        backgroundImage: taskRailStyle.backgroundImage,
+        display: taskRailStyle.display,
+        opacity: Number(taskRailStyle.opacity || 0),
+        visible: taskRailStyle.display !== 'none'
+          && taskRailStyle.visibility !== 'hidden'
+          && Number(taskRailStyle.opacity || 0) > 0
+          && Boolean(stateArtUrl && taskRailStyle.backgroundImage.includes(stateArtUrl)),
+      } : null,
+      nativeObservationCount: nativeObservations.length,
+      decoratedObservationCount: decoratedObservations.length,
+      finalCard: box(finalCard),
+      finalCardIsLatestAssistant: Boolean(finalCard && assistants.at(-1) === finalCard),
+    } : null,
     viewport: { width: innerWidth, height: innerHeight },
     overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
   };
@@ -270,7 +301,21 @@ const verifyExpression = `(() => {
     || result.composerBefore.content === 'normal';
   const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && Boolean(result.sidebarBrand?.visible) && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
   const homePass = !home || (result.heroUsesRuntimeArt && Boolean(result.heroCopy?.visible) && result.visibleCardCount === 4 && result.clickableCardCount === 4);
-  result.pass = Boolean(basePass && homePass);
+  const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
+  const activeRailState = ['working', 'approval', 'error'].includes(result.formState);
+  const railHiddenForViewport = innerWidth <= 919;
+  const railMatchesState = home || (activeRailState && !railHiddenForViewport
+    ? result.task?.rail?.visible === true
+    : Number(result.task?.rail?.opacity || 0) === 0 || result.task?.rail?.display === 'none');
+  const observationsPass = home || result.task?.nativeObservationCount === 0
+    || result.task?.decoratedObservationCount >= result.task?.nativeObservationCount;
+  const finalCardPass = home || (result.formState === 'complete'
+    ? Boolean(result.task?.finalCard?.visible) && result.task?.finalCardIsLatestAssistant === true
+    : !result.task?.finalCard);
+  const taskPass = home || (result.taskMode && validTaskState && result.task?.stateArtPresent === true
+    && railMatchesState && observationsPass && finalCardPass);
+  result.taskPass = Boolean(taskPass);
+  result.pass = Boolean(basePass && homePass && result.taskPass);
   return result;
 })()`;
 

@@ -26,6 +26,12 @@ if (!readme.includes("denia-old-days@0.1.0")) throw new Error("README identity m
 const theme = JSON.parse(fs.readFileSync(path.join(root, "theme/theme.json"), "utf8"));
 if (theme.id !== "denia-old-days") throw new Error("theme id mismatch");
 
+const taskPreview = fs.readFileSync(path.join(root, "art/source/task-preview.svg"), "utf8");
+if (!taskPreview.includes("观察记录 · WORKING")) throw new Error("task preview must declare the working state");
+if (["完成显影", "已归档"].some((copy) => taskPreview.includes(copy))) {
+  throw new Error("task preview must not mix working and complete states");
+}
+
 const generatedFiles = [
   "theme/background.jpg",
   "sidecar/assets/denia-old-days-bright.webp",

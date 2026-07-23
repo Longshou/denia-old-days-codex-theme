@@ -137,6 +137,7 @@ assert(!/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/u.test(runtimePayload), "runtime p
 assertRuntimeArtworkLifecycle(runtimePayload);
 assertPublicStateUrlCollectionCoverage();
 assertLiveVerificationArtworkTarget(loader);
+assertLiveTaskVerification(loader);
 assertFallbackCleanupBehavior(loader);
 assertSuggestionDeckLifecycle(runtimePayload);
 assertFormStateRecognition(runtimePayload);
@@ -1040,6 +1041,7 @@ function assertLiveVerificationArtworkTarget(loaderSource) {
         if (selector === ".denia-old-days-ds-photo-front") return photoFront;
         return null;
       },
+      querySelectorAll: () => [],
     };
     const sandbox = {
       document,
@@ -1073,6 +1075,116 @@ function assertLiveVerificationArtworkTarget(loaderSource) {
   assert(
     runCase({}).heroUsesRuntimeArt === false,
     "live verification must reject a missing photo-front artwork URL",
+  );
+}
+
+function assertLiveTaskVerification(loaderSource) {
+  const declarationStart = loaderSource.indexOf("const verifyExpression = `");
+  const declarationEnd = loaderSource.indexOf("`;\n\nclass CdpSession", declarationStart);
+  assert(declarationStart >= 0 && declarationEnd > declarationStart, "validator could not extract loader verifyExpression for task cases");
+  const declaration = loaderSource.slice(declarationStart, declarationEnd + 2);
+  const expression = vm.runInNewContext(`${declaration}\nverifyExpression`);
+
+  const makeNode = (classes = []) => ({
+    classList: { contains: (name) => classes.includes(name) },
+    contains: () => false,
+    getBoundingClientRect: () => ({ x: 100, y: 100, width: 320, height: 80 }),
+  });
+
+  const runCase = ({ formState, railOpacity, decorateObservation = true, includeFinalCard = false }) => {
+    const rootClasses = ["denia-old-days-ds-extension", "denia-old-days-ds-task"];
+    const root = {
+      classList: { contains: (name) => rootClasses.includes(name) },
+      clientWidth: 1200,
+      dataset: { deniaFormState: formState },
+      scrollWidth: 1200,
+    };
+    const style = makeNode();
+    const chrome = makeNode();
+    const sidebar = makeNode();
+    const composer = makeNode();
+    const nativeObservation = makeNode();
+    const observation = decorateObservation ? makeNode(["denia-old-days-ds-observation"]) : null;
+    const assistant = makeNode(includeFinalCard ? ["denia-old-days-ds-final-card"] : []);
+    const finalCard = includeFinalCard ? assistant : null;
+    const document = {
+      documentElement: root,
+      elementFromPoint: () => null,
+      getElementById(id) {
+        if (id === "denia-old-days-dream-skin-extension-style") return style;
+        if (id === "denia-old-days-ds-chrome") return chrome;
+        if (id === "denia-old-days-ds-sidebar-brand") return sidebar;
+        return null;
+      },
+      querySelector(selector) {
+        if (selector === ".composer-surface-chrome") return composer;
+        if (selector === ".denia-old-days-ds-observation") return observation;
+        if (selector === ".denia-old-days-ds-final-card") return finalCard;
+        return null;
+      },
+      querySelectorAll(selector) {
+        if (selector.includes('[data-content-search-unit-key*="tool"]')) return [nativeObservation];
+        if (selector === ".denia-old-days-ds-observation") return observation ? [observation] : [];
+        if (selector === '[data-content-search-unit-key$=":assistant"]') return [assistant];
+        return [];
+      },
+    };
+    const sandbox = {
+      document,
+      getComputedStyle(node, pseudo) {
+        if (node === root) {
+          return {
+            getPropertyValue: (name) => name === "--denia-old-days-art-dark"
+              ? 'url("blob:dark")'
+              : name === "--denia-old-days-art-bright" ? 'url("blob:bright")' : "",
+          };
+        }
+        if (node === chrome && pseudo === "::after") {
+          return {
+            backgroundImage: 'linear-gradient(90deg, rgb(234, 247, 247), transparent), url("blob:dark")',
+            display: "block",
+            opacity: railOpacity,
+            visibility: "visible",
+          };
+        }
+        if (node === composer && pseudo === "::before") {
+          return { content: "none", display: "none", height: "auto", position: "static", width: "auto" };
+        }
+        return { backgroundImage: "none", display: "block", opacity: "1", visibility: "visible" };
+      },
+      innerHeight: 800,
+      innerWidth: 1200,
+      window: {
+        __DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__: {
+          id: "denia-old-days",
+          version: "0.1.0",
+          artReady: true,
+          formState,
+        },
+      },
+    };
+    return vm.runInNewContext(expression, sandbox);
+  };
+
+  assert(
+    runCase({ formState: "working", railOpacity: ".12" }).taskPass === true,
+    "live task verification must accept a decorated working task with visible state artwork",
+  );
+  assert(
+    runCase({ formState: "working", railOpacity: "0" }).taskPass === false,
+    "live task verification must reject working state when the dark state rail is hidden",
+  );
+  assert(
+    runCase({ formState: "working", railOpacity: ".12", decorateObservation: false }).taskPass === false,
+    "live task verification must reject visible native observations that are not diary cards",
+  );
+  assert(
+    runCase({ formState: "complete", railOpacity: "0", includeFinalCard: true }).taskPass === true,
+    "live task verification must accept complete state with hidden dark rail and a final response card",
+  );
+  assert(
+    runCase({ formState: "complete", railOpacity: "0" }).taskPass === false,
+    "live task verification must reject complete state without a final response card",
   );
 }
 
