@@ -15,6 +15,8 @@ const officialSources = new Map([
   ["art/source/official/denia-dark-direct-gaze.jpg", "aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292"],
   ["art/source/official/denia-anniversary-direct-gaze.jpg", "dea27e716f9561131e2b5255ea60a84de2512e8e81886073f09c64e02739fc6e"],
   ["art/source/official/denia-dual-form-panorama.jpg", "646b290ae6a7584ce617cad85976f5caa6ae74e6d6678cd86a17a028266648b5"],
+  ["art/source/official/denia-approval-dual-form.jpg", "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0"],
+  ["art/source/official/denia-error-reaching.jpg", "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4"],
 ]);
 
 for (const [relative, expected] of officialSources) {
