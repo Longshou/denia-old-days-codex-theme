@@ -405,6 +405,14 @@
       '[data-testid*="permission"]',
     ].join(","));
     if ([...stableMarkers].some(visible)) return true;
+    const approvalAction = [...document.querySelectorAll("button")].find((button) => {
+      if (!visible(button)) return false;
+      const text = (button.innerText || button.textContent || button.getAttribute("aria-label") || "")
+        .replace(/\s+/gu, " ")
+        .trim();
+      return /^(allow once|always allow|允许一次|始终允许)$/iu.test(text);
+    });
+    if (approvalAction) return true;
     return [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
       .some((node) => visible(node) && /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(node.textContent || node.getAttribute("aria-label") || ""));
   }

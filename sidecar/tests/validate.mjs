@@ -1643,6 +1643,18 @@ function assertFormStateRecognition(payload) {
     "working state recognition must remain intact",
   );
   assert(
+    runCase(({ document, main }) => {
+      appendMarker({ document, main }, { "data-content-search-unit-key": "unit:assistant" });
+      const permissionCard = document.createElement("div");
+      permissionCard.textContent = "权限";
+      const allow = document.createElement("button");
+      allow.textContent = "允许一次";
+      permissionCard.append(allow);
+      main.append(permissionCard);
+    }) === "approval",
+    "a visible native allow-once action must outrank an existing assistant completion marker",
+  );
+  assert(
     runCase((fixture) => appendMarker(fixture, { "data-content-search-unit-key": "unit:assistant" })) === "complete",
     "completed assistant state recognition must remain intact",
   );
