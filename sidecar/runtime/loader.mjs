@@ -376,13 +376,11 @@ const verifyExpression = `(() => {
     : result.task?.rail?.visible === true
       && result.task?.rail?.family === result.task?.rail?.expectedFamily
       && result.task?.rail?.usesExpectedArt === true);
-  const sidebarPass = home
-    ? result.sidebar.homeNoCharacterPass
-    : sidebarOpen
-      ? result.sidebar.panelVisible && result.sidebar.skinApplied && !result.sidebar.artVisible
-      : sidebarState === 'closed'
-        ? !result.sidebar.skinApplied && railMatchesState
-        : !result.sidebar.skinApplied && !result.sidebar.artVisible;
+  const sidebarPass = sidebarOpen
+    ? result.sidebar.panelVisible && result.sidebar.skinApplied && !result.sidebar.artVisible
+    : sidebarState === 'closed'
+      ? !result.sidebar.skinApplied && (home || railMatchesState)
+      : !result.sidebar.skinApplied && !result.sidebar.artVisible;
   const observationsPass = home || result.task?.nativeObservationCount === 0
     || result.task?.decoratedObservationCount >= result.task?.nativeObservationCount;
   const finalCardPass = home || (result.formState === 'complete'
@@ -391,7 +389,7 @@ const verifyExpression = `(() => {
   const taskPass = home || (result.taskMode && validTaskState && result.task?.stateArtPresent === true
     && railMatchesState && sidebarPass && observationsPass && finalCardPass);
   result.taskPass = Boolean(taskPass);
-  result.pass = Boolean(basePass && homePass && result.taskPass);
+  result.pass = Boolean(basePass && homePass && sidebarPass && result.taskPass);
   return result;
 })()`;
 

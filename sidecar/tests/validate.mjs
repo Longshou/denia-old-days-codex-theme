@@ -1640,11 +1640,12 @@ function assertLiveTaskVerification(loaderSource) {
     railDisplay = "block",
     sidebarState = "closed",
     sidebarConfidence = sidebarState === "open" ? "high" : "none",
+    home = false,
     decorateObservation = true,
     includeFinalCard = false,
-    includeSidebarBrand = false,
+    includeSidebarBrand = home,
   }) => {
-    const rootClasses = ["denia-old-days-ds-extension", "denia-old-days-ds-task"];
+    const rootClasses = ["denia-old-days-ds-extension", home ? "denia-old-days-ds-home" : "denia-old-days-ds-task"];
     const root = {
       classList: { contains: (name) => rootClasses.includes(name) },
       clientWidth: 1200,
@@ -1665,6 +1666,16 @@ function assertLiveTaskVerification(loaderSource) {
     stateArtRail.querySelector = (selector) =>
       selector === ".denia-old-days-ds-state-art-layer.is-active" ? stateArtLayer : null;
     const sidebar = makeNode();
+    const hero = home ? makeNode(["denia-old-days-ds-hero"]) : null;
+    const heroCopy = home ? makeNode() : null;
+    const photoFront = home ? makeNode(["denia-old-days-ds-photo-front"]) : null;
+    const homeCards = home ? Array.from({ length: 4 }, () => makeNode()) : [];
+    for (const card of homeCards) card.contains = () => true;
+    const suggestions = home ? makeNode() : null;
+    if (suggestions) {
+      suggestions.children = homeCards;
+      suggestions.querySelectorAll = (selector) => selector === "button[data-denia-old-days-card]" ? homeCards : [];
+    }
     const nativeSidebar = sidebarState === "open"
       ? makeNode(["denia-old-days-ds-native-right-sidebar"])
       : null;
@@ -1677,15 +1688,19 @@ function assertLiveTaskVerification(loaderSource) {
     const finalCard = includeFinalCard ? assistant : null;
     const document = {
       documentElement: root,
-      elementFromPoint: () => null,
+      elementFromPoint: () => homeCards[0] || null,
       getElementById(id) {
         if (id === "denia-old-days-dream-skin-extension-style") return style;
         if (id === "denia-old-days-ds-chrome") return chrome;
         if (id === "denia-old-days-ds-state-art") return stateArtRail;
         if (id === "denia-old-days-ds-sidebar-brand") return includeSidebarBrand ? sidebar : null;
+        if (id === "denia-old-days-ds-hero-copy") return heroCopy;
+        if (id === "denia-old-days-ds-card-deck") return suggestions;
         return null;
       },
       querySelector(selector) {
+        if (selector === ".denia-old-days-ds-hero") return hero;
+        if (selector === ".denia-old-days-ds-photo-front") return photoFront;
         if (selector === ".composer-surface-chrome") return composer;
         if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebar;
         if (selector === ".denia-old-days-ds-observation") return observation;
@@ -1730,6 +1745,9 @@ function assertLiveTaskVerification(loaderSource) {
             opacity: ".4",
             visibility: "visible",
           };
+        }
+        if (node === photoFront) {
+          return { backgroundImage: 'url("blob:bright")', display: "block", opacity: "1", visibility: "visible" };
         }
         if (node === composer && pseudo === "::before") {
           return { content: "none", display: "none", height: "auto", position: "static", width: "auto" };
@@ -1793,6 +1811,22 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "working", sidebarState: "unknown" }).taskPass === false,
     "live task verification must reject visible state artwork while sidebar detection is unknown",
+  );
+  assert(
+    runCase({ formState: "staged", home: true, sidebarState: "open", railDisplay: "none" }).pass === true,
+    "live verification must accept a skinned home sidebar with hidden state artwork",
+  );
+  assert(
+    runCase({ formState: "staged", home: true, sidebarState: "open" }).pass === false,
+    "live verification must reject visible state artwork while the home sidebar is open",
+  );
+  assert(
+    runCase({ formState: "staged", home: true, sidebarState: "unknown", railDisplay: "none" }).pass === true,
+    "live verification must accept unknown home sidebar detection with hidden state artwork and no skin",
+  );
+  assert(
+    runCase({ formState: "staged", home: true, sidebarState: "unknown" }).pass === false,
+    "live verification must reject visible state artwork while home sidebar detection is unknown",
   );
 }
 
