@@ -127,6 +127,13 @@ const [loader, styles, runtime, packageReadme, packageNotice, ...scripts] = awai
   ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
 ]);
+const startScript = scripts[2];
+const launchBootstrapIndex = startScript.lastIndexOf('/bin/launchctl bootstrap "$LAUNCH_DOMAIN" "$LAUNCH_PLIST"');
+const launchKickstartIndex = startScript.indexOf('/bin/launchctl kickstart -k "$LAUNCH_DOMAIN/$LAUNCH_LABEL"');
+assert(
+  launchBootstrapIndex >= 0 && launchKickstartIndex > launchBootstrapIndex,
+  "start script must kickstart the LaunchAgent after bootstrap",
+);
 const packageDocumentation = `${packageReadme}\n${packageNotice}`;
 assert(!/同一暗色图|approval\s*\/\s*error|approval\s+and\s+error[^.\n]*(?:same|shared)/iu.test(packageDocumentation), "README/NOTICE must not claim approval and error share one image");
 for (const hash of [
@@ -1222,6 +1229,7 @@ function assertLiveTaskVerification(loaderSource) {
     railDisplay = "block",
     decorateObservation = true,
     includeFinalCard = false,
+    includeSidebarBrand = false,
   }) => {
     const rootClasses = ["denia-old-days-ds-extension", "denia-old-days-ds-task"];
     const root = {
@@ -1252,7 +1260,7 @@ function assertLiveTaskVerification(loaderSource) {
         if (id === "denia-old-days-dream-skin-extension-style") return style;
         if (id === "denia-old-days-ds-chrome") return chrome;
         if (id === "denia-old-days-ds-state-art") return stateArtRail;
-        if (id === "denia-old-days-ds-sidebar-brand") return sidebar;
+        if (id === "denia-old-days-ds-sidebar-brand") return includeSidebarBrand ? sidebar : null;
         return null;
       },
       querySelector(selector) {
@@ -1320,6 +1328,10 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "working" }).taskPass === true,
     "live task verification must accept a visible warm working rail",
+  );
+  assert(
+    runCase({ formState: "working" }).pass === true,
+    "live task verification must accept task routes without the home-only sidebar brand",
   );
   assert(
     runCase({ formState: "approval" }).taskPass === true,

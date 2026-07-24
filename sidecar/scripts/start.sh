@@ -58,6 +58,8 @@ if ! /bin/launchctl bootstrap "$LAUNCH_DOMAIN" "$LAUNCH_PLIST" >/dev/null 2>&1; 
   /bin/launchctl bootstrap "$LAUNCH_DOMAIN" "$LAUNCH_PLIST" \
     || fail "Could not bootstrap the Denia Old Days extension LaunchAgent"
 fi
+/bin/launchctl kickstart -k "$LAUNCH_DOMAIN/$LAUNCH_LABEL" >/dev/null 2>&1 \
+  || fail "Could not kickstart the Denia Old Days extension LaunchAgent"
 
 for _ in 1 2 3 4 5 6 7 8; do
   if launch_job_running && [ -f "$RUNTIME_STATE" ] && /usr/bin/grep -q '"status": "running"' "$RUNTIME_STATE"; then

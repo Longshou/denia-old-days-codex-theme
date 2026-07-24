@@ -343,7 +343,8 @@ const verifyExpression = `(() => {
     || result.composerBefore.display === 'none'
     || result.composerBefore.content === 'none'
     || result.composerBefore.content === 'normal';
-  const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && Boolean(result.sidebarBrand?.visible) && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
+  const sidebarBrandPass = home ? Boolean(result.sidebarBrand?.visible) : !result.sidebarBrand;
+  const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && sidebarBrandPass && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
   const homePass = !home || (result.heroUsesRuntimeArt && Boolean(result.heroCopy?.visible) && result.visibleCardCount === 4 && result.clickableCardCount === 4);
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
   const railHiddenForViewport = innerWidth <= 919;
