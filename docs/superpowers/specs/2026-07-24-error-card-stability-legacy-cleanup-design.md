@@ -91,17 +91,22 @@ Observer 的 attribute filter 增加 `data-testid`，VM childList 测试覆盖
 - `art/archive/legacy-main-7851e38/background.svg`
 - `art/archive/legacy-main-7851e38/hero.svg`
 - `art/archive/legacy-main-7851e38/task-preview.svg`
-- `art/reference/visual-library-2026-07-23/production-ready/dark-stage-complete.jpg`
-- `art/reference/visual-library-2026-07-23/production-ready/old-days-half-face-clean.jpg`
+- `art/reference/visual-library-full-2026-07-24/` 下保持原相对路径的全部
+  139 张纯图片。
 
-两个目录各自包含 `PROVENANCE.md`，记录旧路径、SHA-256、审计日期和
-“不得自动打包”边界。8 张已重复官方图不再次复制。
+归档目录包含 `PROVENANCE.md`；视觉库目录包含 `PROVENANCE.md` 和 139 行
+`MANIFEST.tsv`。视觉库中的 5 组内部重复和与 `art/source/` 已有图片的重复均
+按原路径保留，不去重。HTML、JSON、Markdown、MP4、`.DS_Store` 和其他项目文件
+不迁入。先前只迁入两张候选的 `visual-library-2026-07-23` 目录在完整迁移后
+删除，避免额外副本；两张图片仍存在于 full 快照的 `production-ready/`。
 
 ## 旧项目清理
 
-清理目标仅限：
+清理目标：
 
 `/Users/bytedance/ByteDance/workspace/denia-old-days-codex-theme`
+
+`/Users/bytedance/ByteDance/workspace/denia-visual-library`
 
 执行顺序：
 
@@ -114,6 +119,11 @@ Observer 的 attribute filter 增加 `data-testid`，VM childList 测试覆盖
 4. 确认旧主树 clean，且当前构建/LaunchAgent 无绝对路径引用。
 5. 将旧主树移动到
    `/Users/bytedance/.Trash/denia-old-days-codex-theme-legacy-7851e38-20260724`。
+6. 逐项校验视觉库 139 个目的路径、大小和 SHA-256，确认聚合清单哈希为
+   `3ec0442a857f4800c7d9b7e29741d9ef3a09e3975b35575806e453d45ecd11a8`。
+7. 视觉库不是 Git 仓库，不创建无意义的 bundle；确认无打开句柄后，将整个
+   项目移动到
+   `/Users/bytedance/.Trash/denia-visual-library-20260724-cleanup`。
 
 这是可恢复清理，不使用 `rm -rf`。
 
@@ -121,7 +131,6 @@ Observer 的 attribute filter 增加 `data-testid`，VM childList 测试覆盖
 
 - `/Users/bytedance/ByteDance/workspace/Codex-Dream-Skin`
 - `/Users/bytedance/ByteDance/workspace/kaboo`
-- `/Users/bytedance/ByteDance/workspace/denia-visual-library`
 - 当前 `/Users/bytedance/workspace/denia-old-days-codex-theme`
 
 ## 测试与验收
@@ -142,16 +151,17 @@ Observer 的 attribute filter 增加 `data-testid`，VM childList 测试覆盖
 
 ### 资源与清理
 
-- 5 个迁移文件与审计 SHA-256 一致。
+- 3 个旧 SVG 与视觉库 139 张图片的审计 SHA-256 一致。
+- 视觉库 `MANIFEST.tsv` 恰好 139 行数据、总字节 57,419,633，聚合哈希匹配。
 - 归档资源不出现在 Sidecar manifest、renderer input 或 release ZIP。
 - Git bundle 可验证。
-- 旧项目原路径不存在，废纸篓目标存在且可恢复。
-- 三个依赖项目与当前仓库仍存在且未被修改。
+- 两个旧项目原路径不存在，两个废纸篓目标存在且可恢复。
+- Dream Skin、Kaboo 与当前仓库仍存在且未被修改。
 
 ## 不在范围
 
 - 不扩大错误关键词到一般自然语言。
 - 不改变错误、审批、工作、完成的人物图片或 opacity。
 - 不重排 Hero、工作区或 composer。
-- 不删除视觉研究库、Dream Skin 或 Kaboo。
+- 不删除 Dream Skin 或 Kaboo。
 - 不上传、推送、建 PR、发布 Registry 或重启 Codex。

@@ -258,7 +258,88 @@ git add art/archive art/reference scripts/check-source.mjs
 git commit -m "chore: archive unique legacy artwork"
 ```
 
-### Task 4: Review, recoverably clean the old repository, integrate, and update the local package
+### Task 4: Preserve every pure image from the visual library
+
+**Files:**
+- Create: `art/reference/visual-library-full-2026-07-24/production-ready/**`
+- Create: `art/reference/visual-library-full-2026-07-24/reference-only/**`
+- Create: `art/reference/visual-library-full-2026-07-24/source-media/**`
+- Create: `art/reference/visual-library-full-2026-07-24/MANIFEST.tsv`
+- Create: `art/reference/visual-library-full-2026-07-24/PROVENANCE.md`
+- Delete: `art/reference/visual-library-2026-07-23/`
+- Modify: `scripts/check-source.mjs`
+- Modify: `docs/current-theme-design.md`
+
+**Step 1: Add failing full-library checks**
+
+Require:
+
+- exactly 139 image rows and 139 destination image files;
+- total image bytes `57,419,633`;
+- sorted manifest header
+  `source_relative_path\tsize_bytes\tsha256`;
+- aggregate SHA-256
+  `3ec0442a857f4800c7d9b7e29741d9ef3a09e3975b35575806e453d45ecd11a8`
+  over sorted `SHA256  relative-path` lines;
+- every destination size/hash matches its manifest row;
+- only image MIME types exist below the three copied source directories;
+- the full-library root cannot enter manifest, renderer inputs, or release inputs.
+
+Run `node scripts/check-source.mjs` and confirm it fails because the full snapshot is absent.
+
+**Step 2: Copy all images byte-for-byte**
+
+From `/Users/bytedance/ByteDance/workspace/denia-visual-library`, recursively copy every
+regular file whose `file --mime-type` is `image/*`, preserving its source-relative path
+below `art/reference/visual-library-full-2026-07-24/`.
+
+Keep all duplicate paths. Do not hardlink, deduplicate, rename, recompress, strip metadata,
+or copy HTML, JSON, Markdown, MP4, `.DS_Store`, caches, or project files.
+
+**Step 3: Generate manifest and provenance**
+
+Generate `MANIFEST.tsv` from destination bytes, sorted lexicographically, with exactly
+139 data rows.
+
+Write concise `PROVENANCE.md` containing:
+
+- source collection name/path and audit date;
+- 139 images / 57,419,633 bytes;
+- MIME and SHA-256 identification method;
+- intentional exclusion of project and video files;
+- source/attribution facts transcribed from the old README, manifest, and SOURCES without
+  copying those project files or inventing license claims;
+- five retained internal duplicate groups and existing `art/` overlap;
+- “reference only; never automatically packaged.”
+
+**Step 4: Remove the superseded two-file snapshot**
+
+Delete `art/reference/visual-library-2026-07-23/` only after both images are present with
+matching hashes at:
+
+- `visual-library-full-2026-07-24/production-ready/dark-stage-complete.jpg`
+- `visual-library-full-2026-07-24/production-ready/old-days-half-face-clean.jpg`
+
+Update source checks and current design documentation to point at the full snapshot.
+
+**Step 5: Verify and commit**
+
+Run:
+
+```bash
+node scripts/check-source.mjs
+node sidecar/tests/validate.mjs sidecar
+git diff --check
+```
+
+Commit:
+
+```bash
+git add art/reference scripts/check-source.mjs docs/current-theme-design.md
+git commit -m "chore: preserve full Denia visual library"
+```
+
+### Task 5: Review, recoverably clean the old repositories, integrate, and update the local package
 
 **Files:**
 - Create outside repo: `/Users/bytedance/Archives/denia-old-days-codex-theme-legacy-7851e38.bundle`
@@ -266,6 +347,10 @@ git commit -m "chore: archive unique legacy artwork"
   `/Users/bytedance/ByteDance/workspace/denia-old-days-codex-theme`
   to
   `/Users/bytedance/.Trash/denia-old-days-codex-theme-legacy-7851e38-20260724`
+- Move outside repo:
+  `/Users/bytedance/ByteDance/workspace/denia-visual-library`
+  to
+  `/Users/bytedance/.Trash/denia-visual-library-20260724-cleanup`
 
 **Step 1: Run whole-branch review**
 
@@ -281,7 +366,8 @@ node scripts/check-source.mjs
 git diff --check 1129cfe...HEAD
 ```
 
-Verify all five archived hashes again and confirm the three protected projects and the current repository exist.
+Verify the three archived SVG hashes and the 139-row visual-library manifest/aggregate hash.
+Confirm Dream Skin, Kaboo, both cleanup sources, and the current repository exist.
 
 **Step 3: Export and verify the legacy Git history**
 
@@ -318,7 +404,20 @@ Then move the exact directory to:
 
 Confirm the old path is absent, the Trash destination exists, and the three protected projects remain.
 
-**Step 6: Fast-forward main**
+**Step 6: Move the image-only visual library source to Trash**
+
+Reconfirm all 139 destination paths, sizes and hashes. Confirm the visual-library source
+is still not Git, contains no symlinks, and has no open `lsof +D` handles. Confirm the
+Trash target does not exist.
+
+Move the exact source directory in one operation to:
+
+`/Users/bytedance/.Trash/denia-visual-library-20260724-cleanup`
+
+Do not use `rm -rf`. Verify the old path is absent, the Trash target is present, and its
+139 source images still match `MANIFEST.tsv`.
+
+**Step 7: Fast-forward main**
 
 In `/Users/bytedance/workspace/denia-old-days-codex-theme`:
 
@@ -328,7 +427,7 @@ git merge --ff-only codex/error-card-stability-cleanup
 
 Do not push or create a PR.
 
-**Step 7: Build and update the local test package once**
+**Step 8: Build and update the local test package once**
 
 Use the repository’s existing release build path to regenerate:
 
@@ -336,7 +435,7 @@ Use the repository’s existing release build path to regenerate:
 
 Install/apply the updated local package using the existing non-launching install path. Do not invoke `start-local-test.command`, start a launcher, or restart Codex.
 
-**Step 8: Final verification**
+**Step 9: Final verification**
 
 Run only:
 
@@ -345,7 +444,8 @@ node sidecar/tests/validate.mjs sidecar
 node scripts/check-source.mjs
 ```
 
-Also verify release ZIP integrity, the installed extension version/hash, archived hashes, bundle verification, Trash destination, and protected project presence.
+Also verify release ZIP integrity, archived hashes, the full visual manifest, bundle
+verification, both Trash destinations, and protected project presence.
 
 Report:
 
