@@ -186,6 +186,36 @@ if (composerRight > 1220) {
   throw new Error(`task preview composer enters the rail safety zone: right edge ${composerRight}`);
 }
 
+const archivedArtwork = new Map([
+  ["art/archive/legacy-main-7851e38/background.svg", "f434bc0fbf01523e8198f7f41bdb546c98186e99a6c0c5ab44a5ca6ed1a6df1a"],
+  ["art/archive/legacy-main-7851e38/hero.svg", "a7cacba007ae990c9b02bba07fdf9437c0a40b6028189109c21c37c3090671ec"],
+  ["art/archive/legacy-main-7851e38/task-preview.svg", "ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade"],
+  ["art/reference/visual-library-2026-07-23/production-ready/dark-stage-complete.jpg", "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed"],
+  ["art/reference/visual-library-2026-07-23/production-ready/old-days-half-face-clean.jpg", "c908f50f08dcc345a442ae9de73112d59725fdd2352114c142955093c13deb37"],
+]);
+for (const [relative, expected] of archivedArtwork) {
+  const bytes = fs.readFileSync(path.join(root, relative));
+  const actual = crypto.createHash("sha256").update(bytes).digest("hex");
+  if (actual !== expected) throw new Error(`archived artwork hash mismatch: ${relative}`);
+}
+
+const archiveDirectories = [
+  "art/archive/legacy-main-7851e38",
+  "art/reference/visual-library-2026-07-23",
+];
+const sidecarManifest = fs.readFileSync(path.join(root, "sidecar/extension.json"), "utf8");
+for (const [name, input] of [
+  ["Sidecar manifest", sidecarManifest],
+  ["renderer input list", rendererSource],
+  ["release ZIP input list", localReleaseBuilder],
+]) {
+  for (const archiveDirectory of archiveDirectories) {
+    if (input.includes(archiveDirectory)) {
+      throw new Error(`${name} must not include archived artwork: ${archiveDirectory}`);
+    }
+  }
+}
+
 const generatedFiles = [
   "theme/background.jpg",
   "sidecar/assets/denia-old-days-bright.webp",
