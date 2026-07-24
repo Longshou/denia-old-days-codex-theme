@@ -126,6 +126,8 @@
 - `box-shadow`
 - `color`
 - `outline-color`
+- `transition`，且只允许过渡 `background-color`、`border-color`、`box-shadow`、`color`
+- `transition-duration`
 
 不得修改：
 
@@ -273,4 +275,3 @@ sidebar: {
 - 不改变首页 Hero、建议卡、输入区和任务内容卡。
 - 不上传、推送、创建 PR 或发布 Registry。
 - 不主动重启 Codex。
-
