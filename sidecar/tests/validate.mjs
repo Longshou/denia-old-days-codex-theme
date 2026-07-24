@@ -1367,7 +1367,7 @@ function createRuntimeHarness(createObjectUrl) {
           const oldValue = Object.hasOwn(values, key) ? String(values[key]) : null;
           const nextValue = String(value);
           values[key] = nextValue;
-          if (oldValue !== nextValue) recordAttributeMutation(this, dataAttributeName(key), oldValue);
+          recordAttributeMutation(this, dataAttributeName(key), oldValue);
           return true;
         },
         deleteProperty: (values, key) => {
@@ -1385,7 +1385,18 @@ function createRuntimeHarness(createObjectUrl) {
       this.textContent = "";
       this.innerHTML = "";
       this.listeners = new Map();
-      this.disabled = false;
+      this.#disabled = false;
+      Object.defineProperty(this, "disabled", {
+        enumerable: true,
+        get: () => this.#disabled,
+        set: (value) => {
+          const oldValue = this.#disabled ? "" : null;
+          const nextValue = Boolean(value);
+          if (nextValue === this.#disabled) return;
+          this.#disabled = nextValue;
+          recordAttributeMutation(this, "disabled", oldValue);
+        },
+      });
       this.rect = { x: 0, y: 0, width: 120, height: 36 };
     }
 
@@ -1486,6 +1497,8 @@ function createRuntimeHarness(createObjectUrl) {
       this.children.splice(index, 0, node);
       recordChildListMutation(this, [node]);
     }
+
+    #disabled;
   }
 
   const documentElement = new FakeElement("html");
@@ -2339,6 +2352,28 @@ function assertSuggestionDeckLifecycle(payload) {
     };
     const buttons = remount(initialLabels);
     main.append(workspace);
+    workspace.getBoundingClientRect = () => {
+      const workspaceIndex = main.children.indexOf(workspace);
+      const y = 40 + main.children.slice(0, workspaceIndex).reduce((offset, node) => {
+        if (node.id === "denia-old-days-ds-hero-copy") return offset + 390;
+        if (node.id === "denia-old-days-ds-suggestion-slot") {
+          const retainedHeight = Number.parseFloat(node.style.getPropertyValue("--denia-old-days-suggestion-slot-height"));
+          return offset + (Number.isFinite(retainedHeight) ? retainedHeight : 0);
+        }
+        if (node.id === "denia-old-days-ds-card-deck") return offset + node.getBoundingClientRect().height;
+        return offset;
+      }, 0);
+      return {
+        x: workspace.rect.x,
+        y,
+        width: workspace.rect.width,
+        height: workspace.rect.height,
+        left: workspace.rect.x,
+        top: y,
+        right: workspace.rect.x + workspace.rect.width,
+        bottom: y + workspace.rect.height,
+      };
+    };
     return { harness, main, remount, buttons, nativeContainer: () => nativeContainer, workspace };
   };
 
@@ -2365,6 +2400,13 @@ function assertSuggestionDeckLifecycle(payload) {
   state.refresh();
   assert(slot.style.getPropertyValue("--denia-old-days-suggestion-slot-height") === "116px", "a valid deck mount must retain its measured block height on the slot");
   const workspaceTop = complete.workspace.getBoundingClientRect().y;
+  assert(workspaceTop === 546, "workspace geometry must be derived from the preceding hero and retained slot height");
+
+  const hero = complete.harness.document.getElementById("denia-old-days-ds-hero-copy");
+  const interveningNativeNode = complete.harness.document.createElement("div");
+  hero.insertAdjacentElement("afterend", interveningNativeNode);
+  state.refresh();
+  assert(complete.main.children[complete.main.children.indexOf(hero) + 1] === slot, "every home refresh must restore the suggestion slot immediately after the hero");
 
   const dropped = complete.remount(labels.slice(0, 3));
   state.refresh();
@@ -2387,17 +2429,25 @@ function assertSuggestionDeckLifecycle(payload) {
     assert(semanticTargets[index].clickCount === 1, `${action} proxy must bind to its semantic native action after reorder`);
   });
 
+  complete.harness.clearMutationRecords();
   reordered[3].disabled = true;
-  state.refresh();
+  assert(complete.harness.flushMutations() === 1, "a native disabled property change must reach the observer");
+  assert(complete.harness.flushAnimationFrames() === 1, "a native disabled property change must schedule one refresh");
   const refreshedProxies = deck.querySelectorAll("button[data-denia-old-days-card]");
   assert(refreshedProxies[1].disabled, "Build proxy disabled state must follow the semantic Build action after reorder");
   assert([refreshedProxies[0], refreshedProxies[2], refreshedProxies[3]].every((button) => !button.disabled), "other proxies must remain enabled when only Build is disabled");
+
+  reordered[3].disabled = false;
+  complete.harness.clearMutationRecords();
+  reordered[3].setAttribute("aria-disabled", "true");
+  assert(complete.harness.flushMutations() === 1, "a native aria-disabled change must reach the observer");
+  assert(complete.harness.flushAnimationFrames() === 1, "a native aria-disabled change must schedule one refresh");
+  assert(deck.querySelectorAll("button[data-denia-old-days-card]")[1].disabled, "Build proxy disabled state must honor aria-disabled on the current native action");
 
   const incompleteCategories = makeHarness([labels[0], "Understand project", labels[2], labels[3]]);
   vm.runInContext(payload, incompleteCategories.harness.context, { timeout: 1000 });
   assert(!incompleteCategories.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck requires one native action from each semantic category");
 
-  complete.nativeContainer().remove();
   complete.main.classList.remove("dream-skin-home");
   const assistant = complete.harness.document.createElement("article");
   assistant.setAttribute("data-content-search-unit-key", "task:assistant");
@@ -2405,6 +2455,8 @@ function assertSuggestionDeckLifecycle(payload) {
   state.refresh();
   assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "leaving home must remove the persistent suggestion slot");
   assert(state.suggestionSlotHeight === 0, "leaving home must clear the retained suggestion slot measurement");
+  assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "leaving home must restore a still-connected native suggestion container");
+  assert(reordered.every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "leaving home must restore still-connected native suggestion buttons");
   state.cleanup();
   assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "cleanup must not leave a suggestion slot behind");
 }
@@ -2435,6 +2487,17 @@ function assertObserverStability(payload) {
   assert(harness.deliverMutationRecords([themeOnlyClassRecord]) === 1, "the observer harness must allow one record to be delivered directly");
   assert(harness.flushAnimationFrames() === 0, "a class token delta containing only extension tokens must not schedule refresh");
 
+  const svgClassTarget = {
+    className: { baseVal: "denia-old-days-ds-svg-token" },
+    parentElement: null,
+    getAttribute: (name) => name === "class" ? "denia-old-days-ds-svg-token" : null,
+  };
+  assert(
+    harness.deliverMutationRecords([{ type: "attributes", target: svgClassTarget, attributeName: "class", oldValue: "" }]) === 1,
+    "the observer harness must deliver SVG-shaped class records",
+  );
+  assert(harness.flushAnimationFrames() === 0, "an SVG class delta containing only extension tokens must not schedule refresh");
+
   harness.clearMutationRecords();
   rail.classList.add("native-looking-owned-child-change");
   assert(harness.flushMutations() === 1, "an owned descendant class change must reach the observer callback");
@@ -2451,6 +2514,25 @@ function assertObserverStability(payload) {
     "the observer harness must support explicit child-list record batches",
   );
   assert(harness.flushAnimationFrames() === 0, "a child-list record containing only owned nodes must not schedule refresh");
+
+  const nativeRemountNode = harness.document.createElement("button");
+  rail.append(nativeRemountNode);
+  harness.clearMutationRecords();
+  assert(
+    harness.deliverMutationRecords([{
+      type: "childList",
+      target: main,
+      addedNodes: [nativeRemountNode],
+      removedNodes: [nativeRemountNode],
+    }]) === 1,
+    "the observer harness must deliver a native remount child-list batch",
+  );
+  assert(harness.flushAnimationFrames() === 1, "a native remount batch must not be swallowed merely because its nodes currently have an owned ancestor");
+
+  harness.clearMutationRecords();
+  main.dataset.state = "observer-probe";
+  main.dataset.state = "observer-probe";
+  assert(harness.takeMutationRecords().length === 2, "the VM dataset mock must record every dataset write so idempotence checks catch redundant writes");
 
   harness.clearMutationRecords();
   main.classList.add("denia-old-days-ds-batch-token");

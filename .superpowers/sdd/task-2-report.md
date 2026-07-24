@@ -48,3 +48,19 @@
 
 - 只读状态检查发现已有 renderer 在运行，但它使用的是未安装本次改动的旧包：verify 报告 `suggestionSlot: null`，且 `metrics.refreshes: 315105`。为遵守“不安装、不启动、不重启 Codex”，未写入该安装包；因此没有把该 live 结果当作本次实现的通过证据。
 - 未发现需要额外架构决策的 brief 外分岔。
+
+## 审查修复（后续提交）
+
+- class mutation 现在通过 `getAttribute('class')` 读取当前 token；新增 SVGAnimatedString 形状 class record 回归，避免对 SVG 的 `className` 对象调用 `split()`。
+- owned subtree 与 child-list node 判定分离：target 可沿当前 active owned subtree 判断；added/removed node 只使用 `WeakSet` 中的稳定 direct ownership。新增“当前挂在 owned ancestor 下的 native remount batch”回归，确保它仍调度 refresh。
+- 离开首页复用原生 suggestion class 恢复逻辑；deck 先于 slot 清理，并在 detached 后从 `ownedNodes` 删除；cleanup 也使用相同顺序，避免长期 Set 保留 detached deck。
+- observer 新增 `disabled` 与 `aria-disabled`；代理禁用态读取当前原生 `disabled` 或 `aria-disabled="true"`，测试通过真实 mutation delivery 验证 property 与 ARIA 两条路径。
+- 每次 ensure 都把 slot 重新放回 hero 的紧邻后方；workspace y 测试改为由前序 sibling 与 retained slot height 推导，不再使用固定 rect。
+- VM dataset proxy 改为记录每一次写入，以保证 compare-before-write 测试会捕捉冗余 dataset mutation。
+
+### 审查修复验证
+
+- RED：扩展回归后 `node sidecar/tests/validate.mjs sidecar` 先后暴露“slot 未紧随 hero”“disabled 未观察”“home teardown 未恢复”“SVG className 非字符串”“native remount 被吞掉”等失败点。
+- GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
+- `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
+- `git diff --check`：退出码 0，无空白错误。

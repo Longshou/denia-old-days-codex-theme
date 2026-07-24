@@ -12,6 +12,7 @@
   const root = document.documentElement;
   const touchedNodes = new Set();
   const ownedNodes = new Set();
+  const ownedNodeHistory = new WeakSet();
   const listeners = [];
   let nativeSidebarPanel = null;
   const nativeSidebarGroups = new Set();
@@ -92,15 +93,20 @@
 
   function own(node) {
     ownedNodes.add(node);
+    ownedNodeHistory.add(node);
     state.metrics.createdNodes += 1;
     return node;
   }
 
-  function isOwnedNode(node) {
+  function isOwnedSubtree(node) {
     for (let current = node; current; current = current.parentElement) {
-      if (ownedNodes.has(current) || current.id?.startsWith("denia-old-days-ds-")) return true;
+      if (ownedNodes.has(current)) return true;
     }
     return false;
+  }
+
+  function isOwnedRecordNode(node) {
+    return ownedNodeHistory.has(node);
   }
 
   function syncClass(node, className, present) {
@@ -468,6 +474,10 @@
     return semanticButtons;
   }
 
+  function nativeActionDisabled(button) {
+    return Boolean(button?.disabled || button?.getAttribute("aria-disabled") === "true");
+  }
+
   function isHomeView() {
     const main = findMain();
     if (!main) return false;
@@ -671,10 +681,14 @@
     let slot = document.getElementById("denia-old-days-ds-suggestion-slot");
     const hero = ensureHomeHero();
     if (!hero) return null;
-    if (slot?.isConnected && slot.parentElement === hero.parentElement) return slot;
+    if (slot?.isConnected && slot.parentElement === hero.parentElement) {
+      const siblings = [...hero.parentElement.children];
+      if (siblings[siblings.indexOf(hero) + 1] !== slot) hero.insertAdjacentElement("afterend", slot);
+      return slot;
+    }
     if (slot) {
-      ownedNodes.delete(slot);
       slot.remove();
+      ownedNodes.delete(slot);
     }
     slot = own(document.createElement("div"));
     slot.id = "denia-old-days-ds-suggestion-slot";
@@ -693,19 +707,23 @@
     setStyleProperty(slot, "--denia-old-days-suggestion-slot-height", `${height}px`);
   }
 
+  function restoreNativeSuggestionClasses() {
+    for (const node of touchedNodes) {
+      syncClass(node, "denia-old-days-ds-native-card", false);
+      syncClass(node, "denia-old-days-ds-native-suggestions", false);
+    }
+  }
+
   function ensureSuggestionDeck() {
     const slot = ensureSuggestionSlot();
     let deck = document.getElementById("denia-old-days-ds-card-deck");
     const nativeButtons = nativeSuggestionButtons();
     if (nativeButtons.length !== 4) {
       if (deck) {
-        ownedNodes.delete(deck);
         deck.remove();
+        ownedNodes.delete(deck);
       }
-      for (const node of touchedNodes) {
-        syncClass(node, "denia-old-days-ds-native-card", false);
-        syncClass(node, "denia-old-days-ds-native-suggestions", false);
-      }
+      restoreNativeSuggestionClasses();
       return null;
     }
     if (!slot) return null;
@@ -715,7 +733,7 @@
     if (deck?.isConnected) {
       if (deck.parentElement !== slot) slot.append(deck);
       [...deck.querySelectorAll("button")].forEach((button, index) => {
-        button.disabled = Boolean(nativeButtons[index]?.disabled);
+        button.disabled = nativeActionDisabled(nativeButtons[index]);
       });
       retainSuggestionSlotHeight(slot, deck);
       return deck;
@@ -729,7 +747,7 @@
       button.type = "button";
       button.id = `denia-old-days-ds-card-${index + 1}`;
       setDatasetValue(button, "deniaOldDaysCard", String(index));
-      button.disabled = Boolean(nativeButtons[index]?.disabled);
+      button.disabled = nativeActionDisabled(nativeButtons[index]);
       const number = document.createElement("span");
       number.className = "denia-old-days-ds-card-number";
       number.textContent = `0${index + 1}`;
@@ -839,11 +857,12 @@
   }
 
   function removeHomeNodes() {
-    for (const id of ["denia-old-days-ds-hero-copy", "denia-old-days-ds-suggestion-slot", "denia-old-days-ds-card-deck"]) {
+    restoreNativeSuggestionClasses();
+    for (const id of ["denia-old-days-ds-card-deck", "denia-old-days-ds-suggestion-slot", "denia-old-days-ds-hero-copy"]) {
       const node = document.getElementById(id);
       if (!node) continue;
-      ownedNodes.delete(node);
       node.remove();
+      ownedNodes.delete(node);
     }
     state.suggestionSlotHeight = 0;
   }
@@ -881,7 +900,8 @@
 
   function extensionClassDeltaOnly(record) {
     const oldTokens = new Set((record.oldValue || "").split(/\s+/u).filter(Boolean));
-    const currentTokens = new Set((record.target.className || "").split(/\s+/u).filter(Boolean));
+    const currentClass = record.target.getAttribute?.("class") || "";
+    const currentTokens = new Set(currentClass.split(/\s+/u).filter(Boolean));
     const changedTokens = new Set([
       ...[...oldTokens].filter((token) => !currentTokens.has(token)),
       ...[...currentTokens].filter((token) => !oldTokens.has(token)),
@@ -890,12 +910,12 @@
   }
 
   function mutationIsThemeOnly(record) {
-    if (isOwnedNode(record.target)) return true;
+    if (isOwnedSubtree(record.target)) return true;
     if (record.type === "attributes") {
       return record.attributeName === "class" && extensionClassDeltaOnly(record);
     }
     if (record.type === "childList") {
-      return [...record.addedNodes, ...record.removedNodes].every(isOwnedNode);
+      return [...record.addedNodes, ...record.removedNodes].every(isOwnedRecordNode);
     }
     return false;
   }
@@ -910,7 +930,11 @@
     if (state.frame) cancelAnimationFrame(state.frame);
     for (const [target, name, handler] of listeners) target.removeEventListener(name, handler);
     clearNativeRightSidebarClasses();
-    for (const node of ownedNodes) node.remove();
+    removeHomeNodes();
+    for (const node of [...ownedNodes]) {
+      node.remove();
+      ownedNodes.delete(node);
+    }
     state.suggestionSlotHeight = 0;
     for (const node of touchedNodes) {
       for (const className of removableClasses) node.classList?.remove(className);
@@ -960,12 +984,14 @@
     attributeFilter: [
       "aria-busy",
       "aria-controls",
+      "aria-disabled",
       "aria-expanded",
       "aria-hidden",
       "hidden",
       "data-state",
       "data-status",
       "data-testid",
+      "disabled",
       "style",
       "class",
     ],
