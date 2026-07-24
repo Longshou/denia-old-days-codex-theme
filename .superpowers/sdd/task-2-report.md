@@ -64,3 +64,15 @@
 - GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
 - `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
 - `git diff --check`：退出码 0，无空白错误。
+
+## 第二轮审查修复（后续提交）
+
+- 原生建议动作的发现改为要求节点仍连接、具有有效几何且未被 `aria-hidden`、`display: none` 或 `visibility: hidden` 隐藏；仅当零透明度来自 `denia-old-days-ds-native-card` 或 `denia-old-days-ds-native-suggestions` 时继续接受。这让主题隐藏原生卡后，重复 refresh 仍能保留代理卡和当前 click mapping。
+- 代理 `disabled` 同步改为 compare-before-write；VM harness 的 disabled setter 记录每次 property 写入，稳定 refresh 因而能捕获同值反射。
+
+### 第二轮审查修复验证
+
+- RED：新增主题零透明度回归最初失败为 `theme-hidden native actions must keep the existing deck mounted on a repeated refresh`；修正发现逻辑后，新增 disabled 回归按预期失败为 `a stable refresh with a disabled native action must not reflect the same disabled value onto proxies`。
+- GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
+- `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
+- `git diff --check`：退出码 0，无空白错误。

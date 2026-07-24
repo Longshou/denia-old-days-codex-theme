@@ -1392,7 +1392,6 @@ function createRuntimeHarness(createObjectUrl) {
         set: (value) => {
           const oldValue = this.#disabled ? "" : null;
           const nextValue = Boolean(value);
-          if (nextValue === this.#disabled) return;
           this.#disabled = nextValue;
           recordAttributeMutation(this, "disabled", oldValue);
         },
@@ -2429,6 +2428,16 @@ function assertSuggestionDeckLifecycle(payload) {
     assert(semanticTargets[index].clickCount === 1, `${action} proxy must bind to its semantic native action after reorder`);
   });
 
+  complete.nativeContainer().computedOpacity = "0";
+  reordered.forEach((button) => { button.computedOpacity = "0"; });
+  state.refresh();
+  deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
+  assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "theme-hidden native actions must keep the existing deck mounted on a repeated refresh");
+  deck.querySelectorAll("button[data-denia-old-days-card]").forEach((button, index) => {
+    button.click();
+    assert(semanticTargets[index].clickCount === 2, "theme-hidden native actions must remain the current proxy click targets");
+  });
+
   complete.harness.clearMutationRecords();
   reordered[3].disabled = true;
   assert(complete.harness.flushMutations() === 1, "a native disabled property change must reach the observer");
@@ -2443,6 +2452,13 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(complete.harness.flushMutations() === 1, "a native aria-disabled change must reach the observer");
   assert(complete.harness.flushAnimationFrames() === 1, "a native aria-disabled change must schedule one refresh");
   assert(deck.querySelectorAll("button[data-denia-old-days-card]")[1].disabled, "Build proxy disabled state must honor aria-disabled on the current native action");
+
+  complete.harness.clearMutationRecords();
+  state.refresh();
+  assert(
+    complete.harness.takeMutationRecords().filter((record) => record.type === "attributes" && record.attributeName === "disabled").length === 0,
+    "a stable refresh with a disabled native action must not reflect the same disabled value onto proxies",
+  );
 
   const incompleteCategories = makeHarness([labels[0], "Understand project", labels[2], labels[3]]);
   vm.runInContext(payload, incompleteCategories.harness.context, { timeout: 1000 });

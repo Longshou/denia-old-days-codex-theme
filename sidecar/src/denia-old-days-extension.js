@@ -161,6 +161,22 @@
     return true;
   }
 
+  function visibleNativeSuggestion(node) {
+    if (!(node instanceof HTMLElement) || node.isConnected === false) return false;
+    const box = node.getBoundingClientRect();
+    if (box.width <= 0 || box.height <= 0) return false;
+    for (let current = node; current instanceof HTMLElement; current = current.parentElement) {
+      if (current.getAttribute("aria-hidden") === "true") return false;
+      const computed = getComputedStyle(current);
+      if (computed.display === "none" || computed.visibility === "hidden") return false;
+      const opacity = Number.parseFloat(computed.opacity);
+      const themeHidesSuggestion = current.classList.contains("denia-old-days-ds-native-card")
+        || current.classList.contains("denia-old-days-ds-native-suggestions");
+      if (Number.isFinite(opacity) && opacity <= 0 && !themeHidesSuggestion) return false;
+    }
+    return true;
+  }
+
   function normalizedNodeLabel(node) {
     return (node?.getAttribute?.("aria-label")
       || node?.getAttribute?.("title")
@@ -456,7 +472,7 @@
       /fix|debug|修复|失败|问题/iu,
     ];
     const candidates = [...document.querySelectorAll("button")].filter((button) => {
-      if (!visible(button) || button.closest("#denia-old-days-ds-card-deck")) return false;
+      if (!visibleNativeSuggestion(button) || button.closest("#denia-old-days-ds-card-deck")) return false;
       if (button.closest("aside, nav, .composer-surface-chrome")) return false;
       const text = (button.innerText || button.textContent || "").trim();
       return text.length > 2 && text.length < 180 && approved.some((pattern) => pattern.test(text));
@@ -476,6 +492,12 @@
 
   function nativeActionDisabled(button) {
     return Boolean(button?.disabled || button?.getAttribute("aria-disabled") === "true");
+  }
+
+  function syncDisabledState(button, disabled) {
+    if (button.disabled === disabled) return false;
+    button.disabled = disabled;
+    return true;
   }
 
   function isHomeView() {
@@ -733,7 +755,7 @@
     if (deck?.isConnected) {
       if (deck.parentElement !== slot) slot.append(deck);
       [...deck.querySelectorAll("button")].forEach((button, index) => {
-        button.disabled = nativeActionDisabled(nativeButtons[index]);
+        syncDisabledState(button, nativeActionDisabled(nativeButtons[index]));
       });
       retainSuggestionSlotHeight(slot, deck);
       return deck;
@@ -747,7 +769,7 @@
       button.type = "button";
       button.id = `denia-old-days-ds-card-${index + 1}`;
       setDatasetValue(button, "deniaOldDaysCard", String(index));
-      button.disabled = nativeActionDisabled(nativeButtons[index]);
+      syncDisabledState(button, nativeActionDisabled(nativeButtons[index]));
       const number = document.createElement("span");
       number.className = "denia-old-days-ds-card-number";
       number.textContent = `0${index + 1}`;
