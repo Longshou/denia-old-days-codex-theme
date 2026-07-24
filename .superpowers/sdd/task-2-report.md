@@ -76,3 +76,16 @@
 - GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
 - `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
 - `git diff --check`：退出码 0，无空白错误。
+
+## 第三轮审查修复（后续提交）
+
+- 本节取代第二轮的透明度 class 例外：原生建议 container/button 的主题 CSS 不再声明 `opacity: 0`，继续使用 1px 尺寸、clip/clip-path、overflow 与 `pointer-events: none` 进行视觉和交互隐藏。
+- `nativeSuggestionButtons()` 恢复使用通用 `visible()` 判断；因此原生界面真正淡出到零透明度的旧动作会被排除，即使它仍带有 `denia-old-days-ds-native-*` class。
+- 测试在已装饰的旧动作被原生 opacity 淡出后并行挂载一组当前动作，验证 discovery 与代理点击只选择当前动作；常规重复 refresh、property/ARIA disabled 同步及稳定 refresh 的同值 disabled 零写入回归仍保留。
+
+### 第三轮审查修复验证
+
+- RED：`node sidecar/tests/validate.mjs sidecar` 按预期失败为 `an opaque stale native action must not displace the current proxy click target`，证明旧 class 透明度例外会优先选择旧动作。
+- GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
+- `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
+- `git diff --check`：退出码 0，无空白错误。

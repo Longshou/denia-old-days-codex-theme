@@ -2334,21 +2334,25 @@ function assertSuggestionDeckLifecycle(payload) {
     const workspace = harness.document.createElement("section");
     workspace.className = "native-workspace";
     workspace.setRect({ x: 196, y: 760, width: 1120, height: 180 });
-    const remount = (nextLabels) => {
-      nativeContainer?.remove();
-      nativeContainer = harness.document.createElement("div");
-      nativeContainer.className = "native-actions";
-      main.append(nativeContainer);
+    const mountNativeActions = (nextLabels, replaceCurrent = true) => {
+      if (replaceCurrent) nativeContainer?.remove();
+      const container = harness.document.createElement("div");
+      container.className = "native-actions";
+      if (workspace.parentElement === main) main.insertBefore(container, workspace);
+      else main.append(container);
       const buttons = nextLabels.map((label) => {
         const button = harness.document.createElement("button");
         button.textContent = label;
         button.clickCount = 0;
         button.addEventListener("click", () => { button.clickCount += 1; });
-        nativeContainer.append(button);
+        container.append(button);
         return button;
       });
+      nativeContainer = container;
       return buttons;
     };
+    const remount = (nextLabels) => mountNativeActions(nextLabels);
+    const appendNativeActions = (nextLabels) => mountNativeActions(nextLabels, false);
     const buttons = remount(initialLabels);
     main.append(workspace);
     workspace.getBoundingClientRect = () => {
@@ -2373,7 +2377,7 @@ function assertSuggestionDeckLifecycle(payload) {
         bottom: y + workspace.rect.height,
       };
     };
-    return { harness, main, remount, buttons, nativeContainer: () => nativeContainer, workspace };
+    return { harness, main, remount, appendNativeActions, buttons, nativeContainer: () => nativeContainer, workspace };
   };
 
   const short = makeHarness(labels.slice(0, 3));
@@ -2428,27 +2432,37 @@ function assertSuggestionDeckLifecycle(payload) {
     assert(semanticTargets[index].clickCount === 1, `${action} proxy must bind to its semantic native action after reorder`);
   });
 
-  complete.nativeContainer().computedOpacity = "0";
-  reordered.forEach((button) => { button.computedOpacity = "0"; });
   state.refresh();
   deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
-  assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "theme-hidden native actions must keep the existing deck mounted on a repeated refresh");
+  assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "a repeated refresh with current native actions must keep the existing deck mounted");
   deck.querySelectorAll("button[data-denia-old-days-card]").forEach((button, index) => {
     button.click();
-    assert(semanticTargets[index].clickCount === 2, "theme-hidden native actions must remain the current proxy click targets");
+    assert(semanticTargets[index].clickCount === 2, "a repeated refresh must keep the current proxy click targets");
+  });
+
+  complete.nativeContainer().computedOpacity = "0";
+  reordered.forEach((button) => { button.computedOpacity = "0"; });
+  const current = complete.appendNativeActions([labels[1], labels[3], labels[0], labels[2]]);
+  state.refresh();
+  deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
+  const currentSemanticTargets = [current[2], current[0], current[3], current[1]];
+  deck.querySelectorAll("button[data-denia-old-days-card]").forEach((button, index) => {
+    button.click();
+    assert(currentSemanticTargets[index].clickCount === 1, "an opaque stale native action must not displace the current proxy click target");
+    assert(semanticTargets[index].clickCount === 2, "an opaque stale native action must not receive proxy clicks");
   });
 
   complete.harness.clearMutationRecords();
-  reordered[3].disabled = true;
+  currentSemanticTargets[1].disabled = true;
   assert(complete.harness.flushMutations() === 1, "a native disabled property change must reach the observer");
   assert(complete.harness.flushAnimationFrames() === 1, "a native disabled property change must schedule one refresh");
   const refreshedProxies = deck.querySelectorAll("button[data-denia-old-days-card]");
   assert(refreshedProxies[1].disabled, "Build proxy disabled state must follow the semantic Build action after reorder");
   assert([refreshedProxies[0], refreshedProxies[2], refreshedProxies[3]].every((button) => !button.disabled), "other proxies must remain enabled when only Build is disabled");
 
-  reordered[3].disabled = false;
+  currentSemanticTargets[1].disabled = false;
   complete.harness.clearMutationRecords();
-  reordered[3].setAttribute("aria-disabled", "true");
+  currentSemanticTargets[1].setAttribute("aria-disabled", "true");
   assert(complete.harness.flushMutations() === 1, "a native aria-disabled change must reach the observer");
   assert(complete.harness.flushAnimationFrames() === 1, "a native aria-disabled change must schedule one refresh");
   assert(deck.querySelectorAll("button[data-denia-old-days-card]")[1].disabled, "Build proxy disabled state must honor aria-disabled on the current native action");
@@ -2472,7 +2486,7 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "leaving home must remove the persistent suggestion slot");
   assert(state.suggestionSlotHeight === 0, "leaving home must clear the retained suggestion slot measurement");
   assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "leaving home must restore a still-connected native suggestion container");
-  assert(reordered.every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "leaving home must restore still-connected native suggestion buttons");
+  assert(reordered.concat(current).every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "leaving home must restore still-connected native suggestion buttons");
   state.cleanup();
   assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "cleanup must not leave a suggestion slot behind");
 }
