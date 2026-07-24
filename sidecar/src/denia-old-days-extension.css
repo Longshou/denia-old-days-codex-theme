@@ -598,10 +598,69 @@
   color: #617c88 !important;
 }
 
-.denia-old-days-ds-task [role="main"],
-.denia-old-days-ds-task main {
-  position: relative;
-  z-index: 3;
+.denia-old-days-ds-native-right-sidebar {
+  color: var(--denia-ink);
+  background:
+    radial-gradient(circle at 88% 8%, rgba(242, 154, 171, .12), transparent 24%),
+    radial-gradient(circle at 12% 22%, rgba(143, 210, 221, .12), transparent 28%),
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .045) 31px 32px),
+    rgba(255, 251, 247, .98) !important;
+  border-color: rgba(111, 184, 231, .22) !important;
+  box-shadow:
+    inset 1px 0 rgba(111, 184, 231, .32),
+    inset 12px 0 28px rgba(111, 184, 231, .045),
+    -12px 0 34px rgba(38, 53, 72, .055);
+  transition: background-color 220ms cubic-bezier(.22, 1, .36, 1), box-shadow 220ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.denia-old-days-ds-native-sidebar-group {
+  color: var(--denia-ink);
+  background: rgba(255, 253, 250, .985) !important;
+  border-color: rgba(111, 184, 231, .18) !important;
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, .8),
+    0 10px 28px rgba(38, 53, 72, .065);
+}
+
+.denia-old-days-ds-native-sidebar-row {
+  color: var(--denia-ink) !important;
+  background: rgba(255, 253, 250, .94);
+  border-color: transparent;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(111, 184, 231, .08);
+}
+
+.denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar {
+  background-image:
+    radial-gradient(circle at 86% 8%, rgba(242, 154, 171, .16), transparent 25%),
+    radial-gradient(circle at 16% 14%, rgba(143, 210, 221, .16), transparent 26%),
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .05) 31px 32px);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-native-right-sidebar {
+  border-color: rgba(111, 184, 231, .34) !important;
+  box-shadow: inset 2px 0 rgba(111, 184, 231, .42), -12px 0 34px rgba(38, 53, 72, .055);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-native-right-sidebar {
+  border-color: rgba(117, 86, 217, .3) !important;
+  box-shadow: inset 2px 0 rgba(117, 86, 217, .34), -12px 0 34px rgba(38, 53, 72, .065);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-native-right-sidebar {
+  border-color: rgba(228, 90, 168, .32) !important;
+  box-shadow: inset 2px 0 rgba(228, 90, 168, .36), -12px 0 34px rgba(38, 53, 72, .07);
+}
+
+.denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-native-right-sidebar {
+  border-color: rgba(247, 216, 138, .4) !important;
+  box-shadow: inset 2px 0 rgba(247, 216, 138, .52), -12px 0 34px rgba(38, 53, 72, .055);
+}
+
+.denia-old-days-ds-extension:not([data-denia-sidebar-state="closed"]) .denia-old-days-ds-state-art {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .denia-old-days-ds-observation {
@@ -836,6 +895,12 @@
 
   .denia-old-days-ds-state-art-tint {
     opacity: .78;
+  }
+
+  .denia-old-days-ds-native-right-sidebar,
+  .denia-old-days-ds-native-sidebar-group,
+  .denia-old-days-ds-native-sidebar-row {
+    background: #fffdf9 !important;
   }
 }
 

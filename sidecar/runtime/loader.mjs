@@ -179,6 +179,8 @@ const cleanupExpression = `(() => {
   root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home', 'denia-old-days-ds-task');
   delete root.dataset.deniaOldDaysExtensionVersion;
   delete root.dataset.deniaFormState;
+  delete root.dataset.deniaSidebarState;
+  delete root.dataset.deniaSidebarConfidence;
   root.style.removeProperty('--denia-old-days-art-bright');
   root.style.removeProperty('--denia-old-days-art-task-warm');
   root.style.removeProperty('--denia-old-days-art-task-approval');
@@ -199,6 +201,9 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-attachment',
     'denia-old-days-ds-observation',
     'denia-old-days-ds-final-card',
+    'denia-old-days-ds-native-right-sidebar',
+    'denia-old-days-ds-native-sidebar-group',
+    'denia-old-days-ds-native-sidebar-row',
   ]) document.querySelectorAll('.' + className).forEach((node) => node.classList.remove(className));
   document.querySelectorAll('[data-denia-observation-label], [data-denia-old-days-card]').forEach((node) => {
     delete node.dataset.deniaObservationLabel;
@@ -226,6 +231,23 @@ const verifyExpression = `(() => {
   const photoFrontBackgroundImage = photoFront ? getComputedStyle(photoFront).backgroundImage : '';
   const stateArtRail = document.getElementById('denia-old-days-ds-state-art');
   const activeStateArtLayer = stateArtRail?.querySelector('.denia-old-days-ds-state-art-layer.is-active') || null;
+  const nativeSidebar = document.querySelector(".denia-old-days-ds-native-right-sidebar");
+  const nativeSidebarGroups = [...document.querySelectorAll(".denia-old-days-ds-native-sidebar-group")];
+  const nativeSidebarRows = [...document.querySelectorAll(".denia-old-days-ds-native-sidebar-row")];
+  const sidebarState = root.dataset.deniaSidebarState || "unknown";
+  const sidebarOpen = sidebarState === "open";
+  const sidebarArtVisible = box(stateArtRail)?.visible === true;
+  const sidebar = {
+    state: sidebarState,
+    confidence: root.dataset.deniaSidebarConfidence || "none",
+    panelVisible: box(nativeSidebar)?.visible === true,
+    skinApplied: Boolean(nativeSidebar),
+    groupCount: nativeSidebarGroups.length,
+    rowCount: nativeSidebarRows.length,
+    artVisible: sidebarArtVisible,
+    homeNoCharacterPass: !home || !sidebarOpen || !sidebarArtVisible,
+    taskReadabilityPass: home || !sidebarOpen || Boolean(nativeSidebar),
+  };
   const expectedArtFamilies = {
     staged: 'taskWarm',
     working: 'taskWarm',
@@ -300,6 +322,7 @@ const verifyExpression = `(() => {
     stylePresent: Boolean(document.getElementById('denia-old-days-dream-skin-extension-style')),
     chromePresent: Boolean(chrome),
     sidebarBrand: box(document.getElementById('denia-old-days-ds-sidebar-brand')),
+    sidebar,
     home,
     taskMode: root.classList.contains('denia-old-days-ds-task'),
     formState,
@@ -347,19 +370,26 @@ const verifyExpression = `(() => {
   const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && sidebarBrandPass && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
   const homePass = !home || (result.heroUsesRuntimeArt && Boolean(result.heroCopy?.visible) && result.visibleCardCount === 4 && result.clickableCardCount === 4);
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
-  const railHiddenForViewport = innerWidth <= 919;
-  const railMatchesState = home || (railHiddenForViewport
+  const railMustBeHidden = innerWidth <= 919 || sidebarOpen || sidebarState === 'unknown';
+  const railMatchesState = home || (railMustBeHidden
     ? result.task?.rail?.display === 'none' || result.task?.rail?.visible === false
     : result.task?.rail?.visible === true
       && result.task?.rail?.family === result.task?.rail?.expectedFamily
       && result.task?.rail?.usesExpectedArt === true);
+  const sidebarPass = home
+    ? result.sidebar.homeNoCharacterPass
+    : sidebarOpen
+      ? result.sidebar.panelVisible && result.sidebar.skinApplied && !result.sidebar.artVisible
+      : sidebarState === 'closed'
+        ? !result.sidebar.skinApplied && railMatchesState
+        : !result.sidebar.skinApplied && !result.sidebar.artVisible;
   const observationsPass = home || result.task?.nativeObservationCount === 0
     || result.task?.decoratedObservationCount >= result.task?.nativeObservationCount;
   const finalCardPass = home || (result.formState === 'complete'
     ? Boolean(result.task?.finalCard?.visible) && result.task?.finalCardIsLatestAssistant === true
     : !result.task?.finalCard);
   const taskPass = home || (result.taskMode && validTaskState && result.task?.stateArtPresent === true
-    && railMatchesState && observationsPass && finalCardPass);
+    && railMatchesState && sidebarPass && observationsPass && finalCardPass);
   result.taskPass = Boolean(taskPass);
   result.pass = Boolean(basePass && homePass && result.taskPass);
   return result;

@@ -352,9 +352,50 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-le
   "transition-duration": "180ms",
   "transition-delay": "0ms",
 });
-for (const selector of [".denia-old-days-ds-task [role=\"main\"]", ".denia-old-days-ds-task main"]) {
-  assertCssDeclarations(stylesheetRules, selector, { position: "relative", "z-index": "3" });
+for (const selector of ['.denia-old-days-ds-task [role="main"]', ".denia-old-days-ds-task main"]) {
+  const rule = stylesheetRules.find((candidate) => candidate.selectors.includes(selector));
+  assert(!rule?.declarations.has("z-index"), `task main must not create a theme stacking context: ${selector}`);
 }
+const sidebarPaintProperties = new Set([
+  "background",
+  "background-color",
+  "background-image",
+  "border-color",
+  "border-radius",
+  "box-shadow",
+  "color",
+  "outline-color",
+  "transition",
+  "transition-duration",
+]);
+const nativeSidebarClasses = [
+  ".denia-old-days-ds-native-right-sidebar",
+  ".denia-old-days-ds-native-sidebar-group",
+  ".denia-old-days-ds-native-sidebar-row",
+];
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) => nativeSidebarClasses.some((className) => selector.includes(className)))) continue;
+  for (const property of rule.declarations.keys()) {
+    assert(sidebarPaintProperties.has(property), `native sidebar selector must stay paint-only: ${property}`);
+  }
+  for (const value of rule.declarations.values()) {
+    assert(!value.includes("--denia-old-days-art-"), "native sidebar surfaces must not use character artwork variables");
+  }
+}
+assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-extension:not([data-denia-sidebar-state="closed"]) .denia-old-days-ds-state-art', {
+  opacity: "0",
+  visibility: "hidden",
+});
+const nativeSidebarPanelRule = findCssRule(stylesheetRules, ".denia-old-days-ds-native-right-sidebar");
+const nativeSidebarGroupRule = findCssRule(stylesheetRules, ".denia-old-days-ds-native-sidebar-group");
+assert(
+  rgbaAlpha(nativeSidebarPanelRule.declarations.get("background")) >= .97,
+  "native sidebar panel surface must be at least .97 opaque",
+);
+assert(
+  rgbaAlpha(nativeSidebarGroupRule.declarations.get("background")) >= .98,
+  "native sidebar group surface must be at least .98 opaque",
+);
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-task"))) continue;
@@ -447,6 +488,9 @@ for (const [selector, background] of [
   [".denia-old-days-ds-card-deck button", "#f9ffff"],
   [".denia-old-days-ds-composer", "#f9ffff !important"],
   [".denia-old-days-ds-final-card", "#fffdf1 !important"],
+  [".denia-old-days-ds-native-right-sidebar", "#fffdf9 !important"],
+  [".denia-old-days-ds-native-sidebar-group", "#fffdf9 !important"],
+  [".denia-old-days-ds-native-sidebar-row", "#fffdf9 !important"],
 ]) assertCssDeclarations(stylesheetRules, selector, { background }, transparencyMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-composer", {
   "backdrop-filter": "none",
@@ -1594,6 +1638,8 @@ function assertLiveTaskVerification(loaderSource) {
     formState,
     artFamily = familyForState[formState],
     railDisplay = "block",
+    sidebarState = "closed",
+    sidebarConfidence = sidebarState === "open" ? "high" : "none",
     decorateObservation = true,
     includeFinalCard = false,
     includeSidebarBrand = false,
@@ -1602,7 +1648,11 @@ function assertLiveTaskVerification(loaderSource) {
     const root = {
       classList: { contains: (name) => rootClasses.includes(name) },
       clientWidth: 1200,
-      dataset: { deniaFormState: formState },
+      dataset: {
+        deniaFormState: formState,
+        deniaSidebarState: sidebarState,
+        deniaSidebarConfidence: sidebarConfidence,
+      },
       scrollWidth: 1200,
     };
     const style = makeNode();
@@ -1615,6 +1665,11 @@ function assertLiveTaskVerification(loaderSource) {
     stateArtRail.querySelector = (selector) =>
       selector === ".denia-old-days-ds-state-art-layer.is-active" ? stateArtLayer : null;
     const sidebar = makeNode();
+    const nativeSidebar = sidebarState === "open"
+      ? makeNode(["denia-old-days-ds-native-right-sidebar"])
+      : null;
+    const nativeSidebarGroups = nativeSidebar ? [makeNode(["denia-old-days-ds-native-sidebar-group"])] : [];
+    const nativeSidebarRows = nativeSidebar ? [makeNode(["denia-old-days-ds-native-sidebar-row"])] : [];
     const composer = makeNode();
     const nativeObservation = makeNode();
     const observation = decorateObservation ? makeNode(["denia-old-days-ds-observation"]) : null;
@@ -1632,6 +1687,7 @@ function assertLiveTaskVerification(loaderSource) {
       },
       querySelector(selector) {
         if (selector === ".composer-surface-chrome") return composer;
+        if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebar;
         if (selector === ".denia-old-days-ds-observation") return observation;
         if (selector === ".denia-old-days-ds-final-card") return finalCard;
         return null;
@@ -1639,6 +1695,8 @@ function assertLiveTaskVerification(loaderSource) {
       querySelectorAll(selector) {
         if (selector.includes('[data-content-search-unit-key*="tool"]')) return [nativeObservation];
         if (selector === ".denia-old-days-ds-observation") return observation ? [observation] : [];
+        if (selector === ".denia-old-days-ds-native-sidebar-group") return nativeSidebarGroups;
+        if (selector === ".denia-old-days-ds-native-sidebar-row") return nativeSidebarRows;
         if (selector === '[data-content-search-unit-key$=":assistant"]') return [assistant];
         return [];
       },
@@ -1694,7 +1752,7 @@ function assertLiveTaskVerification(loaderSource) {
 
   assert(
     runCase({ formState: "working" }).taskPass === true,
-    "live task verification must accept a visible warm working rail",
+    "live task verification must accept a closed task sidebar with its visible warm rail",
   );
   assert(
     runCase({ formState: "working" }).pass === true,
@@ -1719,6 +1777,22 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "complete" }).taskPass === false,
     "live task verification must reject complete state without a final response card",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "open", railDisplay: "none" }).taskPass === true,
+    "live task verification must accept an open skinned sidebar with hidden state artwork",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "open" }).taskPass === false,
+    "live task verification must reject visible state artwork while the sidebar is open",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "unknown", railDisplay: "none" }).taskPass === true,
+    "live task verification must accept unknown sidebar detection only when state artwork is hidden",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "unknown" }).taskPass === false,
+    "live task verification must reject visible state artwork while sidebar detection is unknown",
   );
 }
 
@@ -1755,6 +1829,9 @@ function assertFallbackCleanupBehavior(loaderSource) {
     "denia-old-days-ds-attachment",
     "denia-old-days-ds-observation",
     "denia-old-days-ds-final-card",
+    "denia-old-days-ds-native-right-sidebar",
+    "denia-old-days-ds-native-sidebar-group",
+    "denia-old-days-ds-native-sidebar-row",
   ];
   const touched = removableClasses.map((className) => {
     const node = harness.document.createElement("div");
@@ -1775,6 +1852,8 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.classList.add("denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task");
   harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.0";
   harness.root.dataset.deniaFormState = "working";
+  harness.root.dataset.deniaSidebarState = "open";
+  harness.root.dataset.deniaSidebarConfidence = "high";
   for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
     harness.root.style.setProperty(`--denia-old-days-art-${name}`, `url(blob:${name})`);
   }
@@ -1785,6 +1864,8 @@ function assertFallbackCleanupBehavior(loaderSource) {
   }
   assert(!("deniaOldDaysExtensionVersion" in harness.root.dataset), "fallback cleanup must remove the extension version marker");
   assert(!("deniaFormState" in harness.root.dataset), "fallback cleanup must remove the form state marker");
+  assert(!("deniaSidebarState" in harness.root.dataset), "fallback cleanup must remove the sidebar state marker");
+  assert(!("deniaSidebarConfidence" in harness.root.dataset), "fallback cleanup must remove the sidebar confidence marker");
   for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
     assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
   }
@@ -2292,6 +2373,15 @@ function assertArtworkVariableWhitelist(rules, whitelist) {
 
 function canonicalCssValue(value = "") {
   return value.toLowerCase().replace(/\s+/gu, "");
+}
+
+function rgbaAlpha(value = "") {
+  const matches = [...value.matchAll(/rgba?\([^)]*\)/giu)];
+  const alphas = matches.map((match) => {
+    const channels = match[0].slice(match[0].indexOf("(") + 1, -1).split(",");
+    return Number(channels.at(-1)?.trim());
+  }).filter(Number.isFinite);
+  return alphas.at(-1) ?? 0;
 }
 
 function assert(condition, message) {
