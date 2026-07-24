@@ -1640,6 +1640,9 @@ function assertLiveTaskVerification(loaderSource) {
     railDisplay = "block",
     sidebarState = "closed",
     sidebarConfidence = sidebarState === "open" ? "high" : "none",
+    nativeSidebarPanel = sidebarState === "open",
+    nativeSidebarGroupCount = nativeSidebarPanel ? 1 : 0,
+    nativeSidebarRowCount = nativeSidebarPanel ? 1 : 0,
     home = false,
     decorateObservation = true,
     includeFinalCard = false,
@@ -1676,11 +1679,17 @@ function assertLiveTaskVerification(loaderSource) {
       suggestions.children = homeCards;
       suggestions.querySelectorAll = (selector) => selector === "button[data-denia-old-days-card]" ? homeCards : [];
     }
-    const nativeSidebar = sidebarState === "open"
+    const nativeSidebar = nativeSidebarPanel
       ? makeNode(["denia-old-days-ds-native-right-sidebar"])
       : null;
-    const nativeSidebarGroups = nativeSidebar ? [makeNode(["denia-old-days-ds-native-sidebar-group"])] : [];
-    const nativeSidebarRows = nativeSidebar ? [makeNode(["denia-old-days-ds-native-sidebar-row"])] : [];
+    const nativeSidebarGroups = Array.from(
+      { length: nativeSidebarGroupCount },
+      () => makeNode(["denia-old-days-ds-native-sidebar-group"]),
+    );
+    const nativeSidebarRows = Array.from(
+      { length: nativeSidebarRowCount },
+      () => makeNode(["denia-old-days-ds-native-sidebar-row"]),
+    );
     const composer = makeNode();
     const nativeObservation = makeNode();
     const observation = decorateObservation ? makeNode(["denia-old-days-ds-observation"]) : null;
@@ -1811,6 +1820,26 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "working", sidebarState: "unknown" }).taskPass === false,
     "live task verification must reject visible state artwork while sidebar detection is unknown",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "unknown", railDisplay: "none", nativeSidebarGroupCount: 1 }).taskPass === false,
+    "live task verification must reject a stale group skin while sidebar detection is unknown",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "unknown", railDisplay: "none", nativeSidebarRowCount: 1 }).taskPass === false,
+    "live task verification must reject a stale row skin while sidebar detection is unknown",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "closed", nativeSidebarGroupCount: 1 }).taskPass === false,
+    "live task verification must reject a stale group skin while the sidebar is closed",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "closed", nativeSidebarRowCount: 1 }).taskPass === false,
+    "live task verification must reject a stale row skin while the sidebar is closed",
+  );
+  assert(
+    runCase({ formState: "working", sidebarState: "open", railDisplay: "none", nativeSidebarPanel: false }).taskPass === false,
+    "live task verification must reject an open sidebar state without its panel skin",
   );
   assert(
     runCase({ formState: "staged", home: true, sidebarState: "open", railDisplay: "none" }).pass === true,

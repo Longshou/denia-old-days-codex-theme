@@ -241,7 +241,7 @@ const verifyExpression = `(() => {
     state: sidebarState,
     confidence: root.dataset.deniaSidebarConfidence || "none",
     panelVisible: box(nativeSidebar)?.visible === true,
-    skinApplied: Boolean(nativeSidebar),
+    skinApplied: Boolean(nativeSidebar || nativeSidebarGroups.length || nativeSidebarRows.length),
     groupCount: nativeSidebarGroups.length,
     rowCount: nativeSidebarRows.length,
     artVisible: sidebarArtVisible,
