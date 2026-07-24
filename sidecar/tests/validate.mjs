@@ -1753,9 +1753,12 @@ function assertLiveTaskVerification(loaderSource) {
     toggleHitTarget = true,
     toggleRect = { x: 1140, y: 8, width: 40, height: 32 },
     home = false,
+    includeSafeLeftHost = home,
+    safeLeftHostRect = { x: 0, y: 46, width: 280, height: 754 },
     decorateObservation = true,
     includeFinalCard = false,
     includeSidebarBrand = home,
+    sidebarBrandHost = includeSafeLeftHost ? "left" : "none",
   }) => {
     const rootClasses = ["denia-old-days-ds-extension", home ? "denia-old-days-ds-home" : "denia-old-days-ds-task"];
     const root = {
@@ -1778,6 +1781,10 @@ function assertLiveTaskVerification(loaderSource) {
     stateArtRail.querySelector = (selector) =>
       selector === ".denia-old-days-ds-state-art-layer.is-active" ? stateArtLayer : null;
     const sidebar = makeNode();
+    const safeLeftHost = includeSafeLeftHost ? makeNode([], {}, safeLeftHostRect) : null;
+    if (safeLeftHost) {
+      safeLeftHost.contains = (node) => includeSidebarBrand && sidebarBrandHost === "left" && node === sidebar;
+    }
     const hero = home ? makeNode(["denia-old-days-ds-hero"]) : null;
     const heroCopy = home ? makeNode() : null;
     const photoFront = home ? makeNode(["denia-old-days-ds-photo-front"]) : null;
@@ -1802,7 +1809,8 @@ function assertLiveTaskVerification(loaderSource) {
       () => makeNode(["denia-old-days-ds-native-sidebar-row"]),
     );
     for (const panel of nativeSidebarPanels) {
-      panel.contains = (node) => skinsContained && (nativeSidebarGroups.includes(node) || nativeSidebarRows.includes(node));
+      panel.contains = (node) => (skinsContained && (nativeSidebarGroups.includes(node) || nativeSidebarRows.includes(node)))
+        || (includeSidebarBrand && sidebarBrandHost === "right" && node === sidebar);
     }
     const main = makeNode([], {}, mainRect);
     const toggle = togglePresent ? makeNode([], {}, toggleRect) : null;
@@ -1848,6 +1856,9 @@ function assertLiveTaskVerification(loaderSource) {
       },
       querySelectorAll(selector) {
         if (selector === "button") return toggle ? [toggle] : [];
+        if (selector === '[data-testid="sidebar"], [data-slot="sidebar"], aside, nav') {
+          return [...(safeLeftHost ? [safeLeftHost] : []), ...nativeSidebarPanels];
+        }
         if (selector.includes('[data-content-search-unit-key*="tool"]')) return [nativeObservation];
         if (selector === ".denia-old-days-ds-observation") return observation ? [observation] : [];
         if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebarPanels;
@@ -2077,6 +2088,52 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "staged", home: true, sidebarState: "unknown" }).pass === false,
     "live verification must reject visible state artwork while home sidebar detection is unknown",
+  );
+  assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
+      includeSafeLeftHost: false,
+      includeSidebarBrand: false,
+    }).pass === true,
+    "live verification must accept a right-only home without a left host or sidebar brand",
+  );
+  assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
+      includeSafeLeftHost: true,
+      includeSidebarBrand: false,
+    }).pass === false,
+    "live verification must require a visible brand when a safe left host exists",
+  );
+  assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
+      includeSafeLeftHost: false,
+      includeSidebarBrand: true,
+      sidebarBrandHost: "right",
+    }).pass === false,
+    "live verification must reject a home brand inside the native right panel",
+  );
+  assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
+      includeSafeLeftHost: true,
+      includeSidebarBrand: true,
+      sidebarBrandHost: "left",
+    }).pass === true,
+    "live verification must accept a visible home brand contained by its safe left host",
   );
 }
 
