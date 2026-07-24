@@ -306,6 +306,17 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
   margin: "0",
   "pointer-events": "auto",
 });
+for (const nativeSuggestionClass of [
+  ".denia-old-days-ds-native-card",
+  ".denia-old-days-ds-native-suggestions",
+]) {
+  const relatedRules = stylesheetRules.filter((rule) => rule.selectors.some((selector) => selector.includes(nativeSuggestionClass)));
+  assert(relatedRules.length > 0, `${nativeSuggestionClass} must retain a native suggestion hiding rule`);
+  assert(
+    relatedRules.every((rule) => !rule.declarations.has("opacity")),
+    `${nativeSuggestionClass} related hiding rules must not declare opacity`,
+  );
+}
 assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-bright", {
     selector: ".denia-old-days-ds-photo-front",
@@ -765,6 +776,14 @@ async function assertRejectsStylesheetMutations() {
       name: "base composer webkit backdrop filter",
       expected: ".denia-old-days-ds-composer must set -webkit-backdrop-filter: none",
       failure: "validator must require a reduced-transparency override when composer uses webkit backdrop filtering",
+    },
+    {
+      prefix: "denia-validator-css-native-suggestion-opacity-",
+      target: "  border: 0 !important;\n  pointer-events: none !important;",
+      replacement: "  border: 0 !important;\n  opacity: 0 !important;\n  pointer-events: none !important;",
+      name: "native suggestion visibility rule",
+      expected: ".denia-old-days-ds-native-card related hiding rules must not declare opacity",
+      failure: "validator must reject opacity on native suggestion hiding rules",
     },
     {
       prefix: "denia-validator-css-motion-before-",

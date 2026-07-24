@@ -89,3 +89,15 @@
 - GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
 - `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
 - `git diff --check`：退出码 0，无空白错误。
+
+## 第四轮审查修复（后续提交）
+
+- validator 现在基于解析后的 CSS rule，分别检查 `.denia-old-days-ds-native-card` 和 `.denia-old-days-ds-native-suggestions` 的全部相关规则均不声明 `opacity`；不再依赖 VM `getComputedStyle` 模拟来守护这一约束。
+- 新增 CSS mutation fixture：向联合原生建议隐藏规则注入 `opacity: 0 !important` 时，validator 必须以对应静态断言失败。
+
+### 第四轮审查修复验证
+
+- RED：仅加入 mutation fixture 时，`node sidecar/tests/validate.mjs sidecar` 失败为 `validator must reject opacity on native suggestion hiding rules`，证明门禁此前缺失。
+- GREEN：`node sidecar/tests/validate.mjs sidecar` 退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
+- `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
+- `git diff --check`：退出码 0，无空白错误。
