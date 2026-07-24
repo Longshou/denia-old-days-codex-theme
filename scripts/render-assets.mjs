@@ -2,13 +2,20 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { RENDERER_SOURCE_INPUTS } from "./release-inputs.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const sharpEntry = process.env.KABOO_SHARP_ENTRY;
 if (!sharpEntry) throw new Error("KABOO_SHARP_ENTRY is required");
 
 const { default: sharp } = await import(pathToFileURL(path.resolve(sharpEntry)).href);
-const source = (name) => path.join(root, "art/source", name);
+const source = (name) => {
+  const relative = path.join("art/source", name);
+  if (!RENDERER_SOURCE_INPUTS.includes(relative)) {
+    throw new Error(`renderer source is not declared: ${relative}`);
+  }
+  return path.join(root, relative);
+};
 const output = (name) => path.join(root, name);
 
 await Promise.all([

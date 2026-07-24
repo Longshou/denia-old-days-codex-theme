@@ -5,8 +5,10 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { RELEASE_COPY_SOURCES } from "./release-inputs.mjs";
 
 const sourceRoot = path.resolve(import.meta.dirname, "..");
+const releaseSource = (relative) => path.resolve(sourceRoot, relative);
 const id = "denia-old-days";
 const version = "0.1.0";
 const rootName = "codex-dream-skin-denia-old-days-0.1.0";
@@ -33,7 +35,7 @@ const releaseDir = path.join(outputRoot, id, version);
 const sharpEntry = process.env.KABOO_SHARP_ENTRY
   || "/Applications/Codex.app/Contents/Resources/cua_node/lib/node_modules/sharp/lib/index.js";
 const sharp = (await import(pathToFileURL(sharpEntry).href)).default;
-const extension = JSON.parse(await fs.readFile(path.join(sourceRoot, "sidecar/extension.json"), "utf8"));
+const extension = JSON.parse(await fs.readFile(path.join(releaseSource(RELEASE_COPY_SOURCES.sidecar), "extension.json"), "utf8"));
 const manifest = {
   schemaVersion: 1,
   kind: "codex-dream-skin",
@@ -178,24 +180,24 @@ try {
   await fs.mkdir(path.join(bundleDir, "previews"), { recursive: true });
   await fs.mkdir(releaseDir, { recursive: true });
 
-  await fs.cp(path.join(sourceRoot, "sidecar"), path.join(bundleDir, "sidecar"), {
+  await fs.cp(releaseSource(RELEASE_COPY_SOURCES.sidecar), path.join(bundleDir, "sidecar"), {
     recursive: true,
     filter: (candidate) => {
-      const relative = path.relative(path.join(sourceRoot, "sidecar"), candidate);
+      const relative = path.relative(releaseSource(RELEASE_COPY_SOURCES.sidecar), candidate);
       return relative !== "release"
         && !relative.startsWith(`release${path.sep}`)
         && path.basename(candidate) !== ".DS_Store";
     },
   });
-  await fs.copyFile(path.join(sourceRoot, "theme/theme.json"), path.join(bundleDir, "theme/theme.json"));
-  await fs.copyFile(path.join(sourceRoot, "theme/background.jpg"), path.join(bundleDir, "theme/background.jpg"));
+  await fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.themeDefinition), path.join(bundleDir, "theme/theme.json"));
+  await fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.themeBackground), path.join(bundleDir, "theme/background.jpg"));
 
   await Promise.all([
-    sharp(path.join(sourceRoot, "evidence/home.png"))
+    sharp(releaseSource(RELEASE_COPY_SOURCES.homePreview))
       .resize({ width: 1600, withoutEnlargement: true })
       .webp({ quality: 82 })
       .toFile(path.join(bundleDir, "previews/home.webp")),
-    sharp(path.join(sourceRoot, "evidence/task.png"))
+    sharp(releaseSource(RELEASE_COPY_SOURCES.taskPreview))
       .resize({ width: 1600, withoutEnlargement: true })
       .webp({ quality: 82 })
       .toFile(path.join(bundleDir, "previews/task.webp")),
@@ -203,8 +205,8 @@ try {
 
   await writeJson(path.join(bundleDir, "kaboo-package.json"), manifest);
   await fs.writeFile(path.join(bundleDir, "README.md"), packageReadme);
-  await fs.copyFile(path.join(sourceRoot, "sidecar/LICENSE"), path.join(bundleDir, "LICENSE"));
-  const sidecarNotice = await fs.readFile(path.join(sourceRoot, "sidecar/NOTICE.md"), "utf8");
+  await fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.license), path.join(bundleDir, "LICENSE"));
+  const sidecarNotice = await fs.readFile(releaseSource(RELEASE_COPY_SOURCES.notice), "utf8");
   await fs.writeFile(path.join(bundleDir, "NOTICE.md"), `${artworkNotice}\n${sidecarNotice.trim()}\n`);
 
   run(process.execPath, [

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { RELEASE_COPY_SOURCES, RENDERER_SOURCE_INPUTS } from "./release-inputs.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -199,21 +200,58 @@ for (const [relative, expected] of archivedArtwork) {
   if (actual !== expected) throw new Error(`archived artwork hash mismatch: ${relative}`);
 }
 
-const archiveDirectories = [
-  "art/archive/legacy-main-7851e38",
-  "art/reference/visual-library-2026-07-23",
+const archiveRoots = [
+  path.resolve(root, "art/archive"),
+  path.resolve(root, "art/reference"),
 ];
-const sidecarManifest = fs.readFileSync(path.join(root, "sidecar/extension.json"), "utf8");
-for (const [name, input] of [
-  ["Sidecar manifest", sidecarManifest],
-  ["renderer input list", rendererSource],
-  ["release ZIP input list", localReleaseBuilder],
-]) {
-  for (const archiveDirectory of archiveDirectories) {
-    if (input.includes(archiveDirectory)) {
-      throw new Error(`${name} must not include archived artwork: ${archiveDirectory}`);
+const assertOutsideArchiveRoots = (inputKind, candidates) => {
+  for (const candidate of candidates) {
+    const resolved = path.resolve(candidate);
+    if (archiveRoots.some((archiveRoot) => resolved === archiveRoot || resolved.startsWith(`${archiveRoot}${path.sep}`))) {
+      throw new Error(`${inputKind} must not include archived artwork: ${resolved}`);
     }
   }
+};
+if (!rendererSource.includes("RENDERER_SOURCE_INPUTS")) {
+  throw new Error("renderer must use a structured source input list");
+}
+if (!localReleaseBuilder.includes("RELEASE_COPY_SOURCES")) {
+  throw new Error("release builder must use a structured copy-source list");
+}
+const sidecarRoot = path.resolve(root, "sidecar");
+const sidecarManifest = JSON.parse(fs.readFileSync(path.join(sidecarRoot, "extension.json"), "utf8"));
+const manifestInputs = [
+  sidecarManifest.entrypoints?.style,
+  sidecarManifest.entrypoints?.runtime,
+  ...Object.values(sidecarManifest.assets || {}),
+].map((relative) => {
+  if (typeof relative !== "string" || !relative) throw new Error("Sidecar manifest contains an invalid input path");
+  return path.resolve(sidecarRoot, relative);
+});
+const rendererInputs = RENDERER_SOURCE_INPUTS.map((relative) => path.resolve(root, relative));
+const releaseZipInputs = Object.values(RELEASE_COPY_SOURCES).map((relative) => path.resolve(root, relative));
+for (const [name, inputs] of [
+  ["Sidecar manifest", manifestInputs],
+  ["renderer input list", rendererInputs],
+  ["release ZIP input list", releaseZipInputs],
+]) {
+  assertOutsideArchiveRoots(name, inputs);
+}
+
+const boundaryMutationFixture = path.join(
+  root,
+  "art/source",
+  "..",
+  "archive/legacy-main-7851e38/background.svg",
+);
+let mutationWasRejected = false;
+try {
+  assertOutsideArchiveRoots("boundary mutation fixture", [boundaryMutationFixture]);
+} catch (error) {
+  mutationWasRejected = error instanceof Error && error.message.includes("must not include archived artwork");
+}
+if (!mutationWasRejected) {
+  throw new Error("archive boundary mutation fixture must be rejected after path normalization");
 }
 
 const generatedFiles = [
