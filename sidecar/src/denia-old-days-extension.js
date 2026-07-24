@@ -105,8 +105,16 @@
   function visible(node) {
     if (!(node instanceof HTMLElement)) return false;
     const box = node.getBoundingClientRect();
-    const computed = getComputedStyle(node);
-    return box.width > 0 && box.height > 0 && computed.display !== "none" && computed.visibility !== "hidden";
+    if (box.width <= 0 || box.height <= 0) return false;
+    for (let current = node; current instanceof HTMLElement; current = current.parentElement) {
+      if (current.getAttribute("aria-hidden") === "true") return false;
+      const computed = getComputedStyle(current);
+      const opacity = Number.parseFloat(computed.opacity);
+      if (computed.display === "none"
+        || computed.visibility === "hidden"
+        || (Number.isFinite(opacity) && opacity <= 0)) return false;
+    }
+    return true;
   }
 
   function normalizedNodeLabel(node) {
@@ -170,6 +178,25 @@
     return rightEdgePass && heightPass && sidePass;
   }
 
+  function panelCenterHit(node) {
+    const rect = measuredRect(node);
+    if (!rect) return false;
+    const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return Boolean(hit && (hit === node || node.contains(hit)));
+  }
+
+  function leftDockedSidebar(node, mainRect) {
+    if (isExcludedSidebarCandidate(node)
+      || node === nativeSidebarPanel
+      || !visible(node)
+      || rightDockedPanel(node, mainRect)) return false;
+    const rect = measuredRect(node);
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const leftEdgePass = rect.left <= 12 && rect.right > 0;
+    const heightPass = rect.height >= Math.max(240, viewportHeight * 0.35);
+    return leftEdgePass && heightPass;
+  }
+
   function visibleInteractiveCount(node) {
     return [...node.querySelectorAll('button, a, [role="button"]')]
       .filter((candidate) => visible(candidate) && !ownedNodes.has(candidate))
@@ -198,14 +225,17 @@
     const controlledIds = (toggle.getAttribute("aria-controls") || "").trim().split(/\s+/u).filter(Boolean);
     const controlledPanels = controlledIds.map((id) => document.getElementById(id)).filter(Boolean);
     if (controlledPanels.length) {
-      const visibleControlled = controlledPanels.filter((panel) => rightDockedPanel(panel, mainRect));
-      if (visibleControlled.length === 1) {
+      const dockedControlled = controlledPanels.filter((panel) => rightDockedPanel(panel, mainRect));
+      if (dockedControlled.length === 1) {
+        if (!panelCenterHit(dockedControlled[0])) {
+          return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
+        }
         if (expanded === "false") {
           return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
         }
-        return sidebarDetectionResult("open", "high", "aria-controls", visibleControlled[0], toggle);
+        return sidebarDetectionResult("open", "high", "aria-controls", dockedControlled[0], toggle);
       }
-      if (visibleControlled.length > 1) {
+      if (dockedControlled.length > 1) {
         return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
       }
       if (expanded === "false") {
@@ -522,8 +552,16 @@
 
   function ensureSidebarBrand() {
     let brand = document.getElementById("denia-old-days-ds-sidebar-brand");
-    if (brand?.isConnected) return brand;
-    const sidebar = document.querySelector('[data-testid="sidebar"], [data-slot="sidebar"], aside, nav');
+    const mainRect = measuredRect(findMain());
+    const sidebar = [
+      ...document.querySelectorAll('[data-testid="sidebar"], [data-slot="sidebar"], aside, nav'),
+    ].find((candidate) => leftDockedSidebar(candidate, mainRect)) || null;
+    if (brand?.isConnected && sidebar?.contains(brand)) return brand;
+    if (brand) {
+      ownedNodes.delete(brand);
+      brand.remove();
+      brand = null;
+    }
     if (!sidebar) return null;
     brand = own(document.createElement("div"));
     brand.id = "denia-old-days-ds-sidebar-brand";
@@ -730,6 +768,7 @@
     const home = isHomeView();
     root.classList.toggle("denia-old-days-ds-home", home);
     root.classList.toggle("denia-old-days-ds-task", !home);
+    syncNativeRightSidebar(home);
     if (home) {
       ensureSidebarBrand();
       state.formState = "staged";
@@ -742,7 +781,6 @@
       decorateTask();
     }
     root.dataset.deniaFormState = state.formState;
-    syncNativeRightSidebar(home);
     syncStateArt(state.formState);
   }
 

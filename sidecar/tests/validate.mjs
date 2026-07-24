@@ -923,6 +923,38 @@ function assertNativeRightSidebarLifecycle(payload) {
     assertNativeNodeUnchanged(node, attributes, before, label);
   }
 
+  const rightOnlyHome = createRuntimeHarness((index) => `blob:sidebar-home-right-only-${index + 1}`);
+  const rightOnlyMain = appendTaskMain(rightOnlyHome);
+  rightOnlyMain.classList.add("dream-skin-home");
+  appendToggle(rightOnlyHome, { "aria-controls": "home-right-panel", "aria-expanded": "true" });
+  const rightOnlyPanel = appendRightPanel(rightOnlyHome, "home-right-panel");
+  const nativePanelChild = rightOnlyHome.document.createElement("button");
+  nativePanelChild.textContent = "Native sidebar action";
+  nativePanelChild.setRect({ x: 1202, y: 102, width: 286, height: 40 });
+  rightOnlyPanel.append(nativePanelChild);
+  rightOnlyHome.setPointTarget(nativePanelChild);
+  const rightOnlyRect = JSON.stringify(rightOnlyPanel.getBoundingClientRect());
+  const rightOnlyChildren = [...rightOnlyPanel.children];
+  vm.runInContext(payload, rightOnlyHome.context, { timeout: 1000 });
+  const rightOnlyBrand = rightOnlyHome.document.getElementById("denia-old-days-ds-sidebar-brand");
+  assert(!rightOnlyBrand, "home with only a native right sidebar must not create a sidebar brand");
+  assert(
+    rightOnlyPanel.children.length === rightOnlyChildren.length
+      && rightOnlyPanel.children.every((child, index) => child === rightOnlyChildren[index]),
+    "home branding must not change native right sidebar children",
+  );
+  assert(JSON.stringify(rightOnlyPanel.getBoundingClientRect()) === rightOnlyRect, "home branding must not change native right sidebar geometry");
+
+  const leftHome = createRuntimeHarness((index) => `blob:sidebar-home-left-${index + 1}`);
+  const leftHomeMain = appendTaskMain(leftHome);
+  leftHomeMain.classList.add("dream-skin-home");
+  const leftHomeSidebar = leftHome.document.createElement("nav");
+  leftHomeSidebar.setRect({ x: 0, y: 46, width: 280, height: 813 });
+  leftHome.document.body.append(leftHomeSidebar);
+  vm.runInContext(payload, leftHome.context, { timeout: 1000 });
+  const leftHomeBrand = leftHome.document.getElementById("denia-old-days-ds-sidebar-brand");
+  assert(leftHomeBrand && leftHomeSidebar.contains(leftHomeBrand), "a high-confidence left sidebar must retain the home brand");
+
   aside.setRect({ width: 0, height: 0 });
   toggle.setAttribute("aria-expanded", "false");
   state.refresh();
@@ -959,6 +991,44 @@ function assertNativeRightSidebarLifecycle(payload) {
   vm.runInContext(payload, conflicting.context, { timeout: 1000 });
   const conflictingState = conflicting.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state;
   assert(conflictingState === "unknown", "aria-expanded=true with an invisible panel must resolve unknown");
+
+  const ariaHidden = createRuntimeHarness((index) => `blob:sidebar-aria-hidden-${index + 1}`);
+  appendTaskMain(ariaHidden);
+  appendToggle(ariaHidden, { "aria-controls": "aria-hidden-sidebar", "aria-expanded": "true" });
+  const ariaHiddenPanel = appendRightPanel(ariaHidden, "aria-hidden-sidebar");
+  ariaHiddenPanel.setAttribute("aria-hidden", "true");
+  ariaHidden.setPointTarget(ariaHiddenPanel);
+  vm.runInContext(payload, ariaHidden.context, { timeout: 1000 });
+  const ariaHiddenState = ariaHidden.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar;
+  assert(ariaHiddenState?.state === "unknown", "aria-hidden=true controlled panel with expanded=true must resolve unknown");
+  assert(ariaHiddenState.confidence === "none", "aria-hidden=true conflict must have no sidebar confidence");
+  assert(!ariaHiddenPanel.classList.contains("denia-old-days-ds-native-right-sidebar"), "aria-hidden controlled panel must not be skinned");
+
+  const transparent = createRuntimeHarness((index) => `blob:sidebar-transparent-${index + 1}`);
+  appendTaskMain(transparent);
+  appendToggle(transparent, { "aria-controls": "transparent-sidebar", "aria-expanded": "true" });
+  const transparentPanel = appendRightPanel(transparent, "transparent-sidebar");
+  transparentPanel.computedOpacity = "0";
+  transparent.setPointTarget(transparentPanel);
+  vm.runInContext(payload, transparent.context, { timeout: 1000 });
+  const transparentState = transparent.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar;
+  assert(transparentState?.state === "unknown", "zero-opacity controlled panel with expanded=true must resolve unknown");
+  assert(transparentState.confidence === "none", "zero-opacity conflict must have no sidebar confidence");
+  assert(!transparentPanel.classList.contains("denia-old-days-ds-native-right-sidebar"), "zero-opacity controlled panel must not be skinned");
+
+  const covered = createRuntimeHarness((index) => `blob:sidebar-covered-${index + 1}`);
+  appendTaskMain(covered);
+  appendToggle(covered, { "aria-controls": "covered-sidebar", "aria-expanded": "true" });
+  const coveredPanel = appendRightPanel(covered, "covered-sidebar");
+  const coveringElement = covered.document.createElement("div");
+  coveringElement.setRect({ x: 1178, y: 46, width: 334, height: 813 });
+  covered.document.body.append(coveringElement);
+  covered.setPointTarget(coveringElement);
+  vm.runInContext(payload, covered.context, { timeout: 1000 });
+  const coveredState = covered.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar;
+  assert(coveredState?.state === "unknown", "a covered controlled panel with expanded=true must resolve unknown");
+  assert(coveredState.confidence === "none", "covered controlled panel conflict must have no sidebar confidence");
+  assert(!coveredPanel.classList.contains("denia-old-days-ds-native-right-sidebar"), "a covered controlled panel must not be skinned");
 
   const collapsedVisible = createRuntimeHarness((index) => `blob:sidebar-collapsed-visible-${index + 1}`);
   appendTaskMain(collapsedVisible);
