@@ -389,7 +389,22 @@ assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-extension:not([data-d
 const nativeSidebarPanelRule = findCssRule(stylesheetRules, ".denia-old-days-ds-native-right-sidebar");
 const nativeSidebarGroupRule = findCssRule(stylesheetRules, ".denia-old-days-ds-native-sidebar-group");
 assert(
-  rgbaAlpha(nativeSidebarPanelRule.declarations.get("background")) >= .97,
+  !canonicalCssValue(nativeSidebarPanelRule.declarations.get("background")).includes("!important"),
+  "native sidebar base shorthand must not lock background-image with !important",
+);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-right-sidebar", {
+  "background-color": "rgba(255, 251, 247, .98) !important",
+  "background-image": "radial-gradient(circle at 88% 8%, rgba(242, 154, 171, .12), transparent 24%), radial-gradient(circle at 12% 22%, rgba(143, 210, 221, .12), transparent 28%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .045) 31px 32px)",
+});
+const nativeSidebarHomeRule = findCssRule(stylesheetRules, ".denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar");
+assert(
+  nativeSidebarHomeRule.sourceIndex > nativeSidebarPanelRule.sourceIndex
+    && nativeSidebarHomeRule.declarations.has("background-image")
+    && !canonicalCssValue(nativeSidebarHomeRule.declarations.get("background-image")).includes("!important"),
+  "home sidebar background-image must follow and override the unlocked base image",
+);
+assert(
+  rgbaAlpha(nativeSidebarPanelRule.declarations.get("background-color")) >= .97,
   "native sidebar panel surface must be at least .97 opaque",
 );
 assert(
@@ -1682,13 +1697,30 @@ function assertLiveTaskVerification(loaderSource) {
   const declaration = loaderSource.slice(declarationStart, declarationEnd + 2);
   const expression = vm.runInNewContext(`${declaration}\nverifyExpression`);
 
-  const makeNode = (classes = [], dataset = {}) => ({
-    classList: { contains: (name) => classes.includes(name) },
-    contains: () => false,
-    dataset,
-    querySelector: () => null,
-    getBoundingClientRect: () => ({ x: 100, y: 100, width: 320, height: 80 }),
-  });
+  const makeNode = (classes = [], dataset = {}, rect = { x: 100, y: 100, width: 320, height: 80 }) => {
+    const x = rect.x ?? rect.left ?? 0;
+    const y = rect.y ?? rect.top ?? 0;
+    const width = rect.width ?? 0;
+    const height = rect.height ?? 0;
+    const measured = {
+      x,
+      y,
+      width,
+      height,
+      left: rect.left ?? x,
+      top: rect.top ?? y,
+      right: rect.right ?? x + width,
+      bottom: rect.bottom ?? y + height,
+    };
+    return {
+      classList: { contains: (name) => classes.includes(name) },
+      contains: () => false,
+      dataset,
+      getAttribute: () => null,
+      querySelector: () => null,
+      getBoundingClientRect: () => measured,
+    };
+  };
 
   const familyForState = {
     staged: "taskWarm",
@@ -1709,10 +1741,17 @@ function assertLiveTaskVerification(loaderSource) {
     artFamily = familyForState[formState],
     railDisplay = "block",
     sidebarState = "closed",
-    sidebarConfidence = sidebarState === "open" ? "high" : "none",
+    sidebarConfidence = sidebarState === "unknown" ? "none" : "high",
     nativeSidebarPanel = sidebarState === "open",
+    nativeSidebarPanelCount = nativeSidebarPanel ? 1 : 0,
     nativeSidebarGroupCount = nativeSidebarPanel ? 1 : 0,
     nativeSidebarRowCount = nativeSidebarPanel ? 1 : 0,
+    nativeSidebarRect = { x: 880, y: 46, width: 320, height: 754 },
+    skinsContained = true,
+    mainRect = { x: 0, y: 46, width: 880, height: 754 },
+    togglePresent = sidebarState === "open",
+    toggleHitTarget = true,
+    toggleRect = { x: 1140, y: 8, width: 40, height: 32 },
     home = false,
     decorateObservation = true,
     includeFinalCard = false,
@@ -1749,9 +1788,11 @@ function assertLiveTaskVerification(loaderSource) {
       suggestions.children = homeCards;
       suggestions.querySelectorAll = (selector) => selector === "button[data-denia-old-days-card]" ? homeCards : [];
     }
-    const nativeSidebar = nativeSidebarPanel
-      ? makeNode(["denia-old-days-ds-native-right-sidebar"])
-      : null;
+    const nativeSidebarPanels = Array.from(
+      { length: nativeSidebarPanelCount },
+      () => makeNode(["denia-old-days-ds-native-right-sidebar"], {}, nativeSidebarRect),
+    );
+    const nativeSidebar = nativeSidebarPanels[0] || null;
     const nativeSidebarGroups = Array.from(
       { length: nativeSidebarGroupCount },
       () => makeNode(["denia-old-days-ds-native-sidebar-group"]),
@@ -1760,6 +1801,16 @@ function assertLiveTaskVerification(loaderSource) {
       { length: nativeSidebarRowCount },
       () => makeNode(["denia-old-days-ds-native-sidebar-row"]),
     );
+    for (const panel of nativeSidebarPanels) {
+      panel.contains = (node) => skinsContained && (nativeSidebarGroups.includes(node) || nativeSidebarRows.includes(node));
+    }
+    const main = makeNode([], {}, mainRect);
+    const toggle = togglePresent ? makeNode([], {}, toggleRect) : null;
+    if (toggle) {
+      toggle.getAttribute = (name) => name === "aria-label" ? "显示/隐藏侧边栏" : null;
+      toggle.textContent = "";
+    }
+    const toggleOccluder = makeNode();
     const composer = makeNode();
     const nativeObservation = makeNode();
     const observation = decorateObservation ? makeNode(["denia-old-days-ds-observation"]) : null;
@@ -1767,7 +1818,15 @@ function assertLiveTaskVerification(loaderSource) {
     const finalCard = includeFinalCard ? assistant : null;
     const document = {
       documentElement: root,
-      elementFromPoint: () => homeCards[0] || null,
+      elementFromPoint(x, y) {
+        if (toggle) {
+          const rect = toggle.getBoundingClientRect();
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            return toggleHitTarget ? toggle : toggleOccluder;
+          }
+        }
+        return homeCards[0] || null;
+      },
       getElementById(id) {
         if (id === "denia-old-days-dream-skin-extension-style") return style;
         if (id === "denia-old-days-ds-chrome") return chrome;
@@ -1782,13 +1841,16 @@ function assertLiveTaskVerification(loaderSource) {
         if (selector === ".denia-old-days-ds-photo-front") return photoFront;
         if (selector === ".composer-surface-chrome") return composer;
         if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebar;
+        if (selector === '[role="main"]' || selector === "main") return main;
         if (selector === ".denia-old-days-ds-observation") return observation;
         if (selector === ".denia-old-days-ds-final-card") return finalCard;
         return null;
       },
       querySelectorAll(selector) {
+        if (selector === "button") return toggle ? [toggle] : [];
         if (selector.includes('[data-content-search-unit-key*="tool"]')) return [nativeObservation];
         if (selector === ".denia-old-days-ds-observation") return observation ? [observation] : [];
+        if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebarPanels;
         if (selector === ".denia-old-days-ds-native-sidebar-group") return nativeSidebarGroups;
         if (selector === ".denia-old-days-ds-native-sidebar-row") return nativeSidebarRows;
         if (selector === '[data-content-search-unit-key$=":assistant"]') return [assistant];
@@ -1910,6 +1972,95 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "working", sidebarState: "open", railDisplay: "none", nativeSidebarPanel: false }).taskPass === false,
     "live task verification must reject an open sidebar state without its panel skin",
+  );
+  for (const fixture of [
+    { sidebarState: "opening", sidebarConfidence: "none", label: "an invalid sidebar state" },
+    { sidebarState: "unknown", sidebarConfidence: "medium", label: "an invalid sidebar confidence" },
+    { sidebarState: "open", sidebarConfidence: "none", label: "open without high confidence" },
+    { sidebarState: "closed", sidebarConfidence: "none", label: "closed without high confidence" },
+    { sidebarState: "unknown", sidebarConfidence: "high", label: "unknown with high confidence" },
+  ]) {
+    assert(
+      runCase({
+        formState: "staged",
+        home: true,
+        railDisplay: "none",
+        sidebarState: fixture.sidebarState,
+        sidebarConfidence: fixture.sidebarConfidence,
+      }).pass === false,
+      `live verification must reject ${fixture.label}`,
+    );
+  }
+  assert(
+    runCase({
+      formState: "working",
+      sidebarState: "open",
+      railDisplay: "none",
+      nativeSidebarPanelCount: 2,
+    }).taskPass === false,
+    "live task verification must reject duplicate open sidebar panels",
+  );
+  assert(
+    runCase({
+      formState: "working",
+      sidebarState: "open",
+      railDisplay: "none",
+      nativeSidebarGroupCount: 1,
+      nativeSidebarRowCount: 0,
+      skinsContained: false,
+    }).taskPass === false,
+    "live task verification must reject an open group skin outside the unique panel",
+  );
+  assert(
+    runCase({
+      formState: "working",
+      sidebarState: "open",
+      railDisplay: "none",
+      nativeSidebarGroupCount: 0,
+      nativeSidebarRowCount: 1,
+      skinsContained: false,
+    }).taskPass === false,
+    "live task verification must reject an open row skin outside the unique panel",
+  );
+  const offEdgeResult = runCase({
+    formState: "working",
+    sidebarState: "open",
+    railDisplay: "none",
+    nativeSidebarRect: { x: 760, y: 46, width: 320, height: 754 },
+  });
+  assert(
+    offEdgeResult.sidebar.nativeGeometryPass === false && offEdgeResult.taskPass === false,
+    "live task verification must reject an open panel away from the viewport right edge",
+  );
+  const shortPanelResult = runCase({
+    formState: "working",
+    sidebarState: "open",
+    railDisplay: "none",
+    nativeSidebarRect: { x: 880, y: 46, width: 320, height: 200 },
+  });
+  assert(
+    shortPanelResult.sidebar.nativeGeometryPass === false && shortPanelResult.taskPass === false,
+    "live task verification must reject an open panel below the minimum height",
+  );
+  const mainOverlapResult = runCase({
+    formState: "working",
+    sidebarState: "open",
+    railDisplay: "none",
+    nativeSidebarRect: { x: 820, y: 46, width: 380, height: 754 },
+  });
+  assert(
+    mainOverlapResult.sidebar.nativeGeometryPass === false && mainOverlapResult.taskPass === false,
+    "live task verification must reject an open panel that starts inside measurable main content",
+  );
+  const blockedToggleResult = runCase({
+    formState: "working",
+    sidebarState: "open",
+    railDisplay: "none",
+    toggleHitTarget: false,
+  });
+  assert(
+    blockedToggleResult.sidebar.toggleHitTargetPass === false && blockedToggleResult.taskPass === false,
+    "live task verification must reject an open sidebar whose toggle center is obscured",
   );
   assert(
     runCase({ formState: "staged", home: true, sidebarState: "open", railDisplay: "none" }).pass === true,

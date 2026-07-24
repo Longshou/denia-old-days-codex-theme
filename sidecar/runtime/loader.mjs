@@ -231,22 +231,71 @@ const verifyExpression = `(() => {
   const photoFrontBackgroundImage = photoFront ? getComputedStyle(photoFront).backgroundImage : '';
   const stateArtRail = document.getElementById('denia-old-days-ds-state-art');
   const activeStateArtLayer = stateArtRail?.querySelector('.denia-old-days-ds-state-art-layer.is-active') || null;
-  const nativeSidebar = document.querySelector(".denia-old-days-ds-native-right-sidebar");
+  const nativeSidebarPanels = [...document.querySelectorAll(".denia-old-days-ds-native-right-sidebar")];
+  const visibleNativeSidebarPanels = nativeSidebarPanels.filter((node) => box(node)?.visible === true);
+  const nativeSidebar = nativeSidebarPanels.length === 1 && visibleNativeSidebarPanels.length === 1
+    ? visibleNativeSidebarPanels[0]
+    : null;
   const nativeSidebarGroups = [...document.querySelectorAll(".denia-old-days-ds-native-sidebar-group")];
   const nativeSidebarRows = [...document.querySelectorAll(".denia-old-days-ds-native-sidebar-row")];
   const sidebarState = root.dataset.deniaSidebarState || "unknown";
+  const sidebarConfidence = root.dataset.deniaSidebarConfidence || "none";
+  const sidebarStateValid = ["open", "closed", "unknown"].includes(sidebarState);
+  const sidebarConfidenceValid = ["high", "none"].includes(sidebarConfidence);
+  const sidebarStateConfidencePass = sidebarStateValid && sidebarConfidenceValid && (
+    (sidebarState === "open" && sidebarConfidence === "high")
+    || (sidebarState === "closed" && sidebarConfidence === "high")
+    || (sidebarState === "unknown" && sidebarConfidence === "none")
+  );
   const sidebarOpen = sidebarState === "open";
   const sidebarArtVisible = box(stateArtRail)?.visible === true;
+  const nativeMain = document.querySelector('[role="main"]') || document.querySelector("main");
+  const panelRect = nativeSidebar?.getBoundingClientRect?.() || null;
+  const mainRect = nativeMain?.getBoundingClientRect?.() || null;
+  const panelRight = panelRect && (Number.isFinite(panelRect.right) ? panelRect.right : panelRect.x + panelRect.width);
+  const panelLeft = panelRect && (Number.isFinite(panelRect.left) ? panelRect.left : panelRect.x);
+  const mainRight = mainRect && (Number.isFinite(mainRect.right) ? mainRect.right : mainRect.x + mainRect.width);
+  const mainMeasurable = Boolean(mainRect && mainRect.width > 0 && mainRect.height > 0);
+  const uniqueVisiblePanelPass = nativeSidebarPanels.length === 1 && visibleNativeSidebarPanels.length === 1;
+  const sidebarSkinsContained = Boolean(nativeSidebar
+    && [...nativeSidebarGroups, ...nativeSidebarRows].every((node) => nativeSidebar.contains(node)));
+  const nativeGeometryPass = !sidebarOpen || Boolean(
+    uniqueVisiblePanelPass
+      && panelRect
+      && Math.abs(panelRight - innerWidth) <= 12
+      && panelRect.height >= Math.max(240, innerHeight * .35)
+      && (!mainMeasurable || panelLeft >= mainRight - 12)
+  );
+  const sidebarToggle = [...document.querySelectorAll("button")].find((button) => {
+    if (box(button)?.visible !== true) return false;
+    const label = button.getAttribute?.("aria-label")
+      || button.getAttribute?.("title")
+      || button.title
+      || button.textContent
+      || "";
+    return /(?:显示\\/隐藏侧边栏|show\\/hide sidebar|toggle sidebar)/iu.test(label.replace(/\\s+/gu, " ").trim());
+  }) || null;
+  const toggleRect = sidebarToggle?.getBoundingClientRect?.() || null;
+  const toggleTarget = toggleRect
+    ? document.elementFromPoint?.(toggleRect.x + toggleRect.width / 2, toggleRect.y + toggleRect.height / 2)
+    : null;
+  const toggleHitTargetPass = !sidebarOpen || Boolean(
+    sidebarToggle && toggleTarget && (toggleTarget === sidebarToggle || sidebarToggle.contains(toggleTarget))
+  );
   const sidebar = {
     state: sidebarState,
-    confidence: root.dataset.deniaSidebarConfidence || "none",
+    confidence: sidebarConfidence,
     panelVisible: box(nativeSidebar)?.visible === true,
-    skinApplied: Boolean(nativeSidebar || nativeSidebarGroups.length || nativeSidebarRows.length),
+    skinApplied: Boolean(nativeSidebarPanels.length || nativeSidebarGroups.length || nativeSidebarRows.length),
     groupCount: nativeSidebarGroups.length,
     rowCount: nativeSidebarRows.length,
     artVisible: sidebarArtVisible,
-    homeNoCharacterPass: !home || !sidebarOpen || !sidebarArtVisible,
-    taskReadabilityPass: home || !sidebarOpen || Boolean(nativeSidebar),
+    homeNoCharacterPass: !home || sidebarState === "closed" || !sidebarArtVisible,
+    taskReadabilityPass: home || !sidebarOpen || Boolean(
+      uniqueVisiblePanelPass && nativeGeometryPass && sidebarSkinsContained
+    ),
+    nativeGeometryPass,
+    toggleHitTargetPass,
   };
   const expectedArtFamilies = {
     staged: 'taskWarm',
@@ -376,11 +425,22 @@ const verifyExpression = `(() => {
     : result.task?.rail?.visible === true
       && result.task?.rail?.family === result.task?.rail?.expectedFamily
       && result.task?.rail?.usesExpectedArt === true);
-  const sidebarPass = sidebarOpen
-    ? result.sidebar.panelVisible && result.sidebar.skinApplied && !result.sidebar.artVisible
+  const noSidebarSkin = nativeSidebarPanels.length === 0
+    && nativeSidebarGroups.length === 0
+    && nativeSidebarRows.length === 0;
+  const sidebarPass = sidebarStateConfidencePass && (sidebarOpen
+    ? uniqueVisiblePanelPass
+      && result.sidebar.panelVisible
+      && result.sidebar.skinApplied
+      && sidebarSkinsContained
+      && result.sidebar.nativeGeometryPass
+      && result.sidebar.toggleHitTargetPass
+      && !result.sidebar.artVisible
+      && result.sidebar.homeNoCharacterPass
+      && result.sidebar.taskReadabilityPass
     : sidebarState === 'closed'
-      ? !result.sidebar.skinApplied && (home || railMatchesState)
-      : !result.sidebar.skinApplied && !result.sidebar.artVisible;
+      ? noSidebarSkin && (home || railMatchesState)
+      : noSidebarSkin && !result.sidebar.artVisible && result.sidebar.homeNoCharacterPass);
   const observationsPass = home || result.task?.nativeObservationCount === 0
     || result.task?.decoratedObservationCount >= result.task?.nativeObservationCount;
   const finalCardPass = home || (result.formState === 'complete'

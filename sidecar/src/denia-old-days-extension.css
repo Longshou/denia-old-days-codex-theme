@@ -600,11 +600,11 @@
 
 .denia-old-days-ds-native-right-sidebar {
   color: var(--denia-ink);
-  background:
+  background-color: rgba(255, 251, 247, .98) !important;
+  background-image:
     radial-gradient(circle at 88% 8%, rgba(242, 154, 171, .12), transparent 24%),
     radial-gradient(circle at 12% 22%, rgba(143, 210, 221, .12), transparent 28%),
-    repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .045) 31px 32px),
-    rgba(255, 251, 247, .98) !important;
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .045) 31px 32px);
   border-color: rgba(111, 184, 231, .22) !important;
   box-shadow:
     inset 1px 0 rgba(111, 184, 231, .32),
