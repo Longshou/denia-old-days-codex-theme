@@ -1244,6 +1244,14 @@ function createRuntimeHarness(createObjectUrl) {
     }
   }
 
+  function recordChildListMutation(target, addedNodes = [], removedNodes = []) {
+    for (const observer of mutationObservers) {
+      if (!observer.target || !observer.options?.childList) continue;
+      if (target !== observer.target && !(observer.options.subtree && observer.target.contains(target))) continue;
+      observer.records.push({ type: "childList", target, addedNodes, removedNodes });
+    }
+  }
+
   class FakeStyle {
     constructor() {
       this.values = new Map();
@@ -1414,6 +1422,7 @@ function createRuntimeHarness(createObjectUrl) {
       node.parentElement = this;
       node.isConnected = true;
       this.children.splice(index, 0, node);
+      recordChildListMutation(this, [node]);
     }
   }
 
@@ -2391,6 +2400,18 @@ function assertFormStateRecognition(payload) {
     return marker;
   };
 
+  const appendContentUnit = ({ document, main }, role, paragraphs) => {
+    const unit = document.createElement("section");
+    unit.setAttribute("data-content-search-unit-key", `unit:${role}`);
+    for (const text of paragraphs) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      unit.append(paragraph);
+    }
+    main.append(unit);
+    return unit;
+  };
+
   assert(
     runCase((fixture) => appendMarker(fixture, { "data-state": "error" }, "Something needs attention")) === "error",
     "visible data-state=error must be authoritative without error wording",
@@ -2403,6 +2424,85 @@ function assertFormStateRecognition(payload) {
     runCase((fixture) => appendMarker(fixture, { "data-testid": "task-error-state" }, "Something needs attention")) === "error",
     "visible error test IDs must be authoritative without error wording",
   );
+  assert(
+    runCase((fixture) => appendContentUnit(
+      fixture,
+      "assistant",
+      ["测试错误已触发： command not found，退出码为 127。"],
+    )) === "error",
+    "the latest assistant explicit command-failure paragraph must select error",
+  );
+  assert(
+    runCase((fixture) => {
+      appendContentUnit(fixture, "user", ["测试错误已触发： command not found，退出码为 127。"]);
+      appendContentUnit(fixture, "assistant", ["命令已完成。"]);
+    }) === "complete",
+    "a matching user paragraph must not select error",
+  );
+  assert(
+    runCase((fixture) => appendContentUnit(
+      fixture,
+      "assistant",
+      ["We discussed an error, but no command was executed."],
+    )) === "complete",
+    "generic error discussion must not select error",
+  );
+  assert(
+    runCase((fixture) => appendContentUnit(
+      fixture,
+      "assistant",
+      ["命令执行失败： command not found，退出码为 0。"],
+    )) === "complete",
+    "an explicit command-failure paragraph with exit code zero must not select error",
+  );
+  assert(
+    runCase((fixture) => appendContentUnit(
+      fixture,
+      "assistant",
+      ["命令执行失败： command not found。"],
+    )) === "complete",
+    "a command-failure paragraph missing its status signal must not select error",
+  );
+  assert(
+    runCase((fixture) => {
+      appendContentUnit(fixture, "assistant", ["command failed: command not found, exit code 127."]);
+      appendContentUnit(fixture, "assistant", ["命令已完成。"]);
+    }) === "complete",
+    "an older matching assistant must not leave error sticky after a normal latest assistant",
+  );
+  {
+    const harness = createRuntimeHarness((index) => `blob:form-state-mutation-${index + 1}`);
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    harness.document.body.append(main);
+    vm.runInContext(payload, harness.context, { timeout: 1000 });
+    const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+    harness.clearMutationRecords();
+    appendContentUnit({ ...harness, main }, "assistant", ["command failed: command not found, exited with status 127."]);
+    assert(harness.flushMutations() === 1, "inserting a matching assistant must produce one child-list mutation");
+    assert(harness.flushAnimationFrames() === 1, "inserting a matching assistant must schedule exactly one animation-frame refresh");
+    assert(state.formState === "error", "the child-list refresh must recognize the inserted command failure");
+    state.cleanup();
+  }
+
+  {
+    const harness = createRuntimeHarness((index) => `blob:form-state-testid-${index + 1}`);
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    harness.document.body.append(main);
+    appendContentUnit({ ...harness, main }, "assistant", ["命令已完成。"]);
+    vm.runInContext(payload, harness.context, { timeout: 1000 });
+    const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+    const structured = harness.document.createElement("div");
+    main.append(structured);
+    harness.clearMutationRecords();
+    structured.setAttribute("data-testid", "new-error-state");
+    assert(state.observer.options.attributeFilter.includes("data-testid"), "the observer must watch data-testid changes");
+    assert(harness.flushMutations() === 1, "a new structured data-testid marker must be observable");
+    assert(harness.flushAnimationFrames() === 1, "the structured data-testid marker must schedule one refresh");
+    assert(state.formState === "error", "the observed structured data-testid marker must select error");
+    state.cleanup();
+  }
   assert(
     runCase(({ document, main }) => {
       const button = document.createElement("button");
