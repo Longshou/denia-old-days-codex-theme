@@ -2,12 +2,14 @@
 
 ## 目标
 
-本轮只解决三个已复现问题：
+本轮解决三个已复现问题，并完成用户补充要求的本地交付自包含：
 
 1. 无结构化错误属性的明确命令失败助手卡也能触发 `error` 和 `taskError`。
 2. 首页原生建议按钮在输入、清空或重挂载时，四卡区域不再导致下方工作区跳动。
 3. 保全唯一美术与旧 Git 历史后，清理旧主题副本
    `/Users/bytedance/ByteDance/workspace/denia-old-days-codex-theme`。
+4. 当前仓库和它生成的本地体验包不再依赖旧主题、Dream Skin Studio
+   工作树、Kaboo CLI 个人安装路径或 Sharp 才能安装和回滚。
 
 保持当前首页、右侧栏、输入框、审批卡和五态人物映射不变。
 
@@ -97,6 +99,65 @@ Observer 的 attribute filter 增加 `data-testid`，VM childList 测试覆盖
 两个目录各自包含 `PROVENANCE.md`，记录旧路径、SHA-256、审计日期和
 “不得自动打包”边界。8 张已重复官方图不再次复制。
 
+## 自包含本地交付
+
+### 固定产品输入
+
+以下当前版本产品输入进入 Git，由哈希锁定：
+
+- `theme/background.jpg`
+- `sidecar/assets/denia-old-days-bright.webp`
+- `sidecar/assets/denia-task-warm.webp`
+- `sidecar/assets/denia-task-approval.webp`
+- `sidecar/assets/denia-task-error.webp`
+- `sidecar/assets/denia-task-complete.webp`
+- `previews/home.webp`
+- `previews/task.webp`
+
+`scripts/render-assets.mjs` 继续作为可选的美术再生成工具，但 Sharp 不再是
+“构建本地体验包、安装、应用或回滚当前固定版本”的依赖。构建器直接校验并复制
+上述已经审核的衍生物，不再读取 `evidence/*.png` 或导入 Sharp。
+
+### 仓库内 Dream Skin 运行时
+
+从 `/Users/bytedance/ByteDance/workspace/Codex-Dream-Skin` 的干净 Git 对象
+`e776fa6d5361a2bdd5c1614674397681e7b00874` 迁入 macOS `1.2.0` 的最小 MIT
+运行闭包到 `vendor/dream-skin-runtime/`。必须包含上游 `LICENSE`、`NOTICE.md`
+和 `VERSION`，不得从其脏工作树读取 `theme-config.mjs` 或测试改动。
+
+运行闭包只包含：
+
+- `assets/dream-skin.css`
+- `assets/renderer-inject.js`
+- 安装、启动、切换、恢复、验证所需的 shell/Node 脚本及其直接依赖
+- 覆盖 injector、主题 staging 和图片 metadata 的上游测试
+
+不迁入菜单栏、客户端交付文档、非达妮娅 presets、人物素材、
+`portal-hero.png`、发布构建脚本和研究资料。
+
+vendored installer 增加受约束的 `--theme-source <dir>`：
+
+- 只接受包含 `theme.json` 及其单一引用图片的目录；
+- 使用既有 staging 与 payload 校验后发布到 Dream Skin state theme；
+- 部署到用户安装目录后仍使用调用者提供的绝对 source，仅用于本次拷贝；
+- 不持久保存对当前工作树或旧项目的依赖。
+
+### 可移动的本地体验包
+
+`scripts/build-local-kaboo-release.mjs` 仍生成兼容的 catalog/bundle，但体验入口
+改为仓库内运行时，不再调用 Kaboo：
+
+- release 输出包含 `runtime/`、`bundle.zip`、catalog、两个预览和两个启动器；
+- `start-local-test.command` 只用自己的目录定位所有输入，解压 bundle 到临时
+  目录，安装 Base Theme，启动 Dream Skin，再安装并验证 Sidecar；
+- `restore-local-test.command` 卸载 Sidecar，调用 vendored runtime 恢复
+  `config.toml` 和官方外观；
+- 两个启动器都不得含 `/Users/...`、旧 Studio、Kaboo 或 Registry/CDN 路径；
+- 启动器不静默退出或重启 Codex。首次安装在 Codex 正在运行时明确失败并提示
+  用户完全退出；实际重开由 Dream Skin start 完成。
+
+源仓库与生成的 release 目录均应能被移动到另一路径后工作。
+
 ## 旧项目清理
 
 清理目标仅限：
@@ -147,11 +208,16 @@ Observer 的 attribute filter 增加 `data-testid`，VM childList 测试覆盖
 - Git bundle 可验证。
 - 旧项目原路径不存在，废纸篓目标存在且可恢复。
 - 三个依赖项目与当前仓库仍存在且未被修改。
+- 本地包的全部输入都由 Git 跟踪且哈希匹配。
+- 干净临时 checkout 能在没有 Sharp、Kaboo 和旧 Studio 路径的环境下生成
+  相同 catalog/bundle/runtime 目录。
+- 启动/恢复脚本只含相对自定位路径，不含任何个人绝对路径。
+- vendored Dream Skin 上游测试和本仓库校验通过。
 
 ## 不在范围
 
 - 不扩大错误关键词到一般自然语言。
 - 不改变错误、审批、工作、完成的人物图片或 opacity。
 - 不重排 Hero、工作区或 composer。
-- 不删除视觉研究库、Dream Skin 或 Kaboo。
+- 不删除视觉研究库、Dream Skin 或 Kaboo；它们在迁移完成后只是不再作为依赖。
 - 不上传、推送、建 PR、发布 Registry 或重启 Codex。

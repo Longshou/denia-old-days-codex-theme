@@ -258,7 +258,150 @@ git add art/archive art/reference scripts/check-source.mjs
 git commit -m "chore: archive unique legacy artwork"
 ```
 
-### Task 4: Review, recoverably clean the old repository, integrate, and update the local package
+### Task 4: Make the current repository and local package self-contained
+
+**Files:**
+- Create: `vendor/dream-skin-runtime/LICENSE`
+- Create: `vendor/dream-skin-runtime/NOTICE.md`
+- Create: `vendor/dream-skin-runtime/VERSION`
+- Create: `vendor/dream-skin-runtime/assets/dream-skin.css`
+- Create: `vendor/dream-skin-runtime/assets/renderer-inject.js`
+- Create: `vendor/dream-skin-runtime/scripts/`
+- Create: `vendor/dream-skin-runtime/tests/`
+- Track: `theme/background.jpg`
+- Track: `sidecar/assets/*.webp`
+- Create: `previews/home.webp`
+- Create: `previews/task.webp`
+- Modify: `.gitignore`
+- Modify: `scripts/build-local-kaboo-release.mjs`
+- Modify: `scripts/release-inputs.mjs`
+- Modify: `scripts/check-source.mjs`
+- Modify: `README.md`
+- Modify: `docs/current-theme-design.md`
+- Test: `sidecar/tests/validate.mjs`
+
+**Step 1: Write failing self-containment tests**
+
+Add tests that fail on the current implementation:
+
+- no tracked source/build/launcher template may contain a personal
+  `/Users/...` path or operational reference to the old theme, external Dream Skin Studio,
+  external visual library, or a fixed Kaboo binary;
+- the local release builder must not import Sharp or read `evidence/*.png`;
+- every current package input (background, five runtime WebPs, two preview WebPs,
+  vendored runtime files) must be tracked and hash-checked;
+- generated launchers must contain no absolute source-machine path and must resolve
+  catalog, bundle, runtime, and restore actions relative to their own directory;
+- a copied/moved output directory must still pass launcher dry-run resolution;
+- the runtime source must match the selected clean upstream commit and include license,
+  notice, version, and the exact allowed file closure;
+- a clean temporary Git checkout can build the local release with `KABOO_SHARP_ENTRY`
+  unset and with external Studio/Kaboo paths unavailable;
+- a mutation fixture that reintroduces an absolute Studio/Kaboo path or Sharp import
+  fails the self-containment gate.
+
+Run:
+
+```bash
+node scripts/check-source.mjs
+```
+
+Expected: FAIL on the existing absolute launcher paths and untracked generated inputs.
+
+**Step 2: Vendor the clean MIT Dream Skin runtime**
+
+Read files from Git object
+`e776fa6d5361a2bdd5c1614674397681e7b00874`, not from the external repository’s dirty
+working tree. Copy only the approved runtime closure under `vendor/dream-skin-runtime/`.
+
+Include upstream `LICENSE`, `NOTICE.md`, `VERSION`, assets, runtime scripts, and focused
+tests. Exclude all non-Denia presets, character/reference art, menu bar, client-delivery,
+release builders, docs, and `portal-hero.png`.
+
+Modify the vendored installer to support `--theme-source <dir>` and publish that staged,
+validated theme as the initial Base Theme. Keep the rest of the upstream security model:
+official signed Codex Node, loopback CDP, config backup, exact theme payload validation,
+and fail-closed restore.
+
+**Step 3: Track the fixed product artifacts**
+
+Force-add the already generated and source-verified:
+
+- `theme/background.jpg`;
+- five `sidecar/assets/*.webp`.
+
+Create `previews/home.webp` and `previews/task.webp` from the current verified evidence
+once, then track and hash them. Do not track the nine large evidence PNGs as package
+inputs.
+
+Update `.gitignore` so these eight product artifacts are intentionally tracked while
+release directories and evidence remain generated/ignored.
+
+**Step 4: Remove Sharp and Kaboo from the local package build path**
+
+Refactor `scripts/build-local-kaboo-release.mjs`:
+
+- never import Sharp;
+- copy the two tracked WebP previews;
+- include the vendored runtime in `sidecar/release/kaboo-local/runtime`;
+- retain the compatible catalog and bundle ZIP for inspection;
+- generate `start-local-test.command` and `restore-local-test.command`.
+
+The start launcher must:
+
+1. resolve its own directory without a repository path;
+2. require macOS and an official Codex desktop installation;
+3. fail with a Chinese instruction if Codex is running;
+4. unpack the local bundle to a secure temporary directory;
+5. install the vendored Dream Skin runtime with the unpacked `theme/`;
+6. start and verify Base Theme;
+7. install/start/verify the unpacked Sidecar;
+8. clean its temporary directory on every exit.
+
+The restore launcher must remove the Sidecar first, then restore the Dream Skin config
+and official appearance using the installed vendored runtime. Neither launcher may call
+Kaboo, Registry, CDN, or an external Studio checkout.
+
+**Step 5: Update documentation and input manifests**
+
+Update the release input declarations and current design documentation:
+
+- current fixed products install/package without Sharp;
+- `render-assets.mjs` is optional development regeneration only;
+- the runtime is vendored from the recorded upstream commit under MIT;
+- official artwork remains internal/non-redistributable per the existing notice;
+- first install requires the user to fully quit Codex;
+- exact start and restore commands use the generated relative launchers.
+
+**Step 6: Run focused and clean-checkout verification**
+
+Run:
+
+```bash
+node scripts/check-source.mjs
+node sidecar/tests/validate.mjs sidecar
+bash vendor/dream-skin-runtime/tests/run-tests.sh
+```
+
+Build the local release once with `KABOO_SHARP_ENTRY` unset. Copy the built release to a
+temporary directory and run launcher dry-run/path-resolution checks there.
+
+Do not launch the start/restore scripts and do not restart Codex.
+
+**Step 7: Commit**
+
+```bash
+git add .gitignore README.md docs/current-theme-design.md scripts sidecar/tests \
+  theme/background.jpg sidecar/assets previews vendor
+git commit -m "feat: make local theme package self-contained"
+```
+
+After the commit, create a temporary clean worktree at the new commit and prove the same
+builder completes there without external Studio, Kaboo, visual-library, old-theme, or
+Sharp paths. If this check fails, fix the issue, add a follow-up commit, and repeat the
+clean-worktree check.
+
+### Task 5: Review, recoverably clean the old repository, integrate, and update the local package
 
 **Files:**
 - Create outside repo: `/Users/bytedance/Archives/denia-old-days-codex-theme-legacy-7851e38.bundle`
@@ -334,7 +477,9 @@ Use the repository’s existing release build path to regenerate:
 
 `/Users/bytedance/workspace/denia-old-days-codex-theme/sidecar/release/kaboo-local`
 
-Install/apply the updated local package using the existing non-launching install path. Do not invoke `start-local-test.command`, start a launcher, or restart Codex.
+Do not invoke `start-local-test.command` while Codex is running. The user explicitly
+allowed an exit-and-run handoff: provide the final `⌘Q` and launcher command after
+verifying the generated package. Do not terminate or restart Codex yourself.
 
 **Step 8: Final verification**
 
@@ -345,7 +490,10 @@ node sidecar/tests/validate.mjs sidecar
 node scripts/check-source.mjs
 ```
 
-Also verify release ZIP integrity, the installed extension version/hash, archived hashes, bundle verification, Trash destination, and protected project presence.
+Also verify release ZIP integrity, vendored runtime hashes/licenses, launcher
+self-containment, archived hashes, bundle verification, Trash destination, and protected
+project presence. Installed extension live verification is deferred until the user runs
+the launcher after completely exiting Codex.
 
 Report:
 
