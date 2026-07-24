@@ -2456,6 +2456,25 @@ function assertFormStateRecognition(payload) {
     "an explicit command-failure paragraph with exit code zero must not select error",
   );
   assert(
+    runCase(({ document, main }) => {
+      const unit = appendContentUnit(
+        { document, main },
+        "assistant",
+        ["command failed: command not found, exit code 127."],
+      );
+      unit.querySelector("p").append(document.createElement("code"));
+    }) === "complete",
+    "a paragraph containing a code descendant must not select error",
+  );
+  assert(
+    runCase((fixture) => appendContentUnit(
+      fixture,
+      "assistant",
+      ["command failed: command not found, exit code 127ms."],
+    )) === "complete",
+    "an exit status with a trailing token must not select error",
+  );
+  assert(
     runCase((fixture) => appendContentUnit(
       fixture,
       "assistant",

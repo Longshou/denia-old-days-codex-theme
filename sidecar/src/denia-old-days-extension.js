@@ -699,12 +699,14 @@
     const latestAssistant = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')].at(-1);
     if (!latestAssistant) return false;
     return [...latestAssistant.querySelectorAll("p")].some((paragraph) => {
-      if (!visible(paragraph) || paragraph.closest('pre, code, [data-content-search-unit-key$=":user"]')) return false;
+      if (!visible(paragraph)
+        || paragraph.closest('pre, code, [data-content-search-unit-key$=":user"]')
+        || paragraph.querySelector("pre, code")) return false;
       const text = (paragraph.textContent || "").replace(/\s+/gu, " ").trim();
       if (!text || text.length > 240) return false;
       if (!/^(?:测试错误已触发[:：]|命令执行失败[:：]|command failed:)/iu.test(text)) return false;
       if (!/(?:command not found|命令未找到)/iu.test(text)) return false;
-      const status = /(?:退出码为|exit code|exited with status)\s*(\d+)/iu.exec(text)?.[1];
+      const status = /(?:退出码为|exit code|exited with status)\s*(\d+)(?![\p{L}\p{N}_])/iu.exec(text)?.[1];
       return status != null && Number.parseInt(status, 10) !== 0;
     });
   }
