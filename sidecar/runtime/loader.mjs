@@ -173,6 +173,7 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-hero-badge',
     'denia-old-days-ds-stage-pass',
     'denia-old-days-ds-custom-card',
+    'denia-old-days-ds-suggestion-slot',
     'denia-old-days-ds-card-deck',
     'denia-old-days-ds-state-art',
   ]) document.getElementById(id)?.remove();
@@ -317,6 +318,7 @@ const verifyExpression = `(() => {
   const stateArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(stateArt)?.[1] || '';
   const taskRailStyle = stateArtRail ? getComputedStyle(stateArtRail) : null;
   const taskArtLayerStyle = activeStateArtLayer ? getComputedStyle(activeStateArtLayer) : null;
+  const suggestionSlot = document.getElementById('denia-old-days-ds-suggestion-slot');
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
@@ -422,6 +424,11 @@ const verifyExpression = `(() => {
     taskMode: root.classList.contains('denia-old-days-ds-task'),
     formState,
     heroCopy: box(document.getElementById('denia-old-days-ds-hero-copy')),
+    suggestionSlot: suggestionSlot ? {
+      ...box(suggestionSlot),
+      childCount: suggestionSlot.children.length,
+      retainedHeight: suggestionSlot.style.getPropertyValue('--denia-old-days-suggestion-slot-height') || null,
+    } : null,
     cards,
     suggestions: suggestions ? {
       ...box(suggestions),

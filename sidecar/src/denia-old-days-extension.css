@@ -487,12 +487,23 @@
   animation: denia-old-days-page-intro 1.4s both cubic-bezier(0.22, 0.72, 0.18, 1);
 }
 
+.denia-old-days-ds-suggestion-slot {
+  display: block;
+  width: min(1120px, calc(100vw - 330px));
+  margin: 0 auto 24px;
+  min-height: var(--denia-old-days-suggestion-slot-height);
+  pointer-events: none;
+  --denia-old-days-suggestion-slot-height: 92px;
+}
+
 .denia-old-days-ds-card-deck {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  width: min(1120px, calc(100vw - 330px));
-  margin: 0 auto 24px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  pointer-events: auto;
 }
 
 .denia-old-days-ds-card-deck button {
@@ -794,9 +805,13 @@
     padding-right: 0;
   }
 
+  .denia-old-days-ds-suggestion-slot {
+    width: min(980px, calc(100vw - 100px));
+    --denia-old-days-suggestion-slot-height: 196px;
+  }
+
   .denia-old-days-ds-card-deck {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(980px, calc(100vw - 100px));
   }
 }
 
@@ -819,7 +834,7 @@
   }
 
   .denia-old-days-ds-hero,
-  .denia-old-days-ds-card-deck {
+  .denia-old-days-ds-suggestion-slot {
     width: calc(100vw - 32px);
   }
 
@@ -860,6 +875,10 @@
 
   .denia-old-days-ds-card-deck {
     grid-template-columns: 1fr;
+  }
+
+  .denia-old-days-ds-suggestion-slot {
+    --denia-old-days-suggestion-slot-height: 404px;
   }
 }
 

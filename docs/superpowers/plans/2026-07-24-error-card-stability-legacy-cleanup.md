@@ -77,7 +77,7 @@ git commit -m "fix: recognize explicit command failure cards"
 - Modify: `sidecar/src/denia-old-days-extension.css`
 - Modify: `sidecar/runtime/loader.mjs`
 - Modify: `sidecar/tests/validate.mjs`
-- Modify: `docs/current-design.md`
+- Modify: `docs/current-theme-design.md`
 
 **Step 1: Write the failing slot lifecycle tests**
 
@@ -184,7 +184,7 @@ Do not launch or restart Codex.
 **Step 9: Commit**
 
 ```bash
-git add sidecar/src/denia-old-days-extension.js sidecar/src/denia-old-days-extension.css sidecar/runtime/loader.mjs sidecar/tests/validate.mjs docs/current-design.md
+git add sidecar/src/denia-old-days-extension.js sidecar/src/denia-old-days-extension.css sidecar/runtime/loader.mjs sidecar/tests/validate.mjs docs/current-theme-design.md
 git commit -m "fix: stabilize home suggestion layout"
 ```
 

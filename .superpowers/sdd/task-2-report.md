@@ -1,0 +1,50 @@
+# Task 2 Report — Home Suggestion Slot and Observer Stability
+
+## 状态
+
+实现完成；提交记录随本任务提交。
+
+## 实现
+
+- 首页现在在 hero 后创建 `#denia-old-days-ds-suggestion-slot`。该槽位始终保留，四个语义原生动作齐全时卡组是它唯一的子节点；动作不足时只移除卡组并恢复原生类。
+- 槽位保存最近一次有效卡组的测量高度到 `state.suggestionSlotHeight`，仅在数值变化时写入 CSS custom property；离开首页或 cleanup 时清零。
+- CSS 将外部 margin、宽度和非零响应式高度回退移到槽位：桌面 `92px`、中屏 `196px`、窄屏 `404px`。空槽 `pointer-events: none`，卡组恢复 `pointer-events: auto`，且自身没有伪造交互节点。
+- 新增比较后再写入的 class、dataset 和 CSS-property helper；根状态、侧栏状态、状态图 rail/layer、原生同步和任务最终卡均使用它们。
+- MutationObserver 请求 `attributeOldValue`，忽略 owned node/后代、仅含 `denia-old-days-ds-*` 差分的 class record，以及仅包含 owned node 的 child-list；同批次任一原生 mutation 仍只排队一次 refresh。
+- loader 的 fallback cleanup、只读 verify 输出和 validator 均识别槽位，并将其几何与保留高度作为非交互诊断信息报告。
+
+## 测试与 RED/GREEN 证据
+
+- 先扩展 VM harness：record-level delivery、`attributeOldValue`、style/dataset mutation 记录与 child-list removal 记录。
+- 先写 `[4] -> [0/3] -> [4]` 生命周期测试：持久空槽、最后有效高度、工作区 y 位置、禁用态、当前原生按钮 click mapping、home teardown/cleanup。
+- 先写 observer 测试：纯主题 class delta、owned descendants、owned child-list、mixed native batch、无写入的重复 refresh 和两秒等价窗口的 refresh 上限。
+- RED：`node sidecar/tests/validate.mjs sidecar` 以非零退出；失败为 `a stable sidebar refresh must not emit extension-only class mutations that schedule another refresh`，证明原实现会因主题 style/class 写入形成 refresh 回路。
+- GREEN：同一 focused validator 在实现后退出码 0，输出 `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required files, removable sidecar protocol.`
+
+## 完整验证
+
+- `node sidecar/tests/validate.mjs sidecar`：退出码 0。
+- `node scripts/check-source.mjs`：退出码 0，输出 `source structure ok`。
+- `git diff --check`：退出码 0。
+
+## 改动文件
+
+- `sidecar/src/denia-old-days-extension.js`
+- `sidecar/src/denia-old-days-extension.css`
+- `sidecar/runtime/loader.mjs`
+- `sidecar/tests/validate.mjs`
+- `docs/current-theme-design.md`
+- `docs/superpowers/plans/2026-07-24-error-card-stability-legacy-cleanup.md`（按要求修正唯一的 `current-design.md` 路径笔误）
+- `.superpowers/sdd/task-2-report.md`
+
+## 自审
+
+- 代理按钮继续只点击运行时重新发现的当前语义原生按钮；空槽没有 button、role、label、tab stop 或 pointer surface。
+- Task 1 的 `explicitCommandFailureVisible()` 和 `data-testid` 观察逻辑未放宽或改写。
+- observer 没有在 refresh 期间 disconnect；原生 `style`、`class`、ARIA、状态与 `data-testid` 仍在 attribute filter 中。
+- CSS 响应式回退严格对应四张卡在 4/2/1 列时的 `92/196/404px` 行高度。
+
+## 问题与顾虑
+
+- 只读状态检查发现已有 renderer 在运行，但它使用的是未安装本次改动的旧包：verify 报告 `suggestionSlot: null`，且 `metrics.refreshes: 315105`。为遵守“不安装、不启动、不重启 Codex”，未写入该安装包；因此没有把该 live 结果当作本次实现的通过证据。
+- 未发现需要额外架构决策的 brief 外分岔。

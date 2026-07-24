@@ -69,6 +69,7 @@
     artFamily: "",
     artCurrent: null,
     artNext: null,
+    suggestionSlotHeight: 0,
     metrics: { refreshes: 0, createdNodes: 0 },
     observer: null,
     frame: 0,
@@ -95,9 +96,46 @@
     return node;
   }
 
+  function isOwnedNode(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (ownedNodes.has(current) || current.id?.startsWith("denia-old-days-ds-")) return true;
+    }
+    return false;
+  }
+
+  function syncClass(node, className, present) {
+    if (!node?.classList || node.classList.contains(className) === present) return false;
+    node.classList.toggle(className, present);
+    return true;
+  }
+
+  function setDatasetValue(node, name, value) {
+    if (!node?.dataset || node.dataset[name] === value) return false;
+    node.dataset[name] = value;
+    return true;
+  }
+
+  function removeDatasetValue(node, name) {
+    if (!node?.dataset || !(name in node.dataset)) return false;
+    delete node.dataset[name];
+    return true;
+  }
+
+  function setStyleProperty(node, name, value) {
+    if (!node?.style || node.style.getPropertyValue(name) === value) return false;
+    node.style.setProperty(name, value);
+    return true;
+  }
+
+  function removeStyleProperty(node, name) {
+    if (!node?.style || !node.style.getPropertyValue(name)) return false;
+    node.style.removeProperty(name);
+    return true;
+  }
+
   function touch(node, className) {
     if (!node) return null;
-    node.classList.add(className);
+    syncClass(node, className, true);
     touchedNodes.add(node);
     return node;
   }
@@ -305,9 +343,9 @@
   }
 
   function clearNativeRightSidebarClasses() {
-    nativeSidebarPanel?.classList.remove("denia-old-days-ds-native-right-sidebar");
-    for (const group of nativeSidebarGroups) group.classList?.remove("denia-old-days-ds-native-sidebar-group");
-    for (const row of nativeSidebarRows) row.classList?.remove("denia-old-days-ds-native-sidebar-row");
+    syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
+    for (const group of nativeSidebarGroups) syncClass(group, "denia-old-days-ds-native-sidebar-group", false);
+    for (const row of nativeSidebarRows) syncClass(row, "denia-old-days-ds-native-sidebar-row", false);
     nativeSidebarPanel = null;
     nativeSidebarGroups.clear();
     nativeSidebarRows.clear();
@@ -315,7 +353,7 @@
 
   function syncNativeSidebarPanel(nextPanel) {
     if (nativeSidebarPanel !== nextPanel) {
-      nativeSidebarPanel?.classList.remove("denia-old-days-ds-native-right-sidebar");
+      syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
       nativeSidebarPanel = nextPanel
         ? touch(nextPanel, "denia-old-days-ds-native-right-sidebar")
         : null;
@@ -328,7 +366,7 @@
 
   function syncNativeSidebarClassSet(currentNodes, nextNodes, className) {
     for (const node of currentNodes) {
-      if (!nextNodes.has(node)) node.classList?.remove(className);
+      if (!nextNodes.has(node)) syncClass(node, className, false);
     }
     for (const node of nextNodes) {
       if (!currentNodes.has(node) || !node.classList.contains(className)) touch(node, className);
@@ -389,8 +427,8 @@
       groupCount: nativeSidebarGroups.size,
       rowCount: nativeSidebarRows.size,
     };
-    root.dataset.deniaSidebarState = result.state;
-    root.dataset.deniaSidebarConfidence = result.confidence;
+    setDatasetValue(root, "deniaSidebarState", result.state);
+    setDatasetValue(root, "deniaSidebarConfidence", result.confidence);
     void home;
   }
 
@@ -497,36 +535,37 @@
 
   function clearStateArtLayer(layer) {
     if (!layer) return;
-    layer.classList.remove("is-active", "is-leaving");
-    delete layer.dataset.deniaArtFamily;
-    delete layer.dataset.deniaArtGeneration;
-    layer.style.removeProperty("--denia-state-art-opacity");
+    syncClass(layer, "is-active", false);
+    syncClass(layer, "is-leaving", false);
+    removeDatasetValue(layer, "deniaArtFamily");
+    removeDatasetValue(layer, "deniaArtGeneration");
+    removeStyleProperty(layer, "--denia-state-art-opacity");
   }
 
   function configureStateArtLayer(layer, spec, generation) {
     clearStateArtLayer(layer);
-    layer.dataset.deniaArtFamily = spec.family;
-    layer.dataset.deniaArtGeneration = String(generation);
-    layer.style.setProperty("--denia-state-art-opacity", spec.opacity);
+    setDatasetValue(layer, "deniaArtFamily", spec.family);
+    setDatasetValue(layer, "deniaArtGeneration", String(generation));
+    setStyleProperty(layer, "--denia-state-art-opacity", spec.opacity);
   }
 
   function syncStateArt(formState) {
     const spec = stateArtSpecs[formState] || stateArtSpecs.staged;
     const rail = ensureStateArt(ensureChrome());
-    rail.dataset.deniaArtState = formState;
+    setDatasetValue(rail, "deniaArtState", formState);
 
     if (!state.artFamily) {
       state.artGeneration += 1;
       configureStateArtLayer(state.artCurrent, spec, state.artGeneration);
-      state.artCurrent.classList.add("is-active");
+      syncClass(state.artCurrent, "is-active", true);
       state.artFamily = spec.family;
       return;
     }
 
     if (state.artFamily === spec.family) {
-      state.artCurrent.style.setProperty("--denia-state-art-opacity", spec.opacity);
-      state.artCurrent.classList.remove("is-leaving");
-      state.artCurrent.classList.add("is-active");
+      setStyleProperty(state.artCurrent, "--denia-state-art-opacity", spec.opacity);
+      syncClass(state.artCurrent, "is-leaving", false);
+      syncClass(state.artCurrent, "is-active", true);
       return;
     }
 
@@ -538,11 +577,11 @@
 
     if (state.reducedMotion) {
       clearStateArtLayer(outgoing);
-      incoming.classList.add("is-active");
+      syncClass(incoming, "is-active", true);
     } else {
-      outgoing.classList.remove("is-active");
-      outgoing.classList.add("is-leaving");
-      incoming.classList.add("is-active");
+      syncClass(outgoing, "is-active", false);
+      syncClass(outgoing, "is-leaving", true);
+      syncClass(incoming, "is-active", true);
     }
 
     state.artCurrent = incoming;
@@ -628,7 +667,34 @@
     return hero;
   }
 
+  function ensureSuggestionSlot() {
+    let slot = document.getElementById("denia-old-days-ds-suggestion-slot");
+    const hero = ensureHomeHero();
+    if (!hero) return null;
+    if (slot?.isConnected && slot.parentElement === hero.parentElement) return slot;
+    if (slot) {
+      ownedNodes.delete(slot);
+      slot.remove();
+    }
+    slot = own(document.createElement("div"));
+    slot.id = "denia-old-days-ds-suggestion-slot";
+    slot.className = "denia-old-days-ds-suggestion-slot";
+    if (state.suggestionSlotHeight > 0) {
+      setStyleProperty(slot, "--denia-old-days-suggestion-slot-height", `${state.suggestionSlotHeight}px`);
+    }
+    hero.insertAdjacentElement("afterend", slot);
+    return slot;
+  }
+
+  function retainSuggestionSlotHeight(slot, deck) {
+    const height = Math.ceil(deck.getBoundingClientRect().height);
+    if (!Number.isFinite(height) || height <= 0 || state.suggestionSlotHeight === height) return;
+    state.suggestionSlotHeight = height;
+    setStyleProperty(slot, "--denia-old-days-suggestion-slot-height", `${height}px`);
+  }
+
   function ensureSuggestionDeck() {
+    const slot = ensureSuggestionSlot();
     let deck = document.getElementById("denia-old-days-ds-card-deck");
     const nativeButtons = nativeSuggestionButtons();
     if (nativeButtons.length !== 4) {
@@ -637,17 +703,21 @@
         deck.remove();
       }
       for (const node of touchedNodes) {
-        node.classList?.remove("denia-old-days-ds-native-card", "denia-old-days-ds-native-suggestions");
+        syncClass(node, "denia-old-days-ds-native-card", false);
+        syncClass(node, "denia-old-days-ds-native-suggestions", false);
       }
       return null;
     }
+    if (!slot) return null;
     const nativeContainer = nativeButtons[0].parentElement;
     if (nativeContainer) touch(nativeContainer, "denia-old-days-ds-native-suggestions");
     nativeButtons.forEach((button) => touch(button, "denia-old-days-ds-native-card"));
     if (deck?.isConnected) {
+      if (deck.parentElement !== slot) slot.append(deck);
       [...deck.querySelectorAll("button")].forEach((button, index) => {
         button.disabled = Boolean(nativeButtons[index]?.disabled);
       });
+      retainSuggestionSlotHeight(slot, deck);
       return deck;
     }
 
@@ -658,7 +728,7 @@
       const button = document.createElement("button");
       button.type = "button";
       button.id = `denia-old-days-ds-card-${index + 1}`;
-      button.dataset.deniaOldDaysCard = String(index);
+      setDatasetValue(button, "deniaOldDaysCard", String(index));
       button.disabled = Boolean(nativeButtons[index]?.disabled);
       const number = document.createElement("span");
       number.className = "denia-old-days-ds-card-number";
@@ -669,8 +739,8 @@
       button.addEventListener("click", () => nativeSuggestionButtons()[index]?.click());
       deck.append(button);
     });
-    const hero = ensureHomeHero();
-    hero?.insertAdjacentElement("afterend", deck);
+    slot.append(deck);
+    retainSuggestionSlotHeight(slot, deck);
     return deck;
   }
 
@@ -758,24 +828,24 @@
     ].join(","));
     observations.forEach((node) => {
       touch(node, "denia-old-days-ds-observation");
-      node.dataset.deniaObservationLabel = "观察记录";
+      setDatasetValue(node, "deniaObservationLabel", "观察记录");
     });
 
     const assistants = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')];
-    assistants.forEach((node) => {
-      node.classList.remove("denia-old-days-ds-final-card");
+    assistants.forEach((node, index) => {
+      syncClass(node, "denia-old-days-ds-final-card", state.formState === "complete" && index === assistants.length - 1);
       touchedNodes.add(node);
     });
-    if (state.formState === "complete") touch(assistants.at(-1), "denia-old-days-ds-final-card");
   }
 
   function removeHomeNodes() {
-    for (const id of ["denia-old-days-ds-hero-copy", "denia-old-days-ds-card-deck"]) {
+    for (const id of ["denia-old-days-ds-hero-copy", "denia-old-days-ds-suggestion-slot", "denia-old-days-ds-card-deck"]) {
       const node = document.getElementById(id);
       if (!node) continue;
       ownedNodes.delete(node);
       node.remove();
     }
+    state.suggestionSlotHeight = 0;
   }
 
   function refresh() {
@@ -783,8 +853,8 @@
     ensureChrome();
     decorateComposer();
     const home = isHomeView();
-    root.classList.toggle("denia-old-days-ds-home", home);
-    root.classList.toggle("denia-old-days-ds-task", !home);
+    syncClass(root, "denia-old-days-ds-home", home);
+    syncClass(root, "denia-old-days-ds-task", !home);
     syncNativeRightSidebar(home);
     if (home) {
       ensureSidebarBrand();
@@ -797,7 +867,7 @@
       state.formState = deriveFormState();
       decorateTask();
     }
-    root.dataset.deniaFormState = state.formState;
+    setDatasetValue(root, "deniaFormState", state.formState);
     syncStateArt(state.formState);
   }
 
@@ -807,6 +877,27 @@
       state.frame = 0;
       refresh();
     });
+  }
+
+  function extensionClassDeltaOnly(record) {
+    const oldTokens = new Set((record.oldValue || "").split(/\s+/u).filter(Boolean));
+    const currentTokens = new Set((record.target.className || "").split(/\s+/u).filter(Boolean));
+    const changedTokens = new Set([
+      ...[...oldTokens].filter((token) => !currentTokens.has(token)),
+      ...[...currentTokens].filter((token) => !oldTokens.has(token)),
+    ]);
+    return [...changedTokens].every((token) => token.startsWith("denia-old-days-ds-"));
+  }
+
+  function mutationIsThemeOnly(record) {
+    if (isOwnedNode(record.target)) return true;
+    if (record.type === "attributes") {
+      return record.attributeName === "class" && extensionClassDeltaOnly(record);
+    }
+    if (record.type === "childList") {
+      return [...record.addedNodes, ...record.removedNodes].every(isOwnedNode);
+    }
+    return false;
   }
 
   function on(target, name, handler) {
@@ -820,6 +911,7 @@
     for (const [target, name, handler] of listeners) target.removeEventListener(name, handler);
     clearNativeRightSidebarClasses();
     for (const node of ownedNodes) node.remove();
+    state.suggestionSlotHeight = 0;
     for (const node of touchedNodes) {
       for (const className of removableClasses) node.classList?.remove(className);
       if (node.dataset) {
@@ -852,16 +944,19 @@
       state.reducedMotion = event.matches;
       if (event.matches) {
         clearStateArtLayer(state.artNext);
-        state.artCurrent?.classList.remove("is-leaving");
-        state.artCurrent?.classList.add("is-active");
+        syncClass(state.artCurrent, "is-leaving", false);
+        syncClass(state.artCurrent, "is-active", true);
       }
     });
   }
-  state.observer = new MutationObserver(scheduleRefresh);
+  state.observer = new MutationObserver((records) => {
+    if (records.some((record) => !mutationIsThemeOnly(record))) scheduleRefresh();
+  });
   state.observer.observe(document.body || root, {
     childList: true,
     subtree: true,
     attributes: true,
+    attributeOldValue: true,
     attributeFilter: [
       "aria-busy",
       "aria-controls",
