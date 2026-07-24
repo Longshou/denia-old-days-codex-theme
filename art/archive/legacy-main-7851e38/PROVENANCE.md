@@ -10,6 +10,6 @@ The source files were last changed by commit
 
 | Archived file | Source path | SHA-256 |
 | --- | --- | --- |
-| `background.svg` | `/Users/bytedance/ByteDance/workspace/denia-old-days-codex-theme/art/source/background.svg` | `f434bc0fbf01523e8198f7f41bdb546c98186e99a6c0c5ab44a5ca6ed1a6df1a` |
-| `hero.svg` | `/Users/bytedance/ByteDance/workspace/denia-old-days-codex-theme/art/source/hero.svg` | `a7cacba007ae990c9b02bba07fdf9437c0a40b6028189109c21c37c3090671ec` |
-| `task-preview.svg` | `/Users/bytedance/ByteDance/workspace/denia-old-days-codex-theme/art/source/task-preview.svg` | `ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade` |
+| `background.svg` | legacy snapshot `art/source/background.svg` | `f434bc0fbf01523e8198f7f41bdb546c98186e99a6c0c5ab44a5ca6ed1a6df1a` |
+| `hero.svg` | legacy snapshot `art/source/hero.svg` | `a7cacba007ae990c9b02bba07fdf9437c0a40b6028189109c21c37c3090671ec` |
+| `task-preview.svg` | legacy snapshot `art/source/task-preview.svg` | `ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade` |
