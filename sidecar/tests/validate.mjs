@@ -1011,6 +1011,22 @@ function assertNativeRightSidebarLifecycle(payload) {
   narrowGroup.setPointTarget(narrowFirst);
   vm.runInContext(payload, narrowGroup.context, { timeout: 1000 });
   assert(!narrowWrapper.classList.contains("denia-old-days-ds-native-sidebar-group"), "groups narrower than 60% of the panel must not be skinned");
+
+  const stableMutation = createRuntimeHarness((index) => `blob:sidebar-stable-mutation-${index + 1}`);
+  appendTaskMain(stableMutation);
+  appendToggle(stableMutation, { "aria-controls": "stable-sidebar", "aria-expanded": "true" });
+  const stablePanel = appendRightPanel(stableMutation, "stable-sidebar");
+  stableMutation.setPointTarget(stablePanel);
+  vm.runInContext(payload, stableMutation.context, { timeout: 1000 });
+  stableMutation.clearMutationRecords();
+  stablePanel.classList.add("native-sidebar-open");
+  assert(stableMutation.flushMutations() === 1, "a native panel class change must be delivered to the runtime observer");
+  assert(stableMutation.flushAnimationFrames() === 1, "a native panel class change must schedule exactly one refresh frame");
+  assert(
+    stableMutation.flushMutations() === 0,
+    "a stable sidebar refresh must not emit extension-only class mutations that schedule another refresh",
+  );
+  assert(stablePanel.classList.contains("native-sidebar-open"), "sidebar synchronization must preserve native panel classes");
 }
 
 function assertRuntimeArtworkLifecycle(payload) {
@@ -1085,7 +1101,19 @@ function createRuntimeHarness(createObjectUrl) {
   const revoked = [];
   const events = [];
   const freezeCalls = [];
+  const mutationObservers = new Set();
+  const animationFrames = new Map();
   let pointTarget = null;
+  let nextAnimationFrame = 1;
+
+  function recordAttributeMutation(target, attributeName, oldValue) {
+    for (const observer of mutationObservers) {
+      if (!observer.target || !observer.options?.attributes) continue;
+      if (target !== observer.target && !(observer.options.subtree && observer.target.contains(target))) continue;
+      if (observer.options.attributeFilter && !observer.options.attributeFilter.includes(attributeName)) continue;
+      observer.records.push({ type: "attributes", target, attributeName, oldValue });
+    }
+  }
 
   class FakeStyle {
     constructor() {
@@ -1142,7 +1170,11 @@ function createRuntimeHarness(createObjectUrl) {
     }
 
     #sync(values) {
-      this.owner.className = [...values].join(" ");
+      const oldValue = this.owner.className;
+      const nextValue = [...values].join(" ");
+      if (nextValue === oldValue) return;
+      this.owner.className = nextValue;
+      recordAttributeMutation(this.owner, "class", oldValue);
     }
   }
 
@@ -1192,10 +1224,12 @@ function createRuntimeHarness(createObjectUrl) {
 
     setAttribute(name, value) {
       const stringValue = String(value);
+      const oldValue = this.getAttribute(name);
       this.attributes.set(name, stringValue);
       if (name === "id") this.id = stringValue;
       if (name === "class") this.className = stringValue;
       if (name.startsWith("data-")) this.dataset[dataAttributeKey(name)] = stringValue;
+      if (oldValue !== stringValue) recordAttributeMutation(this, name, oldValue);
     }
 
     getAttribute(name) {
@@ -1316,8 +1350,30 @@ function createRuntimeHarness(createObjectUrl) {
     Blob,
     HTMLElement: FakeElement,
     MutationObserver: class {
-      observe() {}
-      disconnect() {}
+      constructor(callback) {
+        this.callback = callback;
+        this.target = null;
+        this.options = null;
+        this.records = [];
+        mutationObservers.add(this);
+      }
+
+      observe(target, options) {
+        this.target = target;
+        this.options = options;
+      }
+
+      disconnect() {
+        this.target = null;
+        this.options = null;
+        this.records = [];
+      }
+
+      takeRecords() {
+        const records = this.records;
+        this.records = [];
+        return records;
+      }
     },
     URL: {
       createObjectURL(blob) {
@@ -1332,7 +1388,7 @@ function createRuntimeHarness(createObjectUrl) {
       },
     },
     atob,
-    cancelAnimationFrame: () => {},
+    cancelAnimationFrame: (id) => animationFrames.delete(id),
     console,
     decodeURIComponent,
     document,
@@ -1344,7 +1400,12 @@ function createRuntimeHarness(createObjectUrl) {
       getPropertyValue: (name) => node?.style?.getPropertyValue(name) || "",
     }),
     matchMedia: () => ({ matches: false }),
-    requestAnimationFrame: () => 1,
+    requestAnimationFrame: (callback) => {
+      const id = nextAnimationFrame;
+      nextAnimationFrame += 1;
+      animationFrames.set(id, callback);
+      return id;
+    },
     setTimeout,
     clearTimeout,
     addEventListener() {},
@@ -1381,6 +1442,25 @@ function createRuntimeHarness(createObjectUrl) {
       sandbox.innerHeight = height;
       sandbox.visualViewport.width = width;
       sandbox.visualViewport.height = height;
+    },
+    clearMutationRecords() {
+      for (const observer of mutationObservers) observer.takeRecords();
+    },
+    flushMutations() {
+      let delivered = 0;
+      for (const observer of mutationObservers) {
+        const records = observer.takeRecords();
+        if (!records.length || !observer.target) continue;
+        delivered += records.length;
+        observer.callback(records, observer);
+      }
+      return delivered;
+    },
+    flushAnimationFrames() {
+      const pending = [...animationFrames.entries()];
+      animationFrames.clear();
+      for (const [id, callback] of pending) callback(id);
+      return pending.length;
     },
   };
 }

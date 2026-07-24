@@ -283,12 +283,38 @@
     nativeSidebarRows.clear();
   }
 
+  function syncNativeSidebarPanel(nextPanel) {
+    if (nativeSidebarPanel !== nextPanel) {
+      nativeSidebarPanel?.classList.remove("denia-old-days-ds-native-right-sidebar");
+      nativeSidebarPanel = nextPanel
+        ? touch(nextPanel, "denia-old-days-ds-native-right-sidebar")
+        : null;
+      return;
+    }
+    if (nextPanel && !nextPanel.classList.contains("denia-old-days-ds-native-right-sidebar")) {
+      touch(nextPanel, "denia-old-days-ds-native-right-sidebar");
+    }
+  }
+
+  function syncNativeSidebarClassSet(currentNodes, nextNodes, className) {
+    for (const node of currentNodes) {
+      if (!nextNodes.has(node)) node.classList?.remove(className);
+    }
+    for (const node of nextNodes) {
+      if (!currentNodes.has(node) || !node.classList.contains(className)) touch(node, className);
+    }
+    currentNodes.clear();
+    for (const node of nextNodes) currentNodes.add(node);
+  }
+
   function syncNativeRightSidebar(home) {
-    clearNativeRightSidebarClasses();
     const result = detectNativeRightSidebar();
+    let nextPanel = null;
+    const nextGroups = new Set();
+    const nextRows = new Set();
     if (result.state === "open" && result.confidence === "high" && result.panel && result.panelRect) {
-      nativeSidebarPanel = touch(result.panel, "denia-old-days-ds-native-right-sidebar");
       const { panel, panelRect } = result;
+      nextPanel = panel;
       const rowCandidates = [...panel.querySelectorAll('button, a, [role="button"]')].filter((node) => {
         if (!visible(node) || ownedNodes.has(node)) return false;
         const rect = measuredRect(node);
@@ -297,9 +323,7 @@
           && rect.height <= 64
           && rect.y >= panelRect.y + 44;
       });
-      for (const row of rowCandidates) {
-        nativeSidebarRows.add(touch(row, "denia-old-days-ds-native-sidebar-row"));
-      }
+      for (const row of rowCandidates) nextRows.add(row);
       for (let firstIndex = 0; firstIndex < rowCandidates.length; firstIndex += 1) {
         for (let secondIndex = firstIndex + 1; secondIndex < rowCandidates.length; secondIndex += 1) {
           const group = nearestCommonAncestor(rowCandidates[firstIndex], rowCandidates[secondIndex], panel);
@@ -311,10 +335,21 @@
             || ownedNodes.has(group)
             || group.closest?.("#denia-old-days-ds-chrome")
             || group.closest?.('webview, [role="tabpanel"], dialog, [role="dialog"], [role="alertdialog"], [role="menu"], [popover], [role="status"], [data-testid*="toast"]')) continue;
-          nativeSidebarGroups.add(touch(group, "denia-old-days-ds-native-sidebar-group"));
+          nextGroups.add(group);
         }
       }
     }
+    syncNativeSidebarPanel(nextPanel);
+    syncNativeSidebarClassSet(
+      nativeSidebarGroups,
+      nextGroups,
+      "denia-old-days-ds-native-sidebar-group",
+    );
+    syncNativeSidebarClassSet(
+      nativeSidebarRows,
+      nextRows,
+      "denia-old-days-ds-native-sidebar-row",
+    );
     state.sidebar = {
       state: result.state,
       confidence: result.confidence,
