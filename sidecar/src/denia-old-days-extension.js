@@ -13,6 +13,9 @@
   const touchedNodes = new Set();
   const ownedNodes = new Set();
   const listeners = [];
+  let nativeSidebarPanel = null;
+  const nativeSidebarGroups = new Set();
+  const nativeSidebarRows = new Set();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   const stateArtSpecs = Object.freeze({
     staged: Object.freeze({ family: "taskWarm", opacity: ".11" }),
@@ -29,6 +32,9 @@
     "denia-old-days-ds-attachment",
     "denia-old-days-ds-observation",
     "denia-old-days-ds-final-card",
+    "denia-old-days-ds-native-right-sidebar",
+    "denia-old-days-ds-native-sidebar-group",
+    "denia-old-days-ds-native-sidebar-row",
   ];
 
   window[stateKey]?.cleanup?.();
@@ -101,6 +107,226 @@
     const box = node.getBoundingClientRect();
     const computed = getComputedStyle(node);
     return box.width > 0 && box.height > 0 && computed.display !== "none" && computed.visibility !== "hidden";
+  }
+
+  function normalizedNodeLabel(node) {
+    return (node?.getAttribute?.("aria-label")
+      || node?.getAttribute?.("title")
+      || node?.textContent
+      || "")
+      .replace(/\s+/gu, " ")
+      .trim();
+  }
+
+  function measuredRect(node) {
+    if (!(node instanceof HTMLElement)) return null;
+    const rect = node.getBoundingClientRect();
+    return {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+      right: rect.right,
+      bottom: rect.bottom,
+      top: rect.top,
+      left: rect.left,
+    };
+  }
+
+  function isExcludedSidebarCandidate(node) {
+    const excludedAncestor = node?.closest?.([
+      "main",
+      '[role="main"]',
+      "dialog",
+      '[role="dialog"]',
+      '[role="alertdialog"]',
+      '[role="menu"]',
+      '[role="listbox"]',
+      '[role="tooltip"]',
+      "[popover]",
+      '[role="status"]',
+      '[data-testid*="toast"]',
+    ].join(","));
+    const composer = findComposer();
+    return !node
+      || node.isConnected === false
+      || node === document.body
+      || node === root
+      || ownedNodes.has(node)
+      || Boolean(excludedAncestor)
+      || Boolean(composer?.contains(node))
+      || node.closest?.("#denia-old-days-ds-chrome")
+      || node.matches?.('main, [role="main"], dialog, [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tooltip"]');
+  }
+
+  function rightDockedPanel(node, mainRect) {
+    if (isExcludedSidebarCandidate(node) || !visible(node)) return false;
+    const rect = measuredRect(node);
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const rightEdgePass = Math.abs(rect.right - viewportWidth) <= 12;
+    const heightPass = rect.height >= Math.max(240, viewportHeight * 0.35);
+    const sidePass = !mainRect || rect.left >= mainRect.right - 12;
+    return rightEdgePass && heightPass && sidePass;
+  }
+
+  function visibleInteractiveCount(node) {
+    return [...node.querySelectorAll('button, a, [role="button"]')]
+      .filter((candidate) => visible(candidate) && !ownedNodes.has(candidate))
+      .length;
+  }
+
+  function sidebarDetectionResult(stateName, confidence, anchorKind, panel, toggle) {
+    return {
+      state: stateName,
+      confidence,
+      anchorKind,
+      panel,
+      panelRect: panel ? measuredRect(panel) : null,
+      toggle,
+    };
+  }
+
+  function detectNativeRightSidebar() {
+    const toggle = [...document.querySelectorAll("button")].find((button) =>
+      visible(button) && /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu.test(normalizedNodeLabel(button))
+    ) || null;
+    if (!toggle) return sidebarDetectionResult("unknown", "none", "none", null, null);
+
+    const mainRect = measuredRect(findMain());
+    const expanded = toggle.getAttribute("aria-expanded");
+    const controlledIds = (toggle.getAttribute("aria-controls") || "").trim().split(/\s+/u).filter(Boolean);
+    const controlledPanels = controlledIds.map((id) => document.getElementById(id)).filter(Boolean);
+    if (controlledPanels.length) {
+      const visibleControlled = controlledPanels.filter((panel) => rightDockedPanel(panel, mainRect));
+      if (visibleControlled.length === 1) {
+        if (expanded === "false") {
+          return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
+        }
+        return sidebarDetectionResult("open", "high", "aria-controls", visibleControlled[0], toggle);
+      }
+      if (visibleControlled.length > 1) {
+        return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
+      }
+      if (expanded === "false") {
+        return sidebarDetectionResult("closed", "high", "aria-controls", null, toggle);
+      }
+      if (expanded === "true") {
+        return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
+      }
+      return sidebarDetectionResult("closed", "high", "aria-controls", null, toggle);
+    }
+    if (controlledIds.length && expanded === "true") {
+      return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
+    }
+
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const semanticHits = new Map();
+    const geometryHits = new Map();
+    for (const yRatio of [0.25, 0.5, 0.75]) {
+      const hit = document.elementFromPoint(viewportWidth - 6, viewportHeight * yRatio);
+      let semanticPanel = null;
+      for (let node = hit; node; node = node.parentElement) {
+        if (node.matches?.('aside, [role="complementary"]') && rightDockedPanel(node, mainRect)) {
+          semanticPanel = node;
+          break;
+        }
+      }
+      if (semanticPanel) {
+        semanticHits.set(semanticPanel, (semanticHits.get(semanticPanel) || 0) + 1);
+        continue;
+      }
+      for (let node = hit; node; node = node.parentElement) {
+        if (!rightDockedPanel(node, mainRect) || visibleInteractiveCount(node) < 2) continue;
+        geometryHits.set(node, (geometryHits.get(node) || 0) + 1);
+        break;
+      }
+    }
+
+    const semanticPanels = [...semanticHits.keys()];
+    const geometryPanels = [...geometryHits.entries()]
+      .filter(([, hitCount]) => hitCount >= 2)
+      .map(([panel]) => panel);
+    const hitPanels = [...new Set([...semanticPanels, ...geometryPanels])];
+    if (hitPanels.length === 1) {
+      if (expanded === "false") {
+        return sidebarDetectionResult("unknown", "none", "right-edge-hit", null, toggle);
+      }
+      return sidebarDetectionResult("open", "high", "right-edge-hit", hitPanels[0], toggle);
+    }
+    if (hitPanels.length > 1 || expanded === "true") {
+      return sidebarDetectionResult("unknown", "none", "none", null, toggle);
+    }
+    return sidebarDetectionResult("closed", "high", "none", null, toggle);
+  }
+
+  function nearestCommonAncestor(first, second, panel) {
+    const firstAncestors = new Set();
+    for (let node = first.parentElement; node && panel.contains(node); node = node.parentElement) {
+      firstAncestors.add(node);
+      if (node === panel) break;
+    }
+    for (let node = second.parentElement; node && panel.contains(node); node = node.parentElement) {
+      if (firstAncestors.has(node)) return node;
+      if (node === panel) break;
+    }
+    return null;
+  }
+
+  function clearNativeRightSidebarClasses() {
+    nativeSidebarPanel?.classList.remove("denia-old-days-ds-native-right-sidebar");
+    for (const group of nativeSidebarGroups) group.classList?.remove("denia-old-days-ds-native-sidebar-group");
+    for (const row of nativeSidebarRows) row.classList?.remove("denia-old-days-ds-native-sidebar-row");
+    nativeSidebarPanel = null;
+    nativeSidebarGroups.clear();
+    nativeSidebarRows.clear();
+  }
+
+  function syncNativeRightSidebar(home) {
+    clearNativeRightSidebarClasses();
+    const result = detectNativeRightSidebar();
+    if (result.state === "open" && result.confidence === "high" && result.panel && result.panelRect) {
+      nativeSidebarPanel = touch(result.panel, "denia-old-days-ds-native-right-sidebar");
+      const { panel, panelRect } = result;
+      const rowCandidates = [...panel.querySelectorAll('button, a, [role="button"]')].filter((node) => {
+        if (!visible(node) || ownedNodes.has(node)) return false;
+        const rect = measuredRect(node);
+        return rect.width >= Math.min(160, panelRect.width * 0.55)
+          && rect.height >= 20
+          && rect.height <= 64
+          && rect.y >= panelRect.y + 44;
+      });
+      for (const row of rowCandidates) {
+        nativeSidebarRows.add(touch(row, "denia-old-days-ds-native-sidebar-row"));
+      }
+      for (let firstIndex = 0; firstIndex < rowCandidates.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < rowCandidates.length; secondIndex += 1) {
+          const group = nearestCommonAncestor(rowCandidates[firstIndex], rowCandidates[secondIndex], panel);
+          const groupRect = measuredRect(group);
+          if (!group
+            || group === panel
+            || !visible(group)
+            || groupRect.width < panelRect.width * 0.6
+            || ownedNodes.has(group)
+            || group.closest?.("#denia-old-days-ds-chrome")
+            || group.closest?.('webview, [role="tabpanel"], dialog, [role="dialog"], [role="alertdialog"], [role="menu"], [popover], [role="status"], [data-testid*="toast"]')) continue;
+          nativeSidebarGroups.add(touch(group, "denia-old-days-ds-native-sidebar-group"));
+        }
+      }
+    }
+    state.sidebar = {
+      state: result.state,
+      confidence: result.confidence,
+      anchorKind: result.anchorKind,
+      panelVisible: result.state === "open",
+      skinApplied: result.state === "open" && Boolean(result.panel),
+      groupCount: nativeSidebarGroups.size,
+      rowCount: nativeSidebarRows.size,
+    };
+    root.dataset.deniaSidebarState = result.state;
+    root.dataset.deniaSidebarConfidence = result.confidence;
+    void home;
   }
 
   function findMain() {
@@ -481,6 +707,7 @@
       decorateTask();
     }
     root.dataset.deniaFormState = state.formState;
+    syncNativeRightSidebar(home);
     syncStateArt(state.formState);
   }
 
@@ -501,6 +728,7 @@
     state.observer?.disconnect();
     if (state.frame) cancelAnimationFrame(state.frame);
     for (const [target, name, handler] of listeners) target.removeEventListener(name, handler);
+    clearNativeRightSidebarClasses();
     for (const node of ownedNodes) node.remove();
     for (const node of touchedNodes) {
       for (const className of removableClasses) node.classList?.remove(className);
@@ -513,6 +741,8 @@
     root.classList.remove(rootClass, "denia-old-days-ds-home", "denia-old-days-ds-task");
     delete root.dataset.deniaOldDaysExtensionVersion;
     delete root.dataset.deniaFormState;
+    delete root.dataset.deniaSidebarState;
+    delete root.dataset.deniaSidebarConfidence;
     for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
       root.style.removeProperty(`--denia-old-days-art-${name}`);
     }
@@ -523,6 +753,10 @@
 
   on(window, "popstate", scheduleRefresh);
   on(window, "hashchange", scheduleRefresh);
+  on(window, "resize", scheduleRefresh);
+  if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
+    on(window.visualViewport, "resize", scheduleRefresh);
+  }
   if (typeof motionPreference.addEventListener === "function") {
     on(motionPreference, "change", (event) => {
       state.reducedMotion = event.matches;
@@ -538,7 +772,17 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["aria-busy", "data-state", "data-status", "class"],
+    attributeFilter: [
+      "aria-busy",
+      "aria-controls",
+      "aria-expanded",
+      "aria-hidden",
+      "hidden",
+      "data-state",
+      "data-status",
+      "style",
+      "class",
+    ],
   });
   refresh();
   return { id: state.id, version: state.version, installed: true };

@@ -164,6 +164,7 @@ const runtimeReplacements = new Map([
 let runtimePayload = runtime;
 for (const [token, replacement] of runtimeReplacements) runtimePayload = runtimePayload.replace(token, replacement);
 assert(!/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/u.test(runtimePayload), "runtime payload must not retain template tokens");
+assertNativeRightSidebarLifecycle(runtimePayload);
 assertRuntimeArtworkLifecycle(runtimePayload);
 assertPublicStateUrlCollectionCoverage();
 assertLiveVerificationArtworkTarget(loader);
@@ -771,6 +772,247 @@ function spawnStylesheetFixture(fixtureRoot) {
   });
 }
 
+function assertNativeRightSidebarLifecycle(payload) {
+  const appendTaskMain = (harness) => {
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    main.setRect({ x: 0, y: 46, width: 1178, height: 813 });
+    harness.document.body.append(main);
+    return main;
+  };
+
+  const appendToggle = (harness, attributes = {}) => {
+    const toggle = harness.document.createElement("button");
+    toggle.setAttribute("aria-label", "显示/隐藏侧边栏");
+    toggle.setRect({ x: 1438, y: 8, width: 40, height: 32 });
+    for (const [name, value] of Object.entries(attributes)) toggle.setAttribute(name, value);
+    toggle.clickCount = 0;
+    toggle.addEventListener("click", () => { toggle.clickCount += 1; });
+    harness.document.body.append(toggle);
+    return toggle;
+  };
+
+  const appendRightPanel = (harness, id = "") => {
+    const panel = harness.document.createElement("aside");
+    if (id) panel.id = id;
+    panel.setAttribute("role", "complementary");
+    panel.setRect({ x: 1178, y: 46, width: 334, height: 813 });
+    harness.document.body.append(panel);
+    return panel;
+  };
+
+  const snapshotNativeNode = (node, attributes) => ({
+    rect: JSON.stringify(node.getBoundingClientRect()),
+    attributes: attributes.map((name) => [name, node.getAttribute(name)]),
+  });
+
+  const assertNativeNodeUnchanged = (node, attributes, before, label) => {
+    assert(JSON.stringify(node.getBoundingClientRect()) === before.rect, `${label} geometry must remain unchanged`);
+    assert(
+      JSON.stringify(attributes.map((name) => [name, node.getAttribute(name)])) === JSON.stringify(before.attributes),
+      `${label} interaction attributes must remain unchanged`,
+    );
+  };
+
+  const open = createRuntimeHarness((index) => `blob:sidebar-open-${index + 1}`);
+  open.setViewport(1512, 859);
+  const main = appendTaskMain(open);
+  const toggle = appendToggle(open, { "aria-controls": "native-right-panel", "aria-expanded": "true" });
+  const aside = appendRightPanel(open, "native-right-panel");
+  const group = open.document.createElement("div");
+  group.setRect({ x: 1194, y: 92, width: 302, height: 126 });
+  const firstRow = open.document.createElement("button");
+  firstRow.textContent = "Open in editor";
+  firstRow.setRect({ x: 1202, y: 102, width: 286, height: 40 });
+  const secondRow = open.document.createElement("a");
+  secondRow.textContent = "Copy task link";
+  secondRow.setRect({ x: 1202, y: 154, width: 286, height: 40 });
+  group.append(firstRow, secondRow);
+  aside.append(group);
+  const leftAside = open.document.createElement("aside");
+  leftAside.setRect({ x: 0, y: 46, width: 280, height: 813 });
+  open.document.body.append(leftAside);
+  const dialog = open.document.createElement("div");
+  dialog.setAttribute("role", "dialog");
+  dialog.setRect({ x: 1200, y: 80, width: 312, height: 520 });
+  open.document.body.append(dialog);
+  const composer = open.document.createElement("form");
+  composer.setAttribute("aria-label", "Message composer");
+  composer.setRect({ x: 280, y: 720, width: 760, height: 104 });
+  const textarea = open.document.createElement("textarea");
+  textarea.setAttribute("aria-label", "Message");
+  composer.append(textarea);
+  main.append(composer);
+  const approval = open.document.createElement("section");
+  approval.setAttribute("data-state", "approval");
+  approval.setAttribute("aria-label", "Approval request");
+  approval.setRect({ x: 300, y: 420, width: 720, height: 180 });
+  main.append(approval);
+  open.setPointTarget(firstRow);
+
+  const nativeSnapshots = [
+    [main, ["role"], snapshotNativeNode(main, ["role"]), "main"],
+    [aside, ["id", "role", "aria-hidden"], snapshotNativeNode(aside, ["id", "role", "aria-hidden"]), "panel"],
+    [toggle, ["aria-label", "aria-controls", "aria-expanded"], snapshotNativeNode(toggle, ["aria-label", "aria-controls", "aria-expanded"]), "toggle"],
+    [composer, ["aria-label"], snapshotNativeNode(composer, ["aria-label"]), "composer"],
+    [approval, ["data-state", "aria-label"], snapshotNativeNode(approval, ["data-state", "aria-label"]), "approval card"],
+  ];
+
+  vm.runInContext(payload, open.context, { timeout: 1000 });
+  const state = open.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(state.sidebar?.state === "open", "a visible right-docked native aside must be detected as open");
+  assert(state.sidebar.confidence === "high", "geometry plus right-edge hit testing must be high confidence");
+  assert(aside.classList.contains("denia-old-days-ds-native-right-sidebar"), "only the confirmed aside must receive the skin class");
+  assert(open.root.dataset.deniaSidebarState === "open", "the root must expose the open sidebar state");
+  assert(open.root.dataset.deniaSidebarConfidence === "high", "the root must expose high sidebar confidence");
+  assert(group.classList.contains("denia-old-days-ds-native-sidebar-group"), "the smallest common row ancestor must receive the group class");
+  assert(firstRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "wide visible sidebar buttons must receive the row class");
+  assert(secondRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "wide visible sidebar links must receive the row class");
+  assert(!leftAside.classList.contains("denia-old-days-ds-native-right-sidebar"), "left navigation must never be skinned as the right sidebar");
+  assert(!dialog.classList.contains("denia-old-days-ds-native-right-sidebar"), "dialogs and menus must never be classified as the right sidebar");
+  assert(toggle.clickCount === 0, "sidebar detection must never trigger the native toggle");
+  assert(
+    Object.values(state.sidebar).every((value) => value === null || ["string", "boolean", "number"].includes(typeof value)),
+    "public sidebar diagnostics must contain scalar values only",
+  );
+  for (const [node, attributes, before, label] of nativeSnapshots) {
+    assertNativeNodeUnchanged(node, attributes, before, label);
+  }
+
+  aside.setRect({ width: 0, height: 0 });
+  toggle.setAttribute("aria-expanded", "false");
+  state.refresh();
+  assert(state.sidebar.state === "closed", "aria-expanded=false with an invisible controlled panel must resolve closed");
+  assert(!aside.classList.contains("denia-old-days-ds-native-right-sidebar"), "closing the sidebar must remove the old panel class");
+  assert(!group.classList.contains("denia-old-days-ds-native-sidebar-group"), "closing the sidebar must remove old group classes");
+  assert(!firstRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "closing the sidebar must remove old row classes");
+
+  aside.remove();
+  const remounted = appendRightPanel(open, "native-right-panel");
+  toggle.setAttribute("aria-expanded", "true");
+  open.setPointTarget(remounted);
+  state.refresh();
+  assert(state.sidebar.state === "open", "a remounted visible controlled sidebar must resolve open");
+  assert(remounted.classList.contains("denia-old-days-ds-native-right-sidebar"), "a remounted sidebar must receive the panel class");
+  assert(!aside.classList.contains("denia-old-days-ds-native-right-sidebar"), "a remount must not restore the old panel class");
+
+  state.cleanup();
+  assert(!remounted.classList.contains("denia-old-days-ds-native-right-sidebar"), "cleanup must remove the current native sidebar class");
+  assert(!("deniaSidebarState" in open.root.dataset), "cleanup must remove the root sidebar state marker");
+  assert(!("deniaSidebarConfidence" in open.root.dataset), "cleanup must remove the root sidebar confidence marker");
+
+  const closed = createRuntimeHarness((index) => `blob:sidebar-closed-${index + 1}`);
+  appendTaskMain(closed);
+  appendToggle(closed, { "aria-expanded": "false" });
+  vm.runInContext(payload, closed.context, { timeout: 1000 });
+  const closedState = closed.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state;
+  assert(closedState === "closed", "a visible sidebar toggle with no right-docked panel must resolve closed");
+
+  const conflicting = createRuntimeHarness((index) => `blob:sidebar-conflict-${index + 1}`);
+  appendTaskMain(conflicting);
+  appendToggle(conflicting, { "aria-controls": "invisible-sidebar", "aria-expanded": "true" });
+  appendRightPanel(conflicting, "invisible-sidebar").setRect({ width: 0, height: 0 });
+  vm.runInContext(payload, conflicting.context, { timeout: 1000 });
+  const conflictingState = conflicting.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state;
+  assert(conflictingState === "unknown", "aria-expanded=true with an invisible panel must resolve unknown");
+
+  const collapsedVisible = createRuntimeHarness((index) => `blob:sidebar-collapsed-visible-${index + 1}`);
+  appendTaskMain(collapsedVisible);
+  appendToggle(collapsedVisible, { "aria-controls": "visible-collapsed-sidebar", "aria-expanded": "false" });
+  const visibleCollapsedPanel = appendRightPanel(collapsedVisible, "visible-collapsed-sidebar");
+  collapsedVisible.setPointTarget(visibleCollapsedPanel);
+  vm.runInContext(payload, collapsedVisible.context, { timeout: 1000 });
+  const collapsedVisibleState = collapsedVisible.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state;
+  assert(collapsedVisibleState === "unknown", "aria-expanded=false with a visible controlled panel must resolve unknown");
+  assert(!visibleCollapsedPanel.classList.contains("denia-old-days-ds-native-right-sidebar"), "conflicting expanded state must not skin the visible panel");
+
+  const leftOnly = createRuntimeHarness((index) => `blob:sidebar-left-${index + 1}`);
+  appendTaskMain(leftOnly);
+  appendToggle(leftOnly);
+  const onlyLeftAside = leftOnly.document.createElement("aside");
+  onlyLeftAside.setRect({ x: 0, y: 46, width: 280, height: 813 });
+  leftOnly.document.body.append(onlyLeftAside);
+  leftOnly.setPointTarget(onlyLeftAside);
+  vm.runInContext(payload, leftOnly.context, { timeout: 1000 });
+  assert(!onlyLeftAside.classList.contains("denia-old-days-ds-native-right-sidebar"), "left navigation must never be skinned as the right sidebar");
+
+  const dialogOnly = createRuntimeHarness((index) => `blob:sidebar-dialog-${index + 1}`);
+  appendTaskMain(dialogOnly);
+  appendToggle(dialogOnly);
+  const onlyDialog = dialogOnly.document.createElement("div");
+  onlyDialog.setAttribute("role", "dialog");
+  onlyDialog.setRect({ x: 1178, y: 46, width: 334, height: 813 });
+  dialogOnly.document.body.append(onlyDialog);
+  dialogOnly.setPointTarget(onlyDialog);
+  vm.runInContext(payload, dialogOnly.context, { timeout: 1000 });
+  assert(!onlyDialog.classList.contains("denia-old-days-ds-native-right-sidebar"), "dialogs and menus must never be classified as the right sidebar");
+
+  const nestedDialog = createRuntimeHarness((index) => `blob:sidebar-nested-dialog-${index + 1}`);
+  appendTaskMain(nestedDialog);
+  appendToggle(nestedDialog, { "aria-controls": "dialog-sidebar", "aria-expanded": "true" });
+  const dialogContainer = nestedDialog.document.createElement("div");
+  dialogContainer.setAttribute("role", "dialog");
+  dialogContainer.setRect({ x: 1178, y: 46, width: 334, height: 813 });
+  const dialogAside = nestedDialog.document.createElement("aside");
+  dialogAside.id = "dialog-sidebar";
+  dialogAside.setRect({ x: 1178, y: 46, width: 334, height: 813 });
+  dialogContainer.append(dialogAside);
+  nestedDialog.document.body.append(dialogContainer);
+  nestedDialog.setPointTarget(dialogAside);
+  vm.runInContext(payload, nestedDialog.context, { timeout: 1000 });
+  assert(
+    nestedDialog.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state === "unknown",
+    "a semantic panel nested inside a dialog must resolve unknown",
+  );
+  assert(!dialogAside.classList.contains("denia-old-days-ds-native-right-sidebar"), "a panel nested inside a dialog must never be skinned");
+
+  const hitTested = createRuntimeHarness((index) => `blob:sidebar-hit-${index + 1}`);
+  appendTaskMain(hitTested);
+  appendToggle(hitTested);
+  const geometryPanel = hitTested.document.createElement("div");
+  geometryPanel.setRect({ x: 1178, y: 46, width: 334, height: 813 });
+  const geometryFirst = hitTested.document.createElement("button");
+  geometryFirst.setRect({ x: 1202, y: 102, width: 286, height: 40 });
+  const geometrySecond = hitTested.document.createElement("button");
+  geometrySecond.setRect({ x: 1202, y: 154, width: 286, height: 40 });
+  geometryPanel.append(geometryFirst, geometrySecond);
+  hitTested.document.body.append(geometryPanel);
+  hitTested.setPointTarget(geometryFirst);
+  vm.runInContext(payload, hitTested.context, { timeout: 1000 });
+  const hitState = hitTested.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar;
+  assert(hitState?.state === "open", "right-edge hit testing plus native controls must detect a non-semantic panel");
+  assert(hitState.anchorKind === "right-edge-hit", "geometry fallback must report the right-edge-hit anchor");
+  assert(geometryPanel.classList.contains("denia-old-days-ds-native-right-sidebar"), "geometry fallback must skin only its confirmed panel");
+
+  const collapsedHit = createRuntimeHarness((index) => `blob:sidebar-collapsed-hit-${index + 1}`);
+  appendTaskMain(collapsedHit);
+  appendToggle(collapsedHit, { "aria-expanded": "false" });
+  const collapsedHitPanel = appendRightPanel(collapsedHit);
+  collapsedHit.setPointTarget(collapsedHitPanel);
+  vm.runInContext(payload, collapsedHit.context, { timeout: 1000 });
+  assert(
+    collapsedHit.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state === "unknown",
+    "aria-expanded=false with a right-edge hit panel must resolve unknown",
+  );
+  assert(!collapsedHitPanel.classList.contains("denia-old-days-ds-native-right-sidebar"), "hit-test conflict must not skin the panel");
+
+  const narrowGroup = createRuntimeHarness((index) => `blob:sidebar-narrow-group-${index + 1}`);
+  appendTaskMain(narrowGroup);
+  appendToggle(narrowGroup, { "aria-controls": "narrow-group-sidebar", "aria-expanded": "true" });
+  const narrowGroupPanel = appendRightPanel(narrowGroup, "narrow-group-sidebar");
+  const narrowWrapper = narrowGroup.document.createElement("div");
+  narrowWrapper.setRect({ x: 1350, y: 92, width: 140, height: 126 });
+  const narrowFirst = narrowGroup.document.createElement("button");
+  narrowFirst.setRect({ x: 1202, y: 102, width: 190, height: 40 });
+  const narrowSecond = narrowGroup.document.createElement("button");
+  narrowSecond.setRect({ x: 1202, y: 154, width: 190, height: 40 });
+  narrowWrapper.append(narrowFirst, narrowSecond);
+  narrowGroupPanel.append(narrowWrapper);
+  narrowGroup.setPointTarget(narrowFirst);
+  vm.runInContext(payload, narrowGroup.context, { timeout: 1000 });
+  assert(!narrowWrapper.classList.contains("denia-old-days-ds-native-sidebar-group"), "groups narrower than 60% of the panel must not be skinned");
+}
+
 function assertRuntimeArtworkLifecycle(payload) {
   const propertyNames = ["bright", "task-warm", "task-approval", "task-error", "task-complete"]
     .map((name) => `--denia-old-days-art-${name}`);
@@ -843,6 +1085,7 @@ function createRuntimeHarness(createObjectUrl) {
   const revoked = [];
   const events = [];
   const freezeCalls = [];
+  let pointTarget = null;
 
   class FakeStyle {
     constructor() {
@@ -919,6 +1162,7 @@ function createRuntimeHarness(createObjectUrl) {
       this.innerHTML = "";
       this.listeners = new Map();
       this.disabled = false;
+      this.rect = { x: 0, y: 0, width: 120, height: 36 };
     }
 
     append(...nodes) {
@@ -984,7 +1228,23 @@ function createRuntimeHarness(createObjectUrl) {
     }
     matches(selector) { return matchesSelector(this, selector); }
     contains(candidate) { return candidate === this || descendants(this).includes(candidate); }
-    getBoundingClientRect() { return { x: 0, y: 0, width: 120, height: 36 }; }
+    setRect(rect) {
+      this.rect = { ...this.rect, ...rect };
+      return this;
+    }
+    getBoundingClientRect() {
+      const { x, y, width, height } = this.rect;
+      return {
+        x,
+        y,
+        width,
+        height,
+        right: x + width,
+        bottom: y + height,
+        top: y,
+        left: x,
+      };
+    }
 
     #attach(node, index) {
       node.remove();
@@ -1005,7 +1265,7 @@ function createRuntimeHarness(createObjectUrl) {
     head,
     body,
     createElement: (tagName) => new FakeElement(tagName),
-    elementFromPoint: () => null,
+    elementFromPoint: () => pointTarget,
     querySelector(selector) { return this.querySelectorAll(selector)[0] || null; },
     querySelectorAll(selector) { return [head, body, ...descendants(head), ...descendants(body)].filter((node) => matchesSelector(node, selector)); },
     getElementById(id) {
@@ -1089,13 +1349,40 @@ function createRuntimeHarness(createObjectUrl) {
     clearTimeout,
     addEventListener() {},
     removeEventListener() {},
+    innerWidth: 1512,
+    innerHeight: 859,
+    visualViewport: {
+      width: 1512,
+      height: 859,
+      addEventListener() {},
+      removeEventListener() {},
+    },
   };
   sandbox.window = sandbox;
   sandbox.window.matchMedia = sandbox.matchMedia;
   const context = vm.createContext(sandbox);
   sandbox.captureFreeze = (value) => freezeCalls.push(value);
   vm.runInContext("globalThis.originalFreeze = Object.freeze; Object.freeze = (value) => { captureFreeze(value); return originalFreeze(value); };", context);
-  return { context, sandbox, root: documentElement, document, FakeElement, created, revoked, events, freezeCalls };
+  return {
+    context,
+    sandbox,
+    root: documentElement,
+    document,
+    FakeElement,
+    created,
+    revoked,
+    events,
+    freezeCalls,
+    setPointTarget(node) {
+      pointTarget = node;
+    },
+    setViewport(width, height) {
+      sandbox.innerWidth = width;
+      sandbox.innerHeight = height;
+      sandbox.visualViewport.width = width;
+      sandbox.visualViewport.height = height;
+    },
+  };
 }
 
 function publicStateContainsUrl(value, seen = new Set()) {
