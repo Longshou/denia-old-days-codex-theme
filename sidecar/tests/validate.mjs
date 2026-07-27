@@ -190,6 +190,7 @@ assertFormStateRecognition(runtimePayload);
 assertStateArtRailLifecycle(runtimePayload);
 assertIncrementalTaskDecoration(runtimePayload);
 assertObserverStability(runtimePayload);
+assertFinalReviewRegressions(runtimePayload);
 
 assert(loader.includes("127.0.0.1"), "loader must bind to loopback");
 assert(!loader.includes("0.0.0.0"), "loader must not use a wildcard host");
@@ -1434,6 +1435,11 @@ function assertRuntimeArtworkLifecycle(payload) {
   assert(successful.created.length === 5, "runtime install must create five artwork URLs");
   assert(firstArtworkMaps.length === 1 && Object.isFrozen(firstArtworkMaps[0]), "runtime must freeze the artwork URL map");
   assert(firstState?.artReady === true, "runtime artReady must be true when every artwork URL succeeds");
+  assert(
+    Number.isFinite(firstState?.metrics?.lastRefreshDurationMs)
+      && firstState.metrics.lastRefreshDurationMs >= 0,
+    "runtime metrics must expose the finite nonnegative duration of the latest runRefresh body",
+  );
   assert(!publicStateContainsUrl(firstState), "runtime public state must not expose artwork URLs");
   assert(
     successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 5,
@@ -1609,6 +1615,40 @@ function assertComposerIsolation(payload) {
   assert(inputFixture.flushMutations() === 1, "a direct fallback input addition must reach the observer");
   assert(inputFixture.flushAnimationFrames() === 1, "a direct fallback input addition must schedule composer work");
   assert(inputForm.classList.contains("denia-old-days-ds-composer"), "adding a direct textarea must discover and decorate its form");
+
+  inputFixture.clearMutationRecords();
+  const classBaseline = inputState.metrics.domainRuns.composer;
+  inputForm.classList.add("native-composer-state");
+  assert(inputFixture.flushMutations() === 1, "a cached composer class change must reach the observer");
+  assert(inputFixture.flushAnimationFrames() === 1, "a cached composer class change must schedule composer work");
+  assert(
+    inputState.metrics.domainRuns.composer === classBaseline + 1,
+    "a cached composer class change must invalidate and rerun only composer discovery",
+  );
+
+  inputFixture.clearMutationRecords();
+  const semanticBaseline = inputState.metrics.domainRuns.composer;
+  directInput.setAttribute("aria-label", "Message editor");
+  assert(inputState.observer.options.attributeFilter.includes("aria-label"), "composer semantics must observe aria-label changes");
+  assert(inputState.observer.options.attributeFilter.includes("title"), "composer and toggle semantics must observe title changes");
+  assert(inputFixture.flushMutations() === 1, "a cached composer semantic change must reach the observer");
+  assert(inputFixture.flushAnimationFrames() === 1, "a cached composer semantic change must schedule composer work");
+  assert(
+    inputState.metrics.domainRuns.composer === semanticBaseline + 1,
+    "a cached composer descendant semantic change must invalidate and rerun composer discovery",
+  );
+
+  inputFixture.clearMutationRecords();
+  const styleBaseline = inputState.metrics.domainRuns.composer;
+  inputForm.style.setProperty("min-height", "48px");
+  assert(inputFixture.flushMutations() === 1, "a cached composer style change must reach the observer");
+  assert(inputFixture.flushAnimationFrames() === 0, "cached composer style work must remain trailing");
+  assert(inputFixture.flushTimers() === 1, "cached composer style work must use one trailing timer");
+  assert(inputFixture.flushAnimationFrames() === 1, "cached composer style work must schedule one frame after the timer");
+  assert(
+    inputState.metrics.domainRuns.composer === styleBaseline + 1,
+    "a cached composer style change must invalidate and rerun composer discovery",
+  );
 
   inputFixture.clearMutationRecords();
   directInput.remove();
@@ -2722,6 +2762,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
   }
 
   const removableClasses = [
+    "denia-old-days-ds-native-home-prompt",
     "denia-old-days-ds-composer",
     "denia-old-days-ds-send",
     "denia-old-days-ds-attachment",
@@ -2738,6 +2779,8 @@ function assertFallbackCleanupBehavior(loaderSource) {
     harness.document.body.append(node);
     return node;
   });
+  const nativeHomePrompt = touched[0];
+  nativeHomePrompt.style.setProperty("--denia-old-days-native-prompt-shift", "246px");
 
   const hero = harness.document.createElement("div");
   hero.classList.add("denia-old-days-ds-hero");
@@ -2777,6 +2820,10 @@ function assertFallbackCleanupBehavior(loaderSource) {
     assert(!touched[index].classList.contains(className), `fallback cleanup must remove touched class ${className}`);
     assert(!("deniaObservationLabel" in touched[index].dataset), `fallback cleanup must remove observation data from ${className}`);
   });
+  assert(
+    !nativeHomePrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"),
+    "fallback cleanup must remove native home prompt positioning",
+  );
   for (const property of ["background-image", "background-position", "background-size", "background-repeat", "background-color"]) {
     assert(!hero.style.getPropertyValue(property), `fallback cleanup must remove legacy hero ${property}`);
   }
@@ -2895,232 +2942,6 @@ function assertHomeLayoutPreservation(payload) {
   state.refresh();
   for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
   assert(main.scrollTop === 0, "home refresh must keep the native viewport locked at the origin");
-}
-
-function assertSuggestionDeckLifecycle(payload) {
-  const labels = ["Explore code", "Build feature", "Review changes", "Fix bug"];
-
-  const makeHarness = (initialLabels) => {
-    const harness = createRuntimeHarness((index) => `blob:suggestion-${index + 1}`);
-    const main = harness.document.createElement("main");
-    main.setAttribute("role", "main");
-    main.classList.add("dream-skin-home");
-    harness.document.body.append(main);
-    const nativePrompt = harness.document.createElement("div");
-    const nativePromptBody = harness.document.createElement("div");
-    const nativeHeading = harness.document.createElement("div");
-    const nativeTitle = harness.document.createElement("span");
-    const inlineProjectButton = harness.document.createElement("button");
-    const promptText = "What should we build in denia-old-days-codex-theme?";
-    nativePrompt.textContent = promptText;
-    nativePromptBody.textContent = promptText;
-    nativeHeading.textContent = promptText;
-    nativeTitle.textContent = promptText;
-    inlineProjectButton.textContent = "denia-old-days-codex-theme";
-    nativeTitle.append(inlineProjectButton);
-    nativeHeading.append(nativeTitle);
-    nativePromptBody.append(nativeHeading);
-    nativePrompt.append(nativePromptBody);
-    main.append(nativePrompt);
-    let nativeContainer = null;
-    const workspace = harness.document.createElement("section");
-    workspace.className = "native-workspace";
-    workspace.setRect({ x: 196, y: 760, width: 1120, height: 180 });
-    const mountNativeActions = (nextLabels, replaceCurrent = true) => {
-      if (replaceCurrent) nativeContainer?.remove();
-      const container = harness.document.createElement("div");
-      container.className = "native-actions";
-      if (workspace.parentElement === main) main.insertBefore(container, workspace);
-      else main.append(container);
-      const buttons = nextLabels.map((label) => {
-        const button = harness.document.createElement("button");
-        button.textContent = label;
-        button.clickCount = 0;
-        button.addEventListener("click", () => { button.clickCount += 1; });
-        container.append(button);
-        return button;
-      });
-      nativeContainer = container;
-      return buttons;
-    };
-    const remount = (nextLabels) => mountNativeActions(nextLabels);
-    const appendNativeActions = (nextLabels) => mountNativeActions(nextLabels, false);
-    const buttons = remount(initialLabels);
-    main.append(workspace);
-    workspace.getBoundingClientRect = () => {
-      const workspaceIndex = main.children.indexOf(workspace);
-      const y = 40 + main.children.slice(0, workspaceIndex).reduce((offset, node) => {
-        if (node.id === "denia-old-days-ds-hero-copy") return offset + 390;
-        if (node.id === "denia-old-days-ds-suggestion-slot") {
-          const retainedHeight = Number.parseFloat(node.style.getPropertyValue("--denia-old-days-suggestion-slot-height"));
-          return offset + (Number.isFinite(retainedHeight) ? retainedHeight : 0);
-        }
-        if (node.id === "denia-old-days-ds-card-deck") return offset + node.getBoundingClientRect().height;
-        return offset;
-      }, 0);
-      return {
-        x: workspace.rect.x,
-        y,
-        width: workspace.rect.width,
-        height: workspace.rect.height,
-        left: workspace.rect.x,
-        top: y,
-        right: workspace.rect.x + workspace.rect.width,
-        bottom: y + workspace.rect.height,
-      };
-    };
-    return {
-      harness,
-      main,
-      remount,
-      appendNativeActions,
-      buttons,
-      nativeContainer: () => nativeContainer,
-      nativePrompt,
-      workspace,
-    };
-  };
-
-  const short = makeHarness(labels.slice(0, 3));
-  vm.runInContext(payload, short.harness.context, { timeout: 1000 });
-  const shortSlot = short.harness.document.getElementById("denia-old-days-ds-suggestion-slot");
-  assert(shortSlot, "home must create the persistent suggestion slot before four native actions are available");
-  assert(shortSlot.children.length === 0, "an incomplete native action set must leave the persistent suggestion slot empty");
-  assert(!shortSlot.querySelector("button"), "an empty suggestion slot must not fabricate a button");
-  assert(!shortSlot.getAttribute("role") && !shortSlot.getAttribute("aria-label") && !shortSlot.getAttribute("tabindex"), "an empty suggestion slot must not expose a role, label, or tab stop");
-  assert(!short.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck must not be created for only three native actions");
-  assert(!short.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "three native actions must remain visible and undecorated");
-  assert(
-    short.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "an incomplete native action set must retain the visible native prompt decoration",
-  );
-
-  const complete = makeHarness(labels);
-  vm.runInContext(payload, complete.harness.context, { timeout: 1000 });
-  const state = complete.harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
-  const slot = complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot");
-  let deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
-  assert(slot?.parentElement === complete.main, "the persistent suggestion slot must be a direct home child");
-  assert(complete.main.children[complete.main.children.indexOf(slot) - 1]?.id === "denia-old-days-ds-hero-copy", "the suggestion slot must be inserted immediately after the hero");
-  assert(slot?.children.length === 1 && slot.children[0] === deck, "the deck must be the suggestion slot's only child");
-  assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "suggestion deck must proxy all four native actions");
-  assert(
-    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "four themed actions must retain the visible native prompt decoration",
-  );
-  deck.setRect({ x: 196, y: 620, width: 1120, height: 116 });
-  state.refresh();
-  assert(slot.style.getPropertyValue("--denia-old-days-suggestion-slot-height") === "116px", "a valid deck mount must retain its measured block height on the slot");
-  const workspaceTop = complete.workspace.getBoundingClientRect().y;
-  assert(workspaceTop === 546, "workspace geometry must be derived from the preceding hero and retained slot height");
-
-  const hero = complete.harness.document.getElementById("denia-old-days-ds-hero-copy");
-  const interveningNativeNode = complete.harness.document.createElement("div");
-  hero.insertAdjacentElement("afterend", interveningNativeNode);
-  state.refresh();
-  assert(complete.main.children[complete.main.children.indexOf(hero) + 1] === slot, "every home refresh must restore the suggestion slot immediately after the hero");
-
-  const dropped = complete.remount(labels.slice(0, 3));
-  state.refresh();
-  assert(!complete.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck must be removed immediately when native action count drops below four");
-  assert(complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot") === slot, "the empty suggestion slot must remain mounted while actions are incomplete");
-  assert(slot.children.length === 0 && !slot.querySelector("button"), "the retained empty slot must have no interactive descendants or fake action");
-  assert(slot.style.getPropertyValue("--denia-old-days-suggestion-slot-height") === "116px", "the empty slot must preserve its last valid measured height");
-  assert(complete.workspace.getBoundingClientRect().y === workspaceTop, "the workspace sibling must retain its y position across a temporary action gap");
-  assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "native action container must be restored after count drop");
-  assert(dropped.every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "native action buttons must be restored after count drop");
-  assert(
-    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "dropping below four actions must keep the native prompt decorated",
-  );
-
-  const reordered = complete.remount([labels[3], labels[0], labels[2], labels[1]]);
-  state.refresh();
-  deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
-  assert(slot.children.length === 1 && slot.children[0] === deck, "restoring four actions must reattach one real-action deck to the retained slot");
-  const proxyButtons = deck.querySelectorAll("button[data-denia-old-days-card]");
-  assert(
-    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "restoring four semantic actions must keep the native prompt decorated",
-  );
-  const semanticTargets = [reordered[1], reordered[3], reordered[2], reordered[0]];
-  ["Explore", "Build", "Review", "Fix"].forEach((action, index) => {
-    proxyButtons[index].click();
-    assert(semanticTargets[index].clickCount === 1, `${action} proxy must bind to its semantic native action after reorder`);
-  });
-
-  state.refresh();
-  deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
-  assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "a repeated refresh with current native actions must keep the existing deck mounted");
-  deck.querySelectorAll("button[data-denia-old-days-card]").forEach((button, index) => {
-    button.click();
-    assert(semanticTargets[index].clickCount === 2, "a repeated refresh must keep the current proxy click targets");
-  });
-
-  complete.nativeContainer().computedOpacity = "0";
-  reordered.forEach((button) => { button.computedOpacity = "0"; });
-  const current = complete.appendNativeActions([labels[1], labels[3], labels[0], labels[2]]);
-  state.refresh();
-  deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
-  const currentSemanticTargets = [current[2], current[0], current[3], current[1]];
-  deck.querySelectorAll("button[data-denia-old-days-card]").forEach((button, index) => {
-    button.click();
-    assert(currentSemanticTargets[index].clickCount === 1, "an opaque stale native action must not displace the current proxy click target");
-    assert(semanticTargets[index].clickCount === 2, "an opaque stale native action must not receive proxy clicks");
-  });
-
-  complete.harness.clearMutationRecords();
-  currentSemanticTargets[1].disabled = true;
-  assert(complete.harness.flushMutations() === 1, "a native disabled property change must reach the observer");
-  assert(complete.harness.flushAnimationFrames() === 1, "a native disabled property change must schedule one refresh");
-  const refreshedProxies = deck.querySelectorAll("button[data-denia-old-days-card]");
-  assert(refreshedProxies[1].disabled, "Build proxy disabled state must follow the semantic Build action after reorder");
-  assert([refreshedProxies[0], refreshedProxies[2], refreshedProxies[3]].every((button) => !button.disabled), "other proxies must remain enabled when only Build is disabled");
-
-  currentSemanticTargets[1].disabled = false;
-  complete.harness.clearMutationRecords();
-  currentSemanticTargets[1].setAttribute("aria-disabled", "true");
-  assert(complete.harness.flushMutations() === 1, "a native aria-disabled change must reach the observer");
-  assert(complete.harness.flushAnimationFrames() === 1, "a native aria-disabled change must schedule one refresh");
-  assert(deck.querySelectorAll("button[data-denia-old-days-card]")[1].disabled, "Build proxy disabled state must honor aria-disabled on the current native action");
-
-  complete.harness.clearMutationRecords();
-  state.refresh();
-  assert(
-    complete.harness.takeMutationRecords().filter((record) => record.type === "attributes" && record.attributeName === "disabled").length === 0,
-    "a stable refresh with a disabled native action must not reflect the same disabled value onto proxies",
-  );
-
-  const incompleteCategories = makeHarness([labels[0], "Understand project", labels[2], labels[3]]);
-  vm.runInContext(payload, incompleteCategories.harness.context, { timeout: 1000 });
-  assert(!incompleteCategories.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck requires one native action from each semantic category");
-
-  complete.main.classList.remove("dream-skin-home");
-  const assistant = complete.harness.document.createElement("article");
-  assistant.setAttribute("data-content-search-unit-key", "task:assistant");
-  complete.main.append(assistant);
-  state.refresh();
-  assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "leaving home must remove the persistent suggestion slot");
-  assert(state.suggestionSlotHeight === 0, "leaving home must clear the retained suggestion slot measurement");
-  assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "leaving home must restore a still-connected native suggestion container");
-  assert(reordered.concat(current).every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "leaving home must restore still-connected native suggestion buttons");
-  assert(
-    !complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "leaving home must restore the native prompt",
-  );
-  complete.main.classList.add("dream-skin-home");
-  assistant.remove();
-  state.refresh();
-  assert(
-    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "returning home with four semantic actions must restore the visible native prompt decoration",
-  );
-  state.cleanup();
-  assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "cleanup must not leave a suggestion slot behind");
-  assert(
-    !complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "cleanup must restore the native prompt",
-  );
 }
 
 function assertObserverStability(payload) {
@@ -3530,6 +3351,19 @@ function assertIncrementalTaskDecoration(payload) {
   harness.flushAnimationFrames();
   assert(!removedBeforeRefresh.classList.contains("denia-old-days-ds-observation"), "a root removed before its pending refresh must not receive observation decoration");
 
+  const externalHost = harness.document.createElement("section");
+  harness.document.body.append(externalHost);
+  harness.clearMutationRecords();
+  const movedOutsideMain = harness.document.createElement("details");
+  main.append(movedOutsideMain);
+  externalHost.append(movedOutsideMain);
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(
+    !movedOutsideMain.classList.contains("denia-old-days-ds-observation"),
+    "a pending decoration root moved outside the current task main must not be decorated",
+  );
+
   const firstAssistant = harness.document.createElement("div");
   firstAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
   const latestAssistant = harness.document.createElement("div");
@@ -3563,14 +3397,224 @@ function assertIncrementalTaskDecoration(payload) {
   replacementMain.setAttribute("role", "main");
   const replacementAssistant = harness.document.createElement("div");
   replacementAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
-  replacementMain.append(replacementAssistant);
+  const replacementObservation = harness.document.createElement("details");
+  replacementMain.append(replacementAssistant, replacementObservation);
   main.remove();
   harness.document.body.append(replacementMain);
   harness.flushMutations();
   harness.flushAnimationFrames();
   assert(!oldAssistant.classList.contains("denia-old-days-ds-final-card"), "replacing the task main must clear the disconnected final card");
   assert(replacementAssistant.classList.contains("denia-old-days-ds-final-card"), "replacing the task main must decorate its latest assistant");
+  assert(
+    replacementObservation.classList.contains("denia-old-days-ds-observation"),
+    "replacing one task main with another must schedule decoration for the new main root",
+  );
   state.cleanup();
+}
+
+function assertFinalReviewRegressions(payload) {
+  const appendHomePrompt = (harness, main) => {
+    const text = "What should we build in denia-old-days-codex-theme?";
+    const prompt = harness.document.createElement("div");
+    const heading = harness.document.createElement("div");
+    const title = harness.document.createElement("span");
+    prompt.textContent = text;
+    heading.textContent = text;
+    title.textContent = text;
+    title.setRect({ x: 404, y: 443, width: 392, height: 42 });
+    heading.append(title);
+    prompt.append(heading);
+    main.append(prompt);
+    return prompt;
+  };
+  const appendComposer = (harness, main) => {
+    const boundary = harness.document.createElement("div");
+    boundary.computedPosition = "relative";
+    boundary.computedZIndex = "20";
+    boundary.setRect({ x: 196, y: 755, width: 1120, height: 194 });
+    const composer = harness.document.createElement("form");
+    composer.classList.add("composer-surface-chrome");
+    composer.append(harness.document.createElement("textarea"));
+    boundary.append(composer);
+    main.append(boundary);
+    return boundary;
+  };
+  const appendLeftNav = (harness) => {
+    const nav = harness.document.createElement("nav");
+    nav.setRect({ x: 0, y: 46, width: 280, height: 813 });
+    harness.document.body.append(nav);
+    return nav;
+  };
+
+  const homeHarness = createRuntimeHarness((index) => `blob:final-home-${index + 1}`);
+  const homeMain = homeHarness.document.createElement("main");
+  homeMain.setAttribute("role", "main");
+  homeMain.classList.add("dream-skin-home");
+  homeMain.setRect({ x: 280, y: 46, width: 1232, height: 813 });
+  const initialPrompt = appendHomePrompt(homeHarness, homeMain);
+  const initialComposerBoundary = appendComposer(homeHarness, homeMain);
+  homeHarness.document.body.append(homeMain);
+  const initialNav = appendLeftNav(homeHarness);
+  vm.runInContext(payload, homeHarness.context, { timeout: 1000 });
+  const homeState = homeHarness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  homeHarness.document.getElementById("denia-old-days-ds-hero-copy")
+    .setRect({ x: 196, y: 121, width: 1120, height: 455 });
+  assert(initialPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
+  assert(initialNav.contains(homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand")));
+
+  homeHarness.clearMutationRecords();
+  const replacementPrompt = appendHomePrompt(homeHarness, homeMain);
+  const replacementComposerBoundary = appendComposer(homeHarness, homeMain);
+  const replacementNav = appendLeftNav(homeHarness);
+  initialPrompt.remove();
+  initialComposerBoundary.remove();
+  initialNav.remove();
+  const homeBaseline = homeState.metrics.domainRuns.home;
+  assert(homeHarness.flushMutations() > 0, "home structure remounts must reach the observer");
+  assert(homeHarness.flushAnimationFrames() === 1, "home structure remounts must schedule one refresh frame");
+  assert(homeState.homeActive === true, "home structure remounts must not require a route-state change");
+  assert(homeState.metrics.domainRuns.home === homeBaseline + 1, "home structure remounts must rerun the home domain");
+  assert(
+    replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt")
+      && replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px",
+    "home title and composer remounts must restore prompt decoration and positioning",
+  );
+  assert(
+    replacementNav.contains(homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand")),
+    "home left-sidebar remounts must restore the brand",
+  );
+
+  homeHarness.clearMutationRecords();
+  homeMain.classList.remove("dream-skin-home");
+  const assistant = homeHarness.document.createElement("article");
+  assistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  homeMain.append(assistant);
+  assert(homeHarness.flushMutations() > 0, "home-to-task transition mutations must reach the observer");
+  assert(homeHarness.flushAnimationFrames() === 1, "home-to-task transition must schedule one refresh");
+  assert(homeState.homeActive === false);
+  assert(!replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
+  assert(!replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"));
+
+  homeHarness.clearMutationRecords();
+  homeMain.classList.add("dream-skin-home");
+  assistant.remove();
+  homeHarness.flushMutations();
+  homeHarness.flushAnimationFrames();
+  assert(replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
+  assert(replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px");
+  homeState.cleanup();
+  assert(!replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
+  assert(!replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"));
+  void replacementComposerBoundary;
+
+  const portalHarness = createRuntimeHarness((index) => `blob:final-portal-${index + 1}`);
+  const portalMain = portalHarness.document.createElement("main");
+  portalMain.setAttribute("role", "main");
+  portalHarness.document.body.append(portalMain);
+  vm.runInContext(payload, portalHarness.context, { timeout: 1000 });
+  const portalState = portalHarness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const portal = portalHarness.document.createElement("section");
+  portal.setAttribute("data-state", "approval");
+  portalHarness.clearMutationRecords();
+  const approvalBaseline = { ...portalState.metrics.domainRuns };
+  portalHarness.document.body.append(portal);
+  assert(portalHarness.flushMutations() === 1, "an external approval portal mount must reach the observer");
+  assert(portalHarness.flushAnimationFrames() === 1, "an external approval portal mount must schedule task state");
+  assert(portalState.formState === "approval");
+  assert(portalState.metrics.domainRuns.taskState === approvalBaseline.taskState + 1);
+  assert(portalState.metrics.domainRuns.art === approvalBaseline.art + 1);
+
+  portalHarness.clearMutationRecords();
+  const errorBaseline = { ...portalState.metrics.domainRuns };
+  portal.setAttribute("data-state", "error");
+  assert(portalHarness.flushMutations() === 1, "an external error portal attribute must reach the observer");
+  assert(portalHarness.flushAnimationFrames() === 1, "an external error portal attribute must schedule task state");
+  assert(portalState.formState === "error");
+  assert(portalState.metrics.domainRuns.taskState === errorBaseline.taskState + 1);
+  assert(portalState.metrics.domainRuns.art === errorBaseline.art + 1);
+
+  portalHarness.clearMutationRecords();
+  const workingBaseline = { ...portalState.metrics.domainRuns };
+  portal.setAttribute("data-state", "loading");
+  assert(portalHarness.flushMutations() === 1, "an external working portal attribute must reach the observer");
+  assert(portalHarness.flushAnimationFrames() === 1, "an external working portal attribute must schedule task state");
+  assert(portalState.formState === "working");
+  assert(portalState.metrics.domainRuns.taskState === workingBaseline.taskState + 1);
+  assert(portalState.metrics.domainRuns.art === workingBaseline.art + 1);
+  portalState.cleanup();
+
+  const toggleHarness = createRuntimeHarness((index) => `blob:final-toggle-${index + 1}`);
+  const toggleMain = toggleHarness.document.createElement("main");
+  toggleMain.setAttribute("role", "main");
+  const completed = toggleHarness.document.createElement("article");
+  completed.setAttribute("data-content-search-unit-key", "turn:assistant");
+  toggleMain.append(completed);
+  toggleHarness.document.body.append(toggleMain);
+  const appendToggle = (labelAttribute, label, pressed, x) => {
+    const button = toggleHarness.document.createElement("button");
+    button.setAttribute(labelAttribute, label);
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+    button.setRect({ x, y: 8, width: 28, height: 28 });
+    toggleHarness.document.body.append(button);
+    return button;
+  };
+  const summary = appendToggle("aria-label", "切换置顶摘要", true, 1400);
+  const summaryFallback = appendToggle("aria-label", "切换置顶摘要", false, 1300);
+  const summaryThird = appendToggle("aria-label", "切换置顶摘要", true, 1200);
+  const bottom = appendToggle("title", "Toggle bottom panel", true, 1390);
+  const bottomFallback = appendToggle("title", "Toggle bottom panel", false, 1290);
+  const bottomThird = appendToggle("title", "Toggle bottom panel", true, 1190);
+  vm.runInContext(payload, toggleHarness.context, { timeout: 1000 });
+  const toggleState = toggleHarness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(toggleHarness.root.dataset.deniaSummaryState === "open");
+  assert(toggleHarness.root.dataset.deniaBottomPanelState === "open");
+
+  toggleHarness.clearMutationRecords();
+  const summaryLabelBaseline = { ...toggleState.metrics.domainRuns };
+  summary.setAttribute("aria-label", "Retired summary toggle");
+  assert(toggleHarness.flushMutations() === 1, "cached toggle aria-label changes must be observed");
+  assert(toggleHarness.flushAnimationFrames() === 1, "cached toggle aria-label changes must schedule its domain");
+  assert(toggleHarness.root.dataset.deniaSummaryState === "closed");
+  assert(toggleState.metrics.domainRuns.workSurfaces === summaryLabelBaseline.workSurfaces + 1);
+
+  toggleHarness.clearMutationRecords();
+  const summaryClassBaseline = { ...toggleState.metrics.domainRuns };
+  summaryFallback.computedDisplay = "none";
+  summaryFallback.classList.add("native-hidden");
+  assert(toggleHarness.flushMutations() === 1, "cached toggle visibility class changes must be observed");
+  assert(toggleHarness.flushAnimationFrames() === 1, "cached toggle visibility class changes must schedule its domain");
+  assert(toggleHarness.root.dataset.deniaSummaryState === "open");
+  assert(toggleState.metrics.domainRuns.workSurfaces === summaryClassBaseline.workSurfaces + 1);
+  assert(toggleState.metrics.domainRuns.route === summaryClassBaseline.route);
+  assert(toggleState.metrics.domainRuns.composer === summaryClassBaseline.composer);
+  assert(toggleState.metrics.domainRuns.sidebar === summaryClassBaseline.sidebar);
+  assert(toggleState.metrics.domainRuns.layout === summaryClassBaseline.layout);
+
+  toggleHarness.clearMutationRecords();
+  const bottomTitleBaseline = { ...toggleState.metrics.domainRuns };
+  bottom.setAttribute("title", "Retired bottom toggle");
+  assert(toggleHarness.flushMutations() === 1, "cached toggle title changes must be observed");
+  assert(toggleHarness.flushAnimationFrames() === 1, "cached toggle title changes must schedule its domain");
+  assert(toggleHarness.root.dataset.deniaBottomPanelState === "closed");
+  assert(toggleState.metrics.domainRuns.workSurfaces === bottomTitleBaseline.workSurfaces + 1);
+
+  toggleHarness.clearMutationRecords();
+  const bottomStyleBaseline = { ...toggleState.metrics.domainRuns };
+  bottomFallback.computedDisplay = "none";
+  bottomFallback.style.setProperty("display", "none");
+  assert(toggleHarness.flushMutations() === 1, "cached toggle visibility style changes must be observed");
+  assert(toggleHarness.flushAnimationFrames() === 0, "cached toggle visibility style work must remain trailing");
+  assert(toggleHarness.flushTimers() === 1, "cached toggle visibility style work must use one trailing timer");
+  assert(toggleHarness.flushAnimationFrames() === 1, "cached toggle visibility style work must schedule its domain");
+  assert(toggleHarness.root.dataset.deniaBottomPanelState === "open");
+  assert(toggleState.metrics.domainRuns.workSurfaces === bottomStyleBaseline.workSurfaces + 1);
+  assert(toggleState.metrics.domainRuns.route === bottomStyleBaseline.route);
+  assert(toggleState.metrics.domainRuns.composer === bottomStyleBaseline.composer);
+  assert(toggleState.metrics.domainRuns.sidebar === bottomStyleBaseline.sidebar);
+  assert(toggleState.metrics.domainRuns.layout === bottomStyleBaseline.layout);
+  toggleState.cleanup();
+  void summaryThird;
+  void bottomThird;
 }
 
 function assertFormStateRecognition(payload) {

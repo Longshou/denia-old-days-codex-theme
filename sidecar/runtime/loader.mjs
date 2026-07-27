@@ -197,6 +197,7 @@ const cleanupExpression = `(() => {
     document.querySelectorAll('.denia-old-days-ds-' + name).forEach((node) => node.classList.remove('denia-old-days-ds-' + name));
   }
   for (const className of [
+    'denia-old-days-ds-native-home-prompt',
     'denia-old-days-ds-composer',
     'denia-old-days-ds-send',
     'denia-old-days-ds-attachment',
@@ -205,7 +206,12 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-native-right-sidebar',
     'denia-old-days-ds-native-sidebar-group',
     'denia-old-days-ds-native-sidebar-row',
-  ]) document.querySelectorAll('.' + className).forEach((node) => node.classList.remove(className));
+  ]) document.querySelectorAll('.' + className).forEach((node) => {
+    node.classList.remove(className);
+    if (className === 'denia-old-days-ds-native-home-prompt') {
+      node.style.removeProperty('--denia-old-days-native-prompt-shift');
+    }
+  });
   document.querySelectorAll('[data-denia-observation-label]').forEach((node) => {
     delete node.dataset.deniaObservationLabel;
   });

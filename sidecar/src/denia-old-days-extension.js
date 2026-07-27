@@ -121,6 +121,7 @@
     metrics: {
       refreshes: 0,
       createdNodes: 0,
+      lastRefreshDurationMs: 0,
       domainRuns: {
         route: 0,
         composer: 0,
@@ -1039,8 +1040,11 @@
   }
 
   function decorateTaskRoots(roots) {
+    const main = findMain();
+    if (!main) return;
     for (const decorationRoot of roots) {
-      if (!decorationRoot?.isConnected) continue;
+      if (!decorationRoot?.isConnected
+        || (decorationRoot !== main && !main.contains(decorationRoot))) continue;
       if (decorationRoot?.matches?.(observationSelector)) {
         touch(decorationRoot, "denia-old-days-ds-observation");
         setDatasetValue(decorationRoot, "deniaObservationLabel", "观察记录");
@@ -1067,6 +1071,7 @@
   }
 
   function removeHomeNodes() {
+    clearNativeHomePrompt();
     for (const id of [
       "denia-old-days-ds-hero-copy",
       "denia-old-days-ds-home-visuals",
@@ -1096,58 +1101,64 @@
   }
 
   function runRefresh(mask, decorationRoots) {
-    state.metrics.refreshes += 1;
-    let currentMask = mask;
-    if (currentMask & DIRTY.ROUTE) {
-      state.metrics.domainRuns.route += 1;
-      const home = isHomeView();
-      const routeChanged = state.homeActive !== home;
-      state.homeActive = home;
-      syncClass(root, "denia-old-days-ds-home", home);
-      syncClass(root, "denia-old-days-ds-task", !home);
-      if (routeChanged) {
-        currentMask |= DIRTY.ALL & ~DIRTY.ROUTE;
-        decorationRoots.add(findMain() || document.body);
+    const refreshStartedAt = globalThis.performance?.now?.() ?? Date.now();
+    try {
+      state.metrics.refreshes += 1;
+      let currentMask = mask;
+      if (currentMask & DIRTY.ROUTE) {
+        state.metrics.domainRuns.route += 1;
+        const home = isHomeView();
+        const routeChanged = state.homeActive !== home;
+        state.homeActive = home;
+        syncClass(root, "denia-old-days-ds-home", home);
+        syncClass(root, "denia-old-days-ds-task", !home);
+        if (routeChanged) {
+          currentMask |= DIRTY.ALL & ~DIRTY.ROUTE;
+          decorationRoots.add(findMain() || document.body);
+        }
       }
-    }
-    if (currentMask & DIRTY.COMPOSER) {
-      state.metrics.domainRuns.composer += 1;
-      decorateComposer();
-    }
-    if (currentMask & DIRTY.SIDEBAR) {
-      state.metrics.domainRuns.sidebar += 1;
-      syncNativeLeftSidebar();
-      syncNativeRightSidebar(state.homeActive);
-    }
-    if (currentMask & DIRTY.LAYOUT) {
-      state.metrics.domainRuns.layout += 1;
-      syncTaskLayoutMetrics();
-      if (state.homeActive) {
-        syncHomeVisualFrame(findMain());
-        syncHomeViewport(findMain());
+      if (currentMask & DIRTY.COMPOSER) {
+        state.metrics.domainRuns.composer += 1;
+        decorateComposer();
       }
-    }
-    if (currentMask & DIRTY.WORK_SURFACES) {
-      state.metrics.domainRuns.workSurfaces += 1;
-      syncNativeWorkSurfaces();
-    }
-    if (state.homeActive && (currentMask & DIRTY.HOME)) {
-      state.metrics.domainRuns.home += 1;
-      syncPageDomain(true);
-    } else if (!state.homeActive && (currentMask & DIRTY.TASK_STATE)) {
-      state.metrics.domainRuns.taskState += 1;
-      syncPageDomain(false);
-    }
-    if (!state.homeActive && (currentMask & DIRTY.TASK_DECORATION)) {
-      state.metrics.domainRuns.taskDecoration += 1;
-      decorateTaskRoots(decorationRoots);
-    }
-    if (currentMask & DIRTY.TASK_STATE) {
-      syncFinalAssistantCard();
-    }
-    if (currentMask & DIRTY.ART) {
-      state.metrics.domainRuns.art += 1;
-      syncStateArt(state.formState);
+      if (currentMask & DIRTY.SIDEBAR) {
+        state.metrics.domainRuns.sidebar += 1;
+        syncNativeLeftSidebar();
+        syncNativeRightSidebar(state.homeActive);
+      }
+      if (currentMask & DIRTY.LAYOUT) {
+        state.metrics.domainRuns.layout += 1;
+        syncTaskLayoutMetrics();
+        if (state.homeActive) {
+          syncHomeVisualFrame(findMain());
+          syncHomeViewport(findMain());
+        }
+      }
+      if (currentMask & DIRTY.WORK_SURFACES) {
+        state.metrics.domainRuns.workSurfaces += 1;
+        syncNativeWorkSurfaces();
+      }
+      if (state.homeActive && (currentMask & DIRTY.HOME)) {
+        state.metrics.domainRuns.home += 1;
+        syncPageDomain(true);
+      } else if (!state.homeActive && (currentMask & DIRTY.TASK_STATE)) {
+        state.metrics.domainRuns.taskState += 1;
+        syncPageDomain(false);
+      }
+      if (!state.homeActive && (currentMask & DIRTY.TASK_DECORATION)) {
+        state.metrics.domainRuns.taskDecoration += 1;
+        decorateTaskRoots(decorationRoots);
+      }
+      if (currentMask & DIRTY.TASK_STATE) {
+        syncFinalAssistantCard();
+      }
+      if (currentMask & DIRTY.ART) {
+        state.metrics.domainRuns.art += 1;
+        syncStateArt(state.formState);
+      }
+    } finally {
+      const refreshFinishedAt = globalThis.performance?.now?.() ?? Date.now();
+      state.metrics.lastRefreshDurationMs = Math.max(0, refreshFinishedAt - refreshStartedAt);
     }
   }
 
@@ -1262,6 +1273,29 @@
     return null;
   }
 
+  function cachedToggleKind(node) {
+    for (const [kind, toggle] of cachedToggles) {
+      if (toggle === node) return kind;
+    }
+    return null;
+  }
+
+  function toggleDirtyMask(kind) {
+    return kind === "sidebar"
+      ? DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES
+      : DIRTY.WORK_SURFACES;
+  }
+
+  function cachedToggleSemanticChange(record) {
+    if (record.type !== "attributes") return null;
+    const kind = cachedToggleKind(record.target);
+    if (!kind
+      || !["aria-label", "title", "aria-hidden", "hidden", "class", "style"]
+        .includes(record.attributeName)) return null;
+    invalidateToggleCache(kind);
+    return kind;
+  }
+
   function childListContainsToggle(record, kind) {
     if (record.type !== "childList") return false;
     const pattern = kind === "sidebar"
@@ -1332,11 +1366,86 @@
       || node?.querySelector?.('main, [role="main"]'));
   }
 
+  function attributeTouchesCachedComposer(record) {
+    if (record.type !== "attributes"
+      || !cachedComposer
+      || ![
+        "aria-hidden",
+        "aria-label",
+        "class",
+        "contenteditable",
+        "hidden",
+        "role",
+        "style",
+        "title",
+      ].includes(record.attributeName)) return false;
+    return record.target === cachedComposer || cachedComposer.contains?.(record.target);
+  }
+
+  function nodeCarriesTaskStateSemantics(node) {
+    if (!node?.matches) return false;
+    const candidates = [
+      node,
+      ...node.querySelectorAll?.([
+        "[aria-busy]",
+        "[data-state]",
+        "[data-status]",
+        "[data-testid]",
+        '[role="alert"]',
+        '[role="alertdialog"]',
+        '[role="dialog"]',
+        '[role="progressbar"]',
+        "button",
+      ].join(",")) || [],
+    ];
+    return candidates.some((candidate) => {
+      const semanticValue = [
+        candidate.getAttribute?.("aria-busy"),
+        candidate.getAttribute?.("data-state"),
+        candidate.getAttribute?.("data-status"),
+        candidate.getAttribute?.("data-testid"),
+      ].filter(Boolean).join(" ");
+      if (/(?:error|failed|approval|permission|loading|running)/iu.test(semanticValue)) return true;
+      const role = candidate.getAttribute?.("role") || "";
+      const label = normalizedNodeLabel(candidate);
+      if (role === "alert") return /error|failed|failure|错误|失败/iu.test(label);
+      if (role === "dialog" || role === "alertdialog") {
+        return /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(label);
+      }
+      if (role === "progressbar" || candidate.getAttribute?.("aria-busy") === "true") return true;
+      return candidate.matches?.("button")
+        && /^(?:allow once|always allow|stop|cancel|允许一次|始终允许|停止|取消)$/iu.test(label);
+    });
+  }
+
+  function recordTouchesExternalTaskState(record, main) {
+    if (state.homeActive
+      || !main
+      || record.target === main
+      || main.contains(record.target)) return false;
+    if (record.type === "childList") {
+      return [...record.addedNodes, ...record.removedNodes]
+        .some(nodeCarriesTaskStateSemantics);
+    }
+    if (record.type !== "attributes") return false;
+    if (nodeCarriesTaskStateSemantics(record.target)) return true;
+    return [
+      "aria-busy",
+      "aria-label",
+      "data-state",
+      "data-status",
+      "data-testid",
+      "title",
+    ].includes(record.attributeName)
+      && /(?:error|failed|approval|permission|loading|running)/iu.test(record.oldValue || "");
+  }
+
   function classifySemanticRecord(record, main, decorationRoots) {
     let mask = 0;
     const insideTaskMain = !state.homeActive
       && main
       && (record.target === main || main.contains(record.target));
+    const externalTaskState = recordTouchesExternalTaskState(record, main);
     if (record.type === "childList") {
       mask |= DIRTY.ROUTE;
       for (const kind of ["sidebar", "summary", "bottom"]) {
@@ -1360,17 +1469,30 @@
       } else {
         if (childListContainsComposer(record)) invalidateComposerCache();
         mask |= STRUCTURE_DIRTY;
-        if (childListReplacesMain(record, main)) mask |= DIRTY.TASK_STATE | DIRTY.ART;
+        if (state.homeActive) mask |= DIRTY.HOME;
+        if (externalTaskState) mask |= DIRTY.TASK_STATE | DIRTY.ART;
+        if (childListReplacesMain(record, main)) {
+          mask |= DIRTY.TASK_STATE | DIRTY.TASK_DECORATION | DIRTY.ART;
+          if (main?.isConnected) decorationRoots.add(main);
+        }
       }
       return mask;
     }
     if (record.type !== "attributes") return mask;
-    if (insideTaskMain) {
-      return record.attributeName === "style"
-        ? DIRTY.TASK_STATE | DIRTY.ART
-        : DIRTY.ROUTE | DIRTY.TASK_STATE | DIRTY.ART;
+    const toggleKind = cachedToggleSemanticChange(record);
+    if (toggleKind) return toggleDirtyMask(toggleKind);
+    if (attributeTouchesCachedComposer(record)) {
+      invalidateComposerCache();
+      mask |= DIRTY.COMPOSER;
     }
-    return record.attributeName === "style" ? STYLE_DIRTY : STRUCTURE_DIRTY;
+    if (insideTaskMain) {
+      return mask | (record.attributeName === "style"
+        ? DIRTY.TASK_STATE | DIRTY.ART
+        : DIRTY.ROUTE | DIRTY.TASK_STATE | DIRTY.ART);
+    }
+    if (externalTaskState) mask |= DIRTY.TASK_STATE | DIRTY.ART;
+    if (record.attributeName === "style") return mask | STYLE_DIRTY;
+    return mask | STRUCTURE_DIRTY | (state.homeActive ? DIRTY.HOME : 0);
   }
 
   function on(target, name, handler) {
@@ -1401,6 +1523,7 @@
     }
     for (const node of touchedNodes) {
       for (const className of removableClasses) node.classList?.remove(className);
+      removeStyleProperty(node, nativeHomePromptShiftProperty);
       if (node.dataset) {
         delete node.dataset.deniaObservationLabel;
       }
@@ -1501,8 +1624,12 @@
       "aria-disabled",
       "aria-expanded",
       "aria-hidden",
+      "aria-label",
       "aria-pressed",
+      "title",
       "hidden",
+      "contenteditable",
+      "role",
       "data-state",
       "data-status",
       "data-testid",
