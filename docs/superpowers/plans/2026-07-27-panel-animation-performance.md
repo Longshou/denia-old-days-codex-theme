@@ -4,7 +4,7 @@
 
 **Goal:** Stop the theme from amplifying native sidebar and bottom-panel animation stalls.
 
-**Architecture:** First make composer discovery semantic so terminal textareas can never receive composer decoration. Re-measure the live animation, then—when the documented threshold is met—debounce style-only MutationObserver batches while keeping semantic mutations and native toggle state synchronized immediately.
+**Architecture:** First make composer discovery semantic so terminal textareas can never receive composer decoration. Re-measure the live animation, then—when the documented threshold is met—coalesce MutationObserver work during native style animations while keeping native toggle state synchronized immediately and semantic mutations immediate outside animation.
 
 **Tech Stack:** Browser runtime JavaScript, MutationObserver, Node.js VM validation harness, CDP performance probe
 
@@ -156,7 +156,7 @@ assert(harness.flushTimers() === 1);
 assert(harness.flushAnimationFrames() === 1);
 ```
 
-Repeat two style mutations before `flushTimers()` and assert only one timer exists. Then add a class mutation while the timer is pending and assert the timer is cancelled and exactly one animation-frame refresh remains.
+Repeat two style mutations before `flushTimers()` and assert only one timer exists. Then add a class mutation while the timer is pending and assert it remains part of the single trailing refresh. Add a separate class mutation without an active timer and assert it refreshes on the next animation frame.
 
 - [ ] **Step 3: Add failing immediate work-surface assertions**
 
@@ -199,7 +199,7 @@ function scheduleStyleRefresh() {
 }
 ```
 
-Make semantic `scheduleRefresh()` cancel a pending style timer before scheduling its animation frame. Cleanup must call `cancelStyleRefresh()`.
+Make direct semantic `scheduleRefresh()` cancel a pending style timer before scheduling its animation frame. Observer semantic work that arrives during a native style animation must use the trailing scheduler instead. Cleanup must call `cancelStyleRefresh()`.
 
 - [ ] **Step 6: Classify observer batches**
 
@@ -215,14 +215,19 @@ if (toggleRecords.length) {
 }
 const refreshRecords = relevantRecords.filter((record) =>
   !mutationIsNativeWorkSurfaceToggleState(record));
-if (refreshRecords.some((record) => record.type !== "attributes" || record.attributeName !== "style")) {
-  scheduleRefresh();
+const hasSemanticRefresh = refreshRecords.some((record) =>
+  record.type !== "attributes" || record.attributeName !== "style");
+if (hasSemanticRefresh) {
+  if (toggleRecords.length || state.styleRefreshTimer) scheduleStyleRefresh();
+  else scheduleRefresh();
 } else if (refreshRecords.length) {
   scheduleStyleRefresh();
 }
 ```
 
 Match work-surface toggles using the existing sidebar, summary, and bottom-panel label patterns. Expand terminal churn filtering to `.xterm` and `[id^="terminal-panel-"]`.
+Ignore only the exact empty, hidden editor color probe that Codex mounts under `body` while resolving
+`var(--color-token-editor-background)`; keep ordinary body child-list records semantic.
 
 - [ ] **Step 7: Run focused and full validation**
 
