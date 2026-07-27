@@ -473,6 +473,87 @@ for (const selector of ['.denia-old-days-ds-task [role="main"]', ".denia-old-day
   const rule = stylesheetRules.find((candidate) => candidate.selectors.includes(selector));
   assert(!rule?.declarations.has("z-index"), `task main must not create a theme stacking context: ${selector}`);
 }
+const taskBackgroundRootSelector = ".denia-old-days-ds-extension";
+const taskBackgroundBodySelector =
+  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body";
+const taskBackgroundBeforeSelector =
+  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::before";
+const taskBackgroundLightSelector =
+  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task";
+const taskBackgroundDarkSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]';
+const taskBackgroundNarrowMedia = ["max-width: 919px"];
+
+assertCssDeclarations(stylesheetRules, taskBackgroundRootSelector, {
+  "--denia-task-background-color-light": "#F3EDF2",
+  "--denia-task-background-color-dark": "#0F133B",
+});
+assertCssDeclarations(stylesheetRules, taskBackgroundLightSelector, {
+  "--denia-task-background-color": "var(--denia-task-background-color-light)",
+  "--denia-task-background-image": "var(--denia-task-background-image-light)",
+});
+assertCssDeclarations(stylesheetRules, taskBackgroundDarkSelector, {
+  "--denia-task-background-color": "var(--denia-task-background-color-dark)",
+  "--denia-task-background-image": "var(--denia-task-background-image-dark)",
+});
+assertCssDeclarations(stylesheetRules, taskBackgroundBodySelector, {
+  "background-color": "var(--denia-task-background-color)",
+  "background-image": "var(--denia-task-background-image)",
+  "background-attachment": "fixed",
+  "background-position": "center",
+  "background-repeat": "no-repeat",
+  "background-size": "cover",
+});
+assertCssDeclarations(stylesheetRules, taskBackgroundBeforeSelector, {
+  background: "none",
+});
+assertCssDeclarations(stylesheetRules, taskBackgroundLightSelector, {
+  "--denia-task-background-image": "var(--denia-task-background-image-light-compact)",
+}, taskBackgroundNarrowMedia);
+assertCssDeclarations(stylesheetRules, taskBackgroundDarkSelector, {
+  "--denia-task-background-image": "var(--denia-task-background-image-dark-compact)",
+}, taskBackgroundNarrowMedia);
+assertCssDeclarations(stylesheetRules, taskBackgroundBodySelector, {
+  "background-color": "var(--denia-task-background-color)",
+  "background-image": "none",
+}, ["prefers-reduced-transparency: reduce"]);
+
+for (const rule of stylesheetRules) {
+  if (![...rule.declarations.keys()].some((name) => name.startsWith("--denia-task-background"))) continue;
+  if (rule.selectors.includes(taskBackgroundRootSelector)) continue;
+  assert(
+    rule.selectors.every((selector) => selector.includes(".denia-old-days-ds-task")),
+    "task background activation must stay scoped to task routes",
+  );
+}
+
+const taskBackgroundValues = stylesheetRules
+  .flatMap((rule) => [...rule.declarations.entries()])
+  .filter(([name]) => name.startsWith("--denia-task-background"))
+  .map(([, value]) => value)
+  .join(" ");
+for (const requiredColor of [
+  "#F3EDF2",
+  "230, 168, 177",
+  "91, 106, 172",
+  "126, 201, 226",
+  "49, 44, 91",
+  "#0F133B",
+  "29, 37, 95",
+  "46, 59, 126",
+  "86, 113, 177",
+  "149, 103, 143",
+  "190, 132, 164",
+  "212, 170, 193",
+]) {
+  assert(
+    taskBackgroundValues.includes(requiredColor),
+    `task background must retain the Denia palette color ${requiredColor}`,
+  );
+}
+for (const forbidden of ["url(", "repeating-", "filter(", "animation"]) {
+  assert(!taskBackgroundValues.includes(forbidden), `task background must not use ${forbidden}`);
+}
 const sidebarPaintProperties = new Set([
   "background",
   "background-color",
