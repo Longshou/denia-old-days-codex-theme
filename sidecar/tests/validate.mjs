@@ -2278,6 +2278,7 @@ function assertLiveTaskVerification(loaderSource) {
     const hero = home ? makeNode(["denia-old-days-ds-hero"]) : null;
     const heroCopy = hero;
     const photoFront = home ? makeNode(["denia-old-days-ds-photo-front"]) : null;
+    const nativeHomePrompt = home ? makeNode(["denia-old-days-ds-native-home-prompt"]) : null;
     const homeCards = home ? Array.from({ length: 4 }, () => makeNode()) : [];
     for (const card of homeCards) card.contains = () => true;
     const suggestionSlot = home ? makeNode(["denia-old-days-ds-suggestion-slot"]) : null;
@@ -2350,6 +2351,7 @@ function assertLiveTaskVerification(loaderSource) {
       querySelector(selector) {
         if (selector === ".denia-old-days-ds-hero") return hero;
         if (selector === ".denia-old-days-ds-photo-front") return photoFront;
+        if (selector === ".denia-old-days-ds-native-home-prompt") return nativeHomePrompt;
         if (selector === ".composer-surface-chrome") return composer;
         if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebar;
         if (selector === '[role="main"]' || selector === "main") return main;
@@ -2367,6 +2369,7 @@ function assertLiveTaskVerification(loaderSource) {
         if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebarPanels;
         if (selector === ".denia-old-days-ds-native-sidebar-group") return nativeSidebarGroups;
         if (selector === ".denia-old-days-ds-native-sidebar-row") return nativeSidebarRows;
+        if (selector === ".denia-old-days-ds-native-home-prompt") return nativeHomePrompt ? [nativeHomePrompt] : [];
         if (selector === '[data-content-search-unit-key$=":assistant"]') return [assistant];
         return [];
       },
@@ -2413,6 +2416,9 @@ function assertLiveTaskVerification(loaderSource) {
             position: "fixed",
             visibility: "visible",
           };
+        }
+        if (node === nativeHomePrompt) {
+          return { backgroundImage: "none", display: "none", opacity: "1", visibility: "visible" };
         }
         if (node === composer && pseudo === "::before") {
           return { content: "none", display: "none", height: "auto", position: "static", width: "auto" };

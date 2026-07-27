@@ -320,14 +320,6 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   letter-spacing: -0.035em;
 }
 
-.denia-old-days-ds-hero p {
-  max-width: 520px;
-  margin: 0 0 26px;
-  color: rgba(38, 53, 72, 0.7);
-  font-size: 16px;
-  line-height: 1.8;
-}
-
 .denia-old-days-ds-status {
   display: inline-flex;
   align-items: center;

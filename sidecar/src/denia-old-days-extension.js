@@ -877,12 +877,10 @@
     const headline = document.createElement("h1");
     headline.id = "denia-old-days-ds-headline";
     headline.textContent = manifest.ui.headline;
-    const description = document.createElement("p");
-    description.textContent = manifest.ui.description;
     const status = document.createElement("span");
     status.className = "denia-old-days-ds-status";
     status.textContent = manifest.ui.statusText;
-    copy.append(eyebrow, headline, description, status);
+    copy.append(eyebrow, headline, status);
 
     const photo = document.createElement("div");
     photo.className = "denia-old-days-ds-photo";

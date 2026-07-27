@@ -326,6 +326,9 @@ const verifyExpression = `(() => {
   const taskArtLayerStyle = activeStateArtLayer ? getComputedStyle(activeStateArtLayer) : null;
   const suggestionSlot = document.getElementById('denia-old-days-ds-suggestion-slot');
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');
+  const nativeHomePrompts = [...document.querySelectorAll('.denia-old-days-ds-native-home-prompt')];
+  const nativeHomePrompt = nativeHomePrompts[0] || null;
+  const nativeHomePromptStyle = nativeHomePrompt ? getComputedStyle(nativeHomePrompt) : null;
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
   const sidebarBrandNode = document.getElementById('denia-old-days-ds-sidebar-brand');
@@ -449,6 +452,10 @@ const verifyExpression = `(() => {
       gridTemplateColumns: suggestionsStyle.gridTemplateColumns,
       childCount: suggestions.children.length,
     } : null,
+    nativeHomePrompt: nativeHomePrompt ? {
+      ...box(nativeHomePrompt),
+      display: nativeHomePromptStyle.display,
+    } : null,
     visibleCardCount: cards.filter((card) => card.visible).length,
     clickableCardCount: cards.filter((card) => card.clickable).length,
     composer: box(composer),
@@ -489,7 +496,8 @@ const verifyExpression = `(() => {
       && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === homeVisuals
       && suggestionSlot?.parentElement === homeVisuals
       && suggestions?.parentElement === suggestionSlot
-      && document.querySelectorAll('.denia-old-days-ds-native-home-prompt').length === 0
+      && nativeHomePrompts.length === 1
+      && nativeHomePromptStyle?.display === 'none'
   );
   const composerRect = composer?.getBoundingClientRect?.() || null;
   result.composerViewportPass = !home || Boolean(
