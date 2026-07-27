@@ -156,7 +156,7 @@ assert(harness.flushTimers() === 1);
 assert(harness.flushAnimationFrames() === 1);
 ```
 
-Repeat two style mutations before `flushTimers()` and assert only one timer exists. Then add a class mutation while the timer is pending and assert it remains part of the single trailing refresh. Add a separate class mutation without an active timer and assert it refreshes on the next animation frame.
+Repeat two style mutations before `flushTimers()` and assert only one timer exists. Then add a class mutation while the timer is pending and assert it remains part of the same trailing refresh without replacing or postponing the timer. Add a separate class mutation without an active timer and assert it refreshes on the next animation frame.
 
 - [ ] **Step 3: Add failing immediate work-surface assertions**
 
