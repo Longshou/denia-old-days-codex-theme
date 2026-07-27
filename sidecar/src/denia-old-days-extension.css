@@ -471,7 +471,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 }
 
 .denia-old-days-ds-suggestion-slot {
-  display: block;
+  display: none;
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto 24px;
   min-height: var(--denia-old-days-suggestion-slot-height);

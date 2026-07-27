@@ -333,7 +333,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home-visuals", {
   "pointer-events": "none",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
-  display: "block",
+  display: "none",
   width: "min(1120px, calc(100% - 32px))",
   "min-height": "var(--denia-old-days-suggestion-slot-height)",
   margin: "0 auto 24px",
@@ -2279,8 +2279,10 @@ function assertLiveTaskVerification(loaderSource) {
     const heroCopy = hero;
     const photoFront = home ? makeNode(["denia-old-days-ds-photo-front"]) : null;
     const nativeHomePrompt = home ? makeNode(["denia-old-days-ds-native-home-prompt"]) : null;
-    const homeCards = home ? Array.from({ length: 4 }, () => makeNode()) : [];
-    for (const card of homeCards) card.contains = () => true;
+    const homeCards = home
+      ? Array.from({ length: 4 }, () => makeNode([], {}, { x: 0, y: 0, width: 0, height: 0 }))
+      : [];
+    for (const card of homeCards) card.contains = () => false;
     const suggestionSlot = home ? makeNode(["denia-old-days-ds-suggestion-slot"]) : null;
     const suggestions = home ? makeNode(["denia-old-days-ds-card-deck"]) : null;
     if (suggestions) {
@@ -2335,7 +2337,7 @@ function assertLiveTaskVerification(loaderSource) {
             return toggleHitTarget ? toggle : toggleOccluder;
           }
         }
-        return homeCards[0] || null;
+        return null;
       },
       getElementById(id) {
         if (id === "denia-old-days-dream-skin-extension-style") return style;
@@ -2416,6 +2418,9 @@ function assertLiveTaskVerification(loaderSource) {
             position: "fixed",
             visibility: "visible",
           };
+        }
+        if (node === suggestionSlot) {
+          return { backgroundImage: "none", display: "none", opacity: "1", visibility: "visible" };
         }
         if (node === nativeHomePrompt) {
           return { backgroundImage: "none", display: "none", opacity: "1", visibility: "visible" };

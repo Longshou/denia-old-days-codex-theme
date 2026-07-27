@@ -325,6 +325,7 @@ const verifyExpression = `(() => {
   const taskRailStyle = stateArtRail ? getComputedStyle(stateArtRail) : null;
   const taskArtLayerStyle = activeStateArtLayer ? getComputedStyle(activeStateArtLayer) : null;
   const suggestionSlot = document.getElementById('denia-old-days-ds-suggestion-slot');
+  const suggestionSlotStyle = suggestionSlot ? getComputedStyle(suggestionSlot) : null;
   const suggestions = document.getElementById('denia-old-days-ds-card-deck');
   const nativeHomePrompts = [...document.querySelectorAll('.denia-old-days-ds-native-home-prompt')];
   const nativeHomePrompt = nativeHomePrompts[0] || null;
@@ -442,6 +443,7 @@ const verifyExpression = `(() => {
     heroCopy: box(document.getElementById('denia-old-days-ds-hero-copy')),
     suggestionSlot: suggestionSlot ? {
       ...box(suggestionSlot),
+      display: suggestionSlotStyle.display,
       childCount: suggestionSlot.children.length,
       retainedHeight: suggestionSlot.style.getPropertyValue('--denia-old-days-suggestion-slot-height') || null,
     } : null,
@@ -495,6 +497,7 @@ const verifyExpression = `(() => {
       && homeVisuals.parentElement === document.body
       && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === homeVisuals
       && suggestionSlot?.parentElement === homeVisuals
+      && suggestionSlotStyle?.display === 'none'
       && suggestions?.parentElement === suggestionSlot
       && nativeHomePrompts.length === 1
       && nativeHomePromptStyle?.display === 'none'
@@ -515,8 +518,9 @@ const verifyExpression = `(() => {
     result.homeLayoutPreserved
       && result.heroUsesRuntimeArt
       && Boolean(result.heroCopy?.visible)
-      && result.visibleCardCount === 4
-      && result.clickableCardCount === 4
+      && result.cards.length === 4
+      && result.visibleCardCount === 0
+      && result.clickableCardCount === 0
   );
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
   const railMustBeHidden = innerWidth <= 919 || sidebarOpen || sidebarState === 'unknown';
@@ -683,6 +687,7 @@ async function openHomeRoute(session) {
       const box = composer?.getBoundingClientRect();
       const visuals = document.getElementById('denia-old-days-ds-home-visuals');
       const deck = document.getElementById('denia-old-days-ds-card-deck');
+      const slot = document.getElementById('denia-old-days-ds-suggestion-slot');
       const cards = deck ? [...deck.querySelectorAll('button[data-denia-old-days-card]')] : [];
       return Boolean(home
         && box?.width > 0
@@ -691,6 +696,8 @@ async function openHomeRoute(session) {
         && visuals?.parentElement === document.body
         && getComputedStyle(visuals).position === 'fixed'
         && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === visuals
+        && slot
+        && getComputedStyle(slot).display === 'none'
         && cards.length === 4);
     })()`);
     stableSamples = ready ? stableSamples + 1 : 0;
