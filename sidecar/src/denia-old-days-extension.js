@@ -26,11 +26,6 @@
   const nativeSidebarTogglePattern = /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu;
   const nativeSummaryTogglePattern = /(?:切换(?:置顶)?摘要|toggle (?:pinned )?summary)/iu;
   const nativeBottomPanelTogglePattern = /(?:切换底部面板显示|toggle bottom panel)/iu;
-  const nativeWorkSurfaceTogglePatterns = [
-    nativeSidebarTogglePattern,
-    nativeSummaryTogglePattern,
-    nativeBottomPanelTogglePattern,
-  ];
   const DIRTY = Object.freeze({
     ROUTE: 1 << 0,
     COMPOSER: 1 << 1,
@@ -112,6 +107,8 @@
     artNext: null,
     pendingDirty: 0,
     pendingDecorationRoots: new Set(),
+    pendingStyleDirty: 0,
+    pendingStyleDecorationRoots: new Set(),
     metrics: {
       refreshes: 0,
       createdNodes: 0,
@@ -623,7 +620,14 @@
   }
 
   function invalidateComposerCache() {
+    const composer = cachedComposer;
     cachedComposer = null;
+    if (!composer || composerSemanticallyValid(composer)) return;
+    syncClass(composer, "denia-old-days-ds-composer", false);
+    for (const button of composer.querySelectorAll?.("button") || []) {
+      syncClass(button, "denia-old-days-ds-send", false);
+      syncClass(button, "denia-old-days-ds-attachment", false);
+    }
   }
 
   function findComposer() {
@@ -1137,16 +1141,20 @@
     runRefresh(DIRTY.ALL, new Set([document.body]));
   }
 
-  function addDecorationRoots(decorationRoots) {
+  function addPendingRoots(target, decorationRoots) {
     for (const decorationRoot of decorationRoots || []) {
-      if (decorationRoot?.querySelectorAll) state.pendingDecorationRoots.add(decorationRoot);
+      if (decorationRoot?.querySelectorAll) target.add(decorationRoot);
     }
   }
 
   function scheduleRefresh(mask = DIRTY.ALL, decorationRoots = []) {
-    cancelStyleRefresh();
+    if (state.styleRefreshTimer) {
+      state.pendingStyleDirty |= mask;
+      addPendingRoots(state.pendingStyleDecorationRoots, decorationRoots);
+      return;
+    }
     state.pendingDirty |= mask;
-    addDecorationRoots(decorationRoots);
+    addPendingRoots(state.pendingDecorationRoots, decorationRoots);
     if (state.frame) return;
     state.frame = requestAnimationFrame(() => {
       state.frame = 0;
@@ -1165,12 +1173,16 @@
   }
 
   function scheduleStyleRefresh(mask = STYLE_DIRTY, decorationRoots = []) {
-    state.pendingDirty |= mask;
-    addDecorationRoots(decorationRoots);
+    state.pendingStyleDirty |= mask;
+    addPendingRoots(state.pendingStyleDecorationRoots, decorationRoots);
     cancelStyleRefresh();
     state.styleRefreshTimer = setTimeout(() => {
       state.styleRefreshTimer = 0;
-      scheduleRefresh(0);
+      const pendingMask = state.pendingStyleDirty;
+      const pendingRoots = new Set(state.pendingStyleDecorationRoots);
+      state.pendingStyleDirty = 0;
+      state.pendingStyleDecorationRoots.clear();
+      scheduleRefresh(pendingMask, pendingRoots);
     }, 80);
   }
 
@@ -1216,16 +1228,15 @@
   function mutationIsNativeSidebarToggleState(record) {
     return record.type === "attributes"
       && ["aria-expanded", "aria-pressed", "data-state"].includes(record.attributeName)
-      && record.target?.matches?.("button")
-      && nativeSidebarTogglePattern.test(normalizedNodeLabel(record.target));
+      && toggleKindForNode(record.target) === "sidebar";
   }
 
   function mutationIsNativeWorkSurfaceToggleState(record) {
+    const kind = toggleKindForNode(record.target);
     return record.type === "attributes"
       && ["aria-expanded", "aria-pressed", "data-state"].includes(record.attributeName)
-      && record.target?.matches?.("button")
-      && nativeWorkSurfaceTogglePatterns.some((pattern) =>
-        pattern.test(normalizedNodeLabel(record.target)));
+      && Boolean(kind)
+      && cachedToggles.get(kind) === record.target;
   }
 
   function toggleKindForNode(node) {
@@ -1253,62 +1264,89 @@
 
   function childListContainsComposer(record) {
     if (record.type !== "childList") return false;
-    return [...record.addedNodes, ...record.removedNodes].some((node) => {
-      if (node === cachedComposer || node?.contains?.(cachedComposer)) return true;
+    const changedNodes = [...record.addedNodes, ...record.removedNodes];
+    if (changedNodes.some((node) => {
+      if (cachedComposer && (node === cachedComposer || node?.contains?.(cachedComposer))) return true;
       if (node?.matches?.(".composer-surface-chrome")) return true;
-      if (node?.querySelector?.(".composer-surface-chrome")) return true;
-      if (node?.matches?.("form")
-        && node.querySelector?.('textarea, [contenteditable="true"]')) return true;
-      return [...node?.querySelectorAll?.('textarea, [contenteditable="true"]') || []]
-        .some((input) => Boolean(input.closest?.("form")));
-    });
+      return Boolean(node?.querySelector?.(".composer-surface-chrome"));
+    })) return true;
+    const directInputChanged = changedNodes.some((node) =>
+      node?.matches?.('textarea, [contenteditable="true"]'));
+    if (!directInputChanged) return false;
+    return record.target === cachedComposer
+      || Boolean(cachedComposer?.contains?.(record.target))
+      || Boolean(record.target?.matches?.("form"));
   }
 
-  function childListContainsSidebarStructure(record) {
-    if (record.type !== "childList") return false;
-    const sidebarSelector = '[data-testid="sidebar"], [data-slot="sidebar"], aside, nav';
+  function childListTouchesCachedToggle(record, kind) {
+    const cached = cachedToggles.get(kind);
+    return Boolean(cached && [...record.addedNodes, ...record.removedNodes]
+      .some((node) => node === cached || node?.contains?.(cached)));
+  }
+
+  function childListTouchesKnownSidebar(record) {
+    const sidebarToggle = cachedToggles.get("sidebar");
+    const anchors = [
+      nativeLeftSidebarPanel,
+      nativeSidebarPanel,
+      sidebarToggle,
+    ].filter(Boolean);
+    if (anchors.some((anchor) =>
+      record.target === anchor
+      || anchor.contains?.(record.target)
+      || [...record.addedNodes, ...record.removedNodes]
+        .some((node) => node === anchor || node?.contains?.(anchor)))) return true;
+    const controlledIds = new Set(
+      (sidebarToggle?.getAttribute?.("aria-controls") || "")
+        .trim()
+        .split(/\s+/u)
+        .filter(Boolean),
+    );
+    if (!controlledIds.size) return false;
     return [...record.addedNodes, ...record.removedNodes].some((node) =>
-      node?.matches?.(sidebarSelector)
-      || Boolean(node?.querySelector?.(sidebarSelector))
-      || Boolean(toggleKindForNode(node))
-      || [...node?.querySelectorAll?.("button") || []].some(toggleKindForNode));
+      controlledIds.has(node?.id)
+      || [...node?.querySelectorAll?.("[id]") || []]
+        .some((candidate) => controlledIds.has(candidate.id)));
   }
 
   function classifySemanticRecord(record, main, decorationRoots) {
     let mask = 0;
+    const insideTaskMain = !state.homeActive
+      && main
+      && (record.target === main || main.contains(record.target));
     if (record.type === "childList") {
       mask |= DIRTY.ROUTE;
       for (const kind of ["sidebar", "summary", "bottom"]) {
-        if (childListContainsToggle(record, kind)) invalidateToggleCache(kind);
+        if (childListTouchesCachedToggle(record, kind)
+          || (!insideTaskMain && childListContainsToggle(record, kind))) {
+          invalidateToggleCache(kind);
+        }
       }
-      if (childListContainsComposer(record)) {
-        invalidateComposerCache();
-        mask |= DIRTY.COMPOSER;
-      }
-      if (childListContainsSidebarStructure(record)) {
-        mask |= DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES;
-      }
-      const insideTaskMain = !state.homeActive
-        && main
-        && (record.target === main || main.contains(record.target));
       if (insideTaskMain) {
         mask |= TASK_MUTATION_DIRTY;
         for (const node of record.addedNodes) {
           if (node?.querySelectorAll) decorationRoots.add(node);
         }
+        if (childListContainsComposer(record)) {
+          invalidateComposerCache();
+          mask |= DIRTY.COMPOSER;
+        }
+        if (childListTouchesKnownSidebar(record)) {
+          mask |= DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES;
+        }
       } else {
+        if (childListContainsComposer(record)) invalidateComposerCache();
         mask |= STRUCTURE_DIRTY;
       }
       return mask;
     }
     if (record.type !== "attributes") return mask;
-    if (record.attributeName === "style") return STYLE_DIRTY;
-    const insideTaskMain = !state.homeActive
-      && main
-      && (record.target === main || main.contains(record.target));
-    return insideTaskMain
-      ? DIRTY.ROUTE | DIRTY.TASK_STATE | DIRTY.ART
-      : STRUCTURE_DIRTY;
+    if (insideTaskMain) {
+      return record.attributeName === "style"
+        ? DIRTY.TASK_STATE | DIRTY.ART
+        : DIRTY.ROUTE | DIRTY.TASK_STATE | DIRTY.ART;
+    }
+    return record.attributeName === "style" ? STYLE_DIRTY : STRUCTURE_DIRTY;
   }
 
   function on(target, name, handler) {
@@ -1322,6 +1360,8 @@
     cancelStyleRefresh();
     state.pendingDirty = 0;
     state.pendingDecorationRoots.clear();
+    state.pendingStyleDirty = 0;
+    state.pendingStyleDecorationRoots.clear();
     invalidateComposerCache();
     invalidateToggleCache();
     clearHomeViewportBinding();
@@ -1414,24 +1454,15 @@
         hasSemanticRefresh = true;
       }
     }
-    if (hasSemanticRefresh) {
-      if (toggleRecords.length) {
-        scheduleStyleRefresh(
-          mask | DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES,
-          decorationRoots,
-        );
-      } else if (state.styleRefreshTimer) {
-        state.pendingDirty |= mask;
-        addDecorationRoots(decorationRoots);
-      } else {
-        scheduleRefresh(mask, decorationRoots);
-      }
-    } else if (hasStyleRefresh) {
-      scheduleStyleRefresh(mask, decorationRoots);
+    const toggleMask = toggleRecords.length
+      ? DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES
+      : 0;
+    if (hasStyleRefresh || (hasSemanticRefresh && toggleRecords.length)) {
+      scheduleStyleRefresh(mask | toggleMask, decorationRoots);
+    } else if (hasSemanticRefresh) {
+      scheduleRefresh(mask, decorationRoots);
     } else if (toggleRecords.length) {
-      scheduleStyleRefresh(
-        DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES,
-      );
+      scheduleStyleRefresh(toggleMask);
     }
   });
   state.observer.observe(document.body || root, {

@@ -1592,6 +1592,28 @@ function assertComposerIsolation(payload) {
   const formState = formFixture.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   assert(form.classList.contains("denia-old-days-ds-composer"), "a plain form textarea must remain a supported composer fallback");
   formState.cleanup();
+
+  const inputFixture = createRuntimeHarness((index) => `blob:composer-input-cache-${index + 1}`);
+  const inputMain = makeTaskMain(inputFixture);
+  const inputForm = inputFixture.document.createElement("form");
+  inputMain.append(inputForm);
+  vm.runInContext(payload, inputFixture.context, { timeout: 1000 });
+  const inputState = inputFixture.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(!inputForm.classList.contains("denia-old-days-ds-composer"), "an empty form must not be cached as a composer");
+
+  inputFixture.clearMutationRecords();
+  const directInput = inputFixture.document.createElement("textarea");
+  inputForm.append(directInput);
+  assert(inputFixture.flushMutations() === 1, "a direct fallback input addition must reach the observer");
+  assert(inputFixture.flushAnimationFrames() === 1, "a direct fallback input addition must schedule composer work");
+  assert(inputForm.classList.contains("denia-old-days-ds-composer"), "adding a direct textarea must discover and decorate its form");
+
+  inputFixture.clearMutationRecords();
+  directInput.remove();
+  assert(inputFixture.flushMutations() === 1, "removing the final fallback input must reach the observer");
+  assert(inputFixture.flushAnimationFrames() === 1, "removing the final fallback input must schedule composer invalidation");
+  assert(!inputForm.classList.contains("denia-old-days-ds-composer"), "removing the final input must clear stale composer decoration");
+  inputState.cleanup();
 }
 
 function createRuntimeHarness(createObjectUrl) {
@@ -3234,6 +3256,41 @@ function assertObserverStability(payload) {
   assert(replacement.classList.contains("denia-old-days-ds-composer"));
 
   harness.clearMutationRecords();
+  const ordinaryBaseline = { ...state.metrics.domainRuns };
+  const ordinaryContent = harness.document.createElement("section");
+  const ordinaryForm = harness.document.createElement("form");
+  ordinaryForm.append(harness.document.createElement("textarea"));
+  const ordinaryAside = harness.document.createElement("aside");
+  const ordinaryNav = harness.document.createElement("nav");
+  const similarToggle = harness.document.createElement("button");
+  similarToggle.setAttribute("aria-label", "切换置顶摘要");
+  ordinaryContent.append(ordinaryForm, ordinaryAside, ordinaryNav, similarToggle);
+  main.append(ordinaryContent);
+  assert(harness.flushMutations() === 1, "one ordinary task subtree must reach the observer");
+  assert(harness.flushAnimationFrames() === 1, "ordinary task content must schedule task work");
+  assert(state.metrics.domainRuns.taskState === ordinaryBaseline.taskState + 1);
+  assert(state.metrics.domainRuns.taskDecoration === ordinaryBaseline.taskDecoration + 1);
+  assert(state.metrics.domainRuns.composer === ordinaryBaseline.composer);
+  assert(state.metrics.domainRuns.sidebar === ordinaryBaseline.sidebar);
+  assert(state.metrics.domainRuns.layout === ordinaryBaseline.layout);
+  assert(state.metrics.domainRuns.workSurfaces === ordinaryBaseline.workSurfaces);
+
+  harness.clearMutationRecords();
+  const taskStyleBaseline = { ...state.metrics.domainRuns };
+  ordinaryAside.style.setProperty("height", "48px");
+  assert(harness.flushMutations() === 1, "an internal task style mutation must reach the observer");
+  assert(harness.flushAnimationFrames() === 0, "an internal task style mutation must remain trailing");
+  assert(harness.pendingTimerCount() === 1, "an internal task style mutation must schedule one trailing timer");
+  assert(harness.flushTimers() === 1, "the internal task style timer must fire once");
+  assert(harness.flushAnimationFrames() === 1, "the internal task style timer must schedule one frame");
+  assert(state.metrics.domainRuns.taskState === taskStyleBaseline.taskState + 1);
+  assert(state.metrics.domainRuns.art === taskStyleBaseline.art + 1);
+  assert(state.metrics.domainRuns.composer === taskStyleBaseline.composer);
+  assert(state.metrics.domainRuns.sidebar === taskStyleBaseline.sidebar);
+  assert(state.metrics.domainRuns.layout === taskStyleBaseline.layout);
+  assert(state.metrics.domainRuns.workSurfaces === taskStyleBaseline.workSurfaces);
+
+  harness.clearMutationRecords();
   main.dataset.state = "observer-probe";
   main.dataset.state = "observer-probe";
   assert(harness.takeMutationRecords().length === 2, "the VM dataset mock must record every dataset write so idempotence checks catch redundant writes");
@@ -3282,6 +3339,26 @@ function assertObserverStability(payload) {
   assert(harness.flushMutations() === 1, "a semantic mutation outside animation must reach the observer callback");
   assert(harness.pendingTimerCount() === 0, "a semantic mutation outside animation must not schedule a trailing timer");
   assert(harness.flushAnimationFrames() === 1, "a semantic mutation outside animation must refresh on the next frame");
+
+  harness.clearMutationRecords();
+  const interleavedBaseline = { ...state.metrics.domainRuns };
+  main.classList.add("native-semantic-before-style");
+  assert(harness.flushMutations() === 1, "the semantic half of an interleaved batch must reach the observer");
+  harness.document.body.style.setProperty("height", "860px");
+  assert(harness.flushMutations() === 1, "the style half of an interleaved batch must reach the observer");
+  assert(harness.pendingTimerCount() === 1, "interleaved style work must retain one trailing timer");
+  assert(harness.flushAnimationFrames() === 1, "the already-pending semantic RAF must run once");
+  assert(state.metrics.domainRuns.route === interleavedBaseline.route + 1);
+  assert(state.metrics.domainRuns.sidebar === interleavedBaseline.sidebar, "the semantic RAF must not consume trailing sidebar work");
+  assert(state.metrics.domainRuns.layout === interleavedBaseline.layout, "the semantic RAF must not consume trailing layout work");
+  const afterSemanticRefresh = state.metrics.refreshes;
+  assert(harness.flushTimers() === 1, "the interleaved style timer must fire once");
+  assert(harness.flushAnimationFrames() === 1, "the style timer must schedule its own non-empty frame");
+  assert(state.metrics.domainRuns.sidebar === interleavedBaseline.sidebar + 1);
+  assert(state.metrics.domainRuns.layout === interleavedBaseline.layout + 1);
+  assert(state.metrics.refreshes === afterSemanticRefresh + 1, "the style timer must execute exactly one refresh");
+  assert(harness.flushTimers() === 0, "interleaved work must not leave an empty timer");
+  assert(harness.flushAnimationFrames() === 0, "interleaved work must not leave an empty RAF");
 
   const assertStableRefreshBudget = (stableHarness, stableState, view) => {
     stableHarness.clearMutationRecords();
