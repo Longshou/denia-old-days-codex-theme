@@ -361,8 +361,8 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", 
   display: "none !important",
 });
 assert(
-  !/function ensureSuggestionDeck\(\) \{[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
-  "out-of-flow home visuals must not hide or reflow the Codex native prompt",
+  /function ensureSuggestionDeck\(\) \{[\s\S]*?if \(!slot\) return null;[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
+  "themed suggestions must hide the duplicate native home prompt after the themed slot is available",
 );
 const composerPaintProperties = new Set([
   "background",
@@ -1849,6 +1849,13 @@ function createRuntimeHarness(createObjectUrl) {
       };
     }
 
+    get childNodes() {
+      const directText = this.textContent
+        ? [{ nodeType: 3, textContent: this.textContent }]
+        : [];
+      return [...directText, ...this.children];
+    }
+
     #attach(node, index) {
       node.remove();
       node.parentElement = this;
@@ -1926,6 +1933,7 @@ function createRuntimeHarness(createObjectUrl) {
   const sandbox = {
     Blob,
     HTMLElement: FakeElement,
+    Node: { TEXT_NODE: 3 },
     MutationObserver: class {
       constructor(callback) {
         this.callback = callback;
@@ -2754,7 +2762,20 @@ function assertHomeLayoutPreservation(payload) {
   main.scrollTop = 0;
 
   const nativePrompt = harness.document.createElement("div");
-  nativePrompt.textContent = "Native project prompt";
+  const nativePromptBody = harness.document.createElement("div");
+  const nativeHeading = harness.document.createElement("div");
+  const nativeTitle = harness.document.createElement("span");
+  const inlineProjectButton = harness.document.createElement("button");
+  const promptText = "What should we build in denia-old-days-codex-theme?";
+  nativePrompt.textContent = promptText;
+  nativePromptBody.textContent = promptText;
+  nativeHeading.textContent = promptText;
+  nativeTitle.textContent = promptText;
+  inlineProjectButton.textContent = "denia-old-days-codex-theme";
+  nativeTitle.append(inlineProjectButton);
+  nativeHeading.append(nativeTitle);
+  nativePromptBody.append(nativeHeading);
+  nativePrompt.append(nativePromptBody);
   const nativeSuggestions = harness.document.createElement("div");
   for (const label of ["Explore code", "Build feature", "Review changes", "Fix bug"]) {
     const button = harness.document.createElement("button");
@@ -2793,8 +2814,12 @@ function assertHomeLayoutPreservation(payload) {
     "home visual layer must retain all four themed suggestion cards",
   );
   assert(
-    !nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "home theme must keep the Codex native prompt visible",
+    nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "home theme must hide the duplicate Codex native prompt while themed cards are active",
+  );
+  assert(
+    nativePrompt.contains(inlineProjectButton) && inlineProjectButton.isConnected,
+    "hiding the native prompt must preserve its inline project button in the DOM",
   );
   assert(
     nativeSuggestions.classList.contains("denia-old-days-ds-native-suggestions")
@@ -2845,6 +2870,22 @@ function assertSuggestionDeckLifecycle(payload) {
     main.setAttribute("role", "main");
     main.classList.add("dream-skin-home");
     harness.document.body.append(main);
+    const nativePrompt = harness.document.createElement("div");
+    const nativePromptBody = harness.document.createElement("div");
+    const nativeHeading = harness.document.createElement("div");
+    const nativeTitle = harness.document.createElement("span");
+    const inlineProjectButton = harness.document.createElement("button");
+    const promptText = "What should we build in denia-old-days-codex-theme?";
+    nativePrompt.textContent = promptText;
+    nativePromptBody.textContent = promptText;
+    nativeHeading.textContent = promptText;
+    nativeTitle.textContent = promptText;
+    inlineProjectButton.textContent = "denia-old-days-codex-theme";
+    nativeTitle.append(inlineProjectButton);
+    nativeHeading.append(nativeTitle);
+    nativePromptBody.append(nativeHeading);
+    nativePrompt.append(nativePromptBody);
+    main.append(nativePrompt);
     let nativeContainer = null;
     const workspace = harness.document.createElement("section");
     workspace.className = "native-workspace";
@@ -2892,7 +2933,16 @@ function assertSuggestionDeckLifecycle(payload) {
         bottom: y + workspace.rect.height,
       };
     };
-    return { harness, main, remount, appendNativeActions, buttons, nativeContainer: () => nativeContainer, workspace };
+    return {
+      harness,
+      main,
+      remount,
+      appendNativeActions,
+      buttons,
+      nativeContainer: () => nativeContainer,
+      nativePrompt,
+      workspace,
+    };
   };
 
   const short = makeHarness(labels.slice(0, 3));
@@ -2904,6 +2954,10 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(!shortSlot.getAttribute("role") && !shortSlot.getAttribute("aria-label") && !shortSlot.getAttribute("tabindex"), "an empty suggestion slot must not expose a role, label, or tab stop");
   assert(!short.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck must not be created for only three native actions");
   assert(!short.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "three native actions must remain visible and undecorated");
+  assert(
+    !short.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "an incomplete native action set must keep the native prompt visible",
+  );
 
   const complete = makeHarness(labels);
   vm.runInContext(payload, complete.harness.context, { timeout: 1000 });
@@ -2914,6 +2968,10 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(complete.main.children[complete.main.children.indexOf(slot) - 1]?.id === "denia-old-days-ds-hero-copy", "the suggestion slot must be inserted immediately after the hero");
   assert(slot?.children.length === 1 && slot.children[0] === deck, "the deck must be the suggestion slot's only child");
   assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "suggestion deck must proxy all four native actions");
+  assert(
+    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "four themed actions must hide the duplicate native prompt",
+  );
   deck.setRect({ x: 196, y: 620, width: 1120, height: 116 });
   state.refresh();
   assert(slot.style.getPropertyValue("--denia-old-days-suggestion-slot-height") === "116px", "a valid deck mount must retain its measured block height on the slot");
@@ -2935,12 +2993,20 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(complete.workspace.getBoundingClientRect().y === workspaceTop, "the workspace sibling must retain its y position across a temporary action gap");
   assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "native action container must be restored after count drop");
   assert(dropped.every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "native action buttons must be restored after count drop");
+  assert(
+    !complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "dropping below four actions must restore the native prompt",
+  );
 
   const reordered = complete.remount([labels[3], labels[0], labels[2], labels[1]]);
   state.refresh();
   deck = complete.harness.document.getElementById("denia-old-days-ds-card-deck");
   assert(slot.children.length === 1 && slot.children[0] === deck, "restoring four actions must reattach one real-action deck to the retained slot");
   const proxyButtons = deck.querySelectorAll("button[data-denia-old-days-card]");
+  assert(
+    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "restoring four semantic actions must hide the duplicate native prompt again",
+  );
   const semanticTargets = [reordered[1], reordered[3], reordered[2], reordered[0]];
   ["Explore", "Build", "Review", "Fix"].forEach((action, index) => {
     proxyButtons[index].click();
@@ -3002,8 +3068,23 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(state.suggestionSlotHeight === 0, "leaving home must clear the retained suggestion slot measurement");
   assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "leaving home must restore a still-connected native suggestion container");
   assert(reordered.concat(current).every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "leaving home must restore still-connected native suggestion buttons");
+  assert(
+    !complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "leaving home must restore the native prompt",
+  );
+  complete.main.classList.add("dream-skin-home");
+  assistant.remove();
+  state.refresh();
+  assert(
+    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "returning home with four semantic actions must hide the duplicate native prompt",
+  );
   state.cleanup();
   assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "cleanup must not leave a suggestion slot behind");
+  assert(
+    !complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "cleanup must restore the native prompt",
+  );
 }
 
 function assertObserverStability(payload) {

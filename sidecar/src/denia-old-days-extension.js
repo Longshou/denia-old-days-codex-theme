@@ -947,6 +947,7 @@
       return null;
     }
     if (!slot) return null;
+    syncNativeHomePrompt(nativeButtons);
     const nativeContainer = nativeButtons[0].parentElement;
     if (nativeContainer) touch(nativeContainer, "denia-old-days-ds-native-suggestions");
     nativeButtons.forEach((button) => touch(button, "denia-old-days-ds-native-card"));
