@@ -218,8 +218,8 @@ const refreshRecords = relevantRecords.filter((record) =>
 const hasSemanticRefresh = refreshRecords.some((record) =>
   record.type !== "attributes" || record.attributeName !== "style");
 if (hasSemanticRefresh) {
-  if (toggleRecords.length || state.styleRefreshTimer) scheduleStyleRefresh();
-  else scheduleRefresh();
+  if (toggleRecords.length) scheduleStyleRefresh();
+  else if (!state.styleRefreshTimer) scheduleRefresh();
 } else if (refreshRecords.length) {
   scheduleStyleRefresh();
 }
@@ -227,7 +227,9 @@ if (hasSemanticRefresh) {
 
 Match work-surface toggles using the existing sidebar, summary, and bottom-panel label patterns. Expand terminal churn filtering to `.xterm` and `[id^="terminal-panel-"]`.
 Ignore only the exact empty, hidden editor color probe that Codex mounts under `body` while resolving
-`var(--color-token-editor-background)`; keep ordinary body child-list records semantic.
+`var(--color-token-editor-background)`; require the mutation target to be `document.body`, and keep ordinary
+or nested child-list records semantic. Semantic mutations during an active style timer join that existing timer
+without replacing or postponing it.
 
 - [ ] **Step 7: Run focused and full validation**
 
