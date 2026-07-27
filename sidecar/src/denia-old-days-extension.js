@@ -18,8 +18,10 @@
   let nativeLeftSidebarPanel = null;
   let nativeSidebarPanel = null;
   let nativeHomePrompt = null;
+  let cachedComposer = null;
   const nativeSidebarGroups = new Set();
   const nativeSidebarRows = new Set();
+  const cachedToggles = new Map();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   const nativeSidebarTogglePattern = /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu;
   const nativeSummaryTogglePattern = /(?:切换(?:置顶)?摘要|toggle (?:pinned )?summary)/iu;
@@ -29,6 +31,33 @@
     nativeSummaryTogglePattern,
     nativeBottomPanelTogglePattern,
   ];
+  const DIRTY = Object.freeze({
+    ROUTE: 1 << 0,
+    COMPOSER: 1 << 1,
+    SIDEBAR: 1 << 2,
+    LAYOUT: 1 << 3,
+    WORK_SURFACES: 1 << 4,
+    HOME: 1 << 5,
+    TASK_STATE: 1 << 6,
+    TASK_DECORATION: 1 << 7,
+    ART: 1 << 8,
+    ALL: (1 << 9) - 1,
+  });
+  const STYLE_DIRTY = DIRTY.SIDEBAR
+    | DIRTY.LAYOUT
+    | DIRTY.WORK_SURFACES
+    | DIRTY.HOME
+    | DIRTY.TASK_STATE
+    | DIRTY.ART;
+  const TASK_MUTATION_DIRTY = DIRTY.ROUTE
+    | DIRTY.TASK_STATE
+    | DIRTY.TASK_DECORATION
+    | DIRTY.ART;
+  const STRUCTURE_DIRTY = DIRTY.ROUTE
+    | DIRTY.COMPOSER
+    | DIRTY.SIDEBAR
+    | DIRTY.LAYOUT
+    | DIRTY.WORK_SURFACES;
   const stateArtSpecs = Object.freeze({
     staged: Object.freeze({ family: "taskWarm", opacity: ".11" }),
     working: Object.freeze({ family: "taskWarm", opacity: ".20" }),
@@ -81,7 +110,23 @@
     artFamily: "",
     artCurrent: null,
     artNext: null,
-    metrics: { refreshes: 0, createdNodes: 0 },
+    pendingDirty: 0,
+    pendingDecorationRoots: new Set(),
+    metrics: {
+      refreshes: 0,
+      createdNodes: 0,
+      domainRuns: {
+        route: 0,
+        composer: 0,
+        sidebar: 0,
+        layout: 0,
+        workSurfaces: 0,
+        home: 0,
+        taskState: 0,
+        taskDecoration: 0,
+        art: 0,
+      },
+    },
     observer: null,
     frame: 0,
     styleRefreshTimer: 0,
@@ -195,11 +240,28 @@
       .trim();
   }
 
-  function findNativeToggle(pattern) {
-    return [...document.querySelectorAll("button")]
+  function toggleSemanticallyValid(toggle, pattern) {
+    return Boolean(toggle?.isConnected
+      && toggle.matches?.("button")
+      && pattern.test(normalizedNodeLabel(toggle))
+      && visible(toggle));
+  }
+
+  function findNativeToggle(pattern, kind) {
+    const cached = cachedToggles.get(kind);
+    if (toggleSemanticallyValid(cached, pattern)) return cached;
+    const toggle = [...document.querySelectorAll("button")]
       .filter((button) => pattern.test(normalizedNodeLabel(button)) && visible(button))
       .sort((first, second) => measuredRect(second).right - measuredRect(first).right)[0]
       || null;
+    if (toggle) cachedToggles.set(kind, toggle);
+    else cachedToggles.delete(kind);
+    return toggle;
+  }
+
+  function invalidateToggleCache(kind) {
+    if (kind) cachedToggles.delete(kind);
+    else cachedToggles.clear();
   }
 
   function nativeToggleState(toggle) {
@@ -302,7 +364,7 @@
   }
 
   function detectNativeRightSidebar() {
-    const toggle = findNativeToggle(nativeSidebarTogglePattern);
+    const toggle = findNativeToggle(nativeSidebarTogglePattern, "sidebar");
     if (!toggle) return sidebarDetectionResult("unknown", "none", "none", null, null);
 
     const mainRect = measuredRect(findMain());
@@ -462,7 +524,6 @@
   }
 
   function syncNativeRightSidebar(home) {
-    syncTaskLayoutMetrics();
     const result = detectNativeRightSidebar();
     const toggleState = result.toggle ? nativeToggleState(result.toggle) : "unknown";
     let nextPanel = null;
@@ -525,8 +586,8 @@
   }
 
   function syncNativeWorkSurfaces() {
-    const summaryToggle = findNativeToggle(nativeSummaryTogglePattern);
-    const bottomPanelToggle = findNativeToggle(nativeBottomPanelTogglePattern);
+    const summaryToggle = findNativeToggle(nativeSummaryTogglePattern, "summary");
+    const bottomPanelToggle = findNativeToggle(nativeBottomPanelTogglePattern, "bottom");
     const summary = nativeToggleState(summaryToggle);
     const bottomPanel = nativeToggleState(bottomPanelToggle);
     const sidebarObscures = Boolean(state.sidebar?.togglePresent)
@@ -551,15 +612,34 @@
     return document.querySelector('[role="main"]') || document.querySelector("main");
   }
 
+  function composerSemanticallyValid(composer) {
+    if (!composer?.isConnected) return false;
+    if (composer.matches?.(".composer-surface-chrome")) return layoutVisible(composer);
+    if (!composer.matches?.("form")) return false;
+    const input = [...composer.querySelectorAll('textarea, [contenteditable="true"]')]
+      .find((candidate) =>
+        !candidate.closest('.xterm, [id^="terminal-panel-"], [role="tabpanel"], dialog, [role="dialog"], aside, nav'));
+    return Boolean(input);
+  }
+
+  function invalidateComposerCache() {
+    cachedComposer = null;
+  }
+
   function findComposer() {
+    if (composerSemanticallyValid(cachedComposer)) return cachedComposer;
     const nativeComposer = [...document.querySelectorAll(".composer-surface-chrome")]
       .find(layoutVisible);
-    if (nativeComposer) return nativeComposer;
+    if (nativeComposer) {
+      cachedComposer = nativeComposer;
+      return cachedComposer;
+    }
     const input = [...document.querySelectorAll('textarea, [contenteditable="true"]')]
       .find((candidate) =>
         !candidate.closest('.xterm, [id^="terminal-panel-"], [role="tabpanel"], dialog, [role="dialog"], aside, nav')
         && Boolean(candidate.closest("form")));
-    return input?.closest("form") || null;
+    cachedComposer = input?.closest("form") || null;
+    return cachedComposer;
   }
 
   function clearNativeHomePrompt() {
@@ -944,18 +1024,25 @@
     return "staged";
   }
 
-  function decorateTask() {
-    const observations = document.querySelectorAll([
+  function decorateTask(roots) {
+    const observationSelector = [
       '[data-content-search-unit-key*="tool"]',
       '[data-content-search-unit-key*="reasoning"]',
       '[data-testid*="tool"]',
       '[data-testid*="reasoning"]',
       "details",
-    ].join(","));
-    observations.forEach((node) => {
+    ].join(",");
+    const observations = new Set();
+    for (const decorationRoot of roots) {
+      if (decorationRoot?.matches?.(observationSelector)) observations.add(decorationRoot);
+      for (const node of decorationRoot?.querySelectorAll?.(observationSelector) || []) {
+        observations.add(node);
+      }
+    }
+    for (const node of observations) {
       touch(node, "denia-old-days-ds-observation");
       setDatasetValue(node, "deniaObservationLabel", "观察记录");
-    });
+    }
 
     const assistants = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')];
     assistants.forEach((node, index) => {
@@ -976,17 +1063,7 @@
     }
   }
 
-  function refresh() {
-    state.metrics.refreshes += 1;
-    ensureChrome();
-    decorateComposer();
-    const home = isHomeView();
-    state.homeActive = home;
-    syncClass(root, "denia-old-days-ds-home", home);
-    syncClass(root, "denia-old-days-ds-task", !home);
-    syncNativeLeftSidebar();
-    syncNativeRightSidebar(home);
-    syncNativeWorkSurfaces();
+  function syncPageDomain(home) {
     if (home) {
       ensureSidebarBrand();
       state.formState = "staged";
@@ -999,18 +1076,85 @@
       removeSidebarBrand();
       removeHomeNodes();
       state.formState = deriveFormState();
-      decorateTask();
     }
     setDatasetValue(root, "deniaFormState", state.formState);
-    syncStateArt(state.formState);
   }
 
-  function scheduleRefresh() {
+  function runRefresh(mask, decorationRoots) {
+    state.metrics.refreshes += 1;
+    let currentMask = mask;
+    if (currentMask & DIRTY.ROUTE) {
+      state.metrics.domainRuns.route += 1;
+      const home = isHomeView();
+      const routeChanged = state.homeActive !== home;
+      state.homeActive = home;
+      syncClass(root, "denia-old-days-ds-home", home);
+      syncClass(root, "denia-old-days-ds-task", !home);
+      if (routeChanged) {
+        currentMask |= DIRTY.ALL & ~DIRTY.ROUTE;
+        decorationRoots.add(document.body);
+      }
+    }
+    if (currentMask & DIRTY.COMPOSER) {
+      state.metrics.domainRuns.composer += 1;
+      decorateComposer();
+    }
+    if (currentMask & DIRTY.SIDEBAR) {
+      state.metrics.domainRuns.sidebar += 1;
+      syncNativeLeftSidebar();
+      syncNativeRightSidebar(state.homeActive);
+    }
+    if (currentMask & DIRTY.LAYOUT) {
+      state.metrics.domainRuns.layout += 1;
+      syncTaskLayoutMetrics();
+      if (state.homeActive) {
+        syncHomeVisualFrame(findMain());
+        syncHomeViewport(findMain());
+      }
+    }
+    if (currentMask & DIRTY.WORK_SURFACES) {
+      state.metrics.domainRuns.workSurfaces += 1;
+      syncNativeWorkSurfaces();
+    }
+    if (state.homeActive && (currentMask & DIRTY.HOME)) {
+      state.metrics.domainRuns.home += 1;
+      syncPageDomain(true);
+    } else if (!state.homeActive && (currentMask & DIRTY.TASK_STATE)) {
+      state.metrics.domainRuns.taskState += 1;
+      syncPageDomain(false);
+    }
+    if (!state.homeActive && (currentMask & DIRTY.TASK_DECORATION)) {
+      state.metrics.domainRuns.taskDecoration += 1;
+      decorateTask(decorationRoots);
+    }
+    if (currentMask & DIRTY.ART) {
+      state.metrics.domainRuns.art += 1;
+      syncStateArt(state.formState);
+    }
+  }
+
+  function refresh() {
+    runRefresh(DIRTY.ALL, new Set([document.body]));
+  }
+
+  function addDecorationRoots(decorationRoots) {
+    for (const decorationRoot of decorationRoots || []) {
+      if (decorationRoot?.querySelectorAll) state.pendingDecorationRoots.add(decorationRoot);
+    }
+  }
+
+  function scheduleRefresh(mask = DIRTY.ALL, decorationRoots = []) {
     cancelStyleRefresh();
+    state.pendingDirty |= mask;
+    addDecorationRoots(decorationRoots);
     if (state.frame) return;
     state.frame = requestAnimationFrame(() => {
       state.frame = 0;
-      refresh();
+      const pendingMask = state.pendingDirty;
+      const pendingRoots = new Set(state.pendingDecorationRoots);
+      state.pendingDirty = 0;
+      state.pendingDecorationRoots.clear();
+      runRefresh(pendingMask, pendingRoots);
     });
   }
 
@@ -1020,11 +1164,13 @@
     state.styleRefreshTimer = 0;
   }
 
-  function scheduleStyleRefresh() {
+  function scheduleStyleRefresh(mask = STYLE_DIRTY, decorationRoots = []) {
+    state.pendingDirty |= mask;
+    addDecorationRoots(decorationRoots);
     cancelStyleRefresh();
     state.styleRefreshTimer = setTimeout(() => {
       state.styleRefreshTimer = 0;
-      scheduleRefresh();
+      scheduleRefresh(0);
     }, 80);
   }
 
@@ -1082,6 +1228,89 @@
         pattern.test(normalizedNodeLabel(record.target)));
   }
 
+  function toggleKindForNode(node) {
+    if (!node?.matches?.("button")) return null;
+    const label = normalizedNodeLabel(node);
+    if (nativeSidebarTogglePattern.test(label)) return "sidebar";
+    if (nativeSummaryTogglePattern.test(label)) return "summary";
+    if (nativeBottomPanelTogglePattern.test(label)) return "bottom";
+    return null;
+  }
+
+  function childListContainsToggle(record, kind) {
+    if (record.type !== "childList") return false;
+    const pattern = kind === "sidebar"
+      ? nativeSidebarTogglePattern
+      : kind === "summary"
+        ? nativeSummaryTogglePattern
+        : nativeBottomPanelTogglePattern;
+    return [...record.addedNodes, ...record.removedNodes].some((node) => {
+      if (node?.matches?.("button") && pattern.test(normalizedNodeLabel(node))) return true;
+      return [...node?.querySelectorAll?.("button") || []]
+        .some((button) => pattern.test(normalizedNodeLabel(button)));
+    });
+  }
+
+  function childListContainsComposer(record) {
+    if (record.type !== "childList") return false;
+    return [...record.addedNodes, ...record.removedNodes].some((node) => {
+      if (node === cachedComposer || node?.contains?.(cachedComposer)) return true;
+      if (node?.matches?.(".composer-surface-chrome")) return true;
+      if (node?.querySelector?.(".composer-surface-chrome")) return true;
+      if (node?.matches?.("form")
+        && node.querySelector?.('textarea, [contenteditable="true"]')) return true;
+      return [...node?.querySelectorAll?.('textarea, [contenteditable="true"]') || []]
+        .some((input) => Boolean(input.closest?.("form")));
+    });
+  }
+
+  function childListContainsSidebarStructure(record) {
+    if (record.type !== "childList") return false;
+    const sidebarSelector = '[data-testid="sidebar"], [data-slot="sidebar"], aside, nav';
+    return [...record.addedNodes, ...record.removedNodes].some((node) =>
+      node?.matches?.(sidebarSelector)
+      || Boolean(node?.querySelector?.(sidebarSelector))
+      || Boolean(toggleKindForNode(node))
+      || [...node?.querySelectorAll?.("button") || []].some(toggleKindForNode));
+  }
+
+  function classifySemanticRecord(record, main, decorationRoots) {
+    let mask = 0;
+    if (record.type === "childList") {
+      mask |= DIRTY.ROUTE;
+      for (const kind of ["sidebar", "summary", "bottom"]) {
+        if (childListContainsToggle(record, kind)) invalidateToggleCache(kind);
+      }
+      if (childListContainsComposer(record)) {
+        invalidateComposerCache();
+        mask |= DIRTY.COMPOSER;
+      }
+      if (childListContainsSidebarStructure(record)) {
+        mask |= DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES;
+      }
+      const insideTaskMain = !state.homeActive
+        && main
+        && (record.target === main || main.contains(record.target));
+      if (insideTaskMain) {
+        mask |= TASK_MUTATION_DIRTY;
+        for (const node of record.addedNodes) {
+          if (node?.querySelectorAll) decorationRoots.add(node);
+        }
+      } else {
+        mask |= STRUCTURE_DIRTY;
+      }
+      return mask;
+    }
+    if (record.type !== "attributes") return mask;
+    if (record.attributeName === "style") return STYLE_DIRTY;
+    const insideTaskMain = !state.homeActive
+      && main
+      && (record.target === main || main.contains(record.target));
+    return insideTaskMain
+      ? DIRTY.ROUTE | DIRTY.TASK_STATE | DIRTY.ART
+      : STRUCTURE_DIRTY;
+  }
+
   function on(target, name, handler) {
     target.addEventListener(name, handler);
     listeners.push([target, name, handler]);
@@ -1091,6 +1320,10 @@
     state.observer?.disconnect();
     if (state.frame) cancelAnimationFrame(state.frame);
     cancelStyleRefresh();
+    state.pendingDirty = 0;
+    state.pendingDecorationRoots.clear();
+    invalidateComposerCache();
+    invalidateToggleCache();
     clearHomeViewportBinding();
     for (const [target, name, handler] of listeners) target.removeEventListener(name, handler);
     syncClass(nativeLeftSidebarPanel, "denia-old-days-ds-native-left-sidebar", false);
@@ -1127,11 +1360,18 @@
     return true;
   }
 
-  on(window, "popstate", scheduleRefresh);
-  on(window, "hashchange", scheduleRefresh);
-  on(window, "resize", scheduleRefresh);
+  const scheduleRouteRefresh = () => scheduleRefresh(DIRTY.ALL, [document.body]);
+  const scheduleResizeRefresh = () => scheduleRefresh(
+    DIRTY.SIDEBAR
+      | DIRTY.LAYOUT
+      | DIRTY.WORK_SURFACES
+      | (state.homeActive ? DIRTY.HOME : DIRTY.TASK_STATE),
+  );
+  on(window, "popstate", scheduleRouteRefresh);
+  on(window, "hashchange", scheduleRouteRefresh);
+  on(window, "resize", scheduleResizeRefresh);
   if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
-    on(window.visualViewport, "resize", scheduleRefresh);
+    on(window.visualViewport, "resize", scheduleResizeRefresh);
   }
   if (typeof motionPreference.addEventListener === "function") {
     on(motionPreference, "change", (event) => {
@@ -1150,6 +1390,9 @@
       && !mutationIsEditorColorProbe(record));
     const toggleRecords = relevantRecords.filter(mutationIsNativeWorkSurfaceToggleState);
     if (toggleRecords.length) {
+      for (const record of toggleRecords) {
+        invalidateToggleCache(toggleKindForNode(record.target));
+      }
       if (toggleRecords.some(mutationIsNativeSidebarToggleState)) {
         syncNativeRightSidebar(state.homeActive);
       }
@@ -1157,13 +1400,38 @@
     }
     const refreshRecords = relevantRecords.filter((record) =>
       !mutationIsNativeWorkSurfaceToggleState(record));
-    const hasSemanticRefresh = refreshRecords.some((record) =>
-      record.type !== "attributes" || record.attributeName !== "style");
+    const main = findMain();
+    const decorationRoots = new Set();
+    let mask = 0;
+    let hasStyleRefresh = false;
+    let hasSemanticRefresh = false;
+    for (const record of refreshRecords) {
+      const recordMask = classifySemanticRecord(record, main, decorationRoots);
+      mask |= recordMask;
+      if (record.type === "attributes" && record.attributeName === "style") {
+        hasStyleRefresh = true;
+      } else {
+        hasSemanticRefresh = true;
+      }
+    }
     if (hasSemanticRefresh) {
-      if (toggleRecords.length) scheduleStyleRefresh();
-      else if (!state.styleRefreshTimer) scheduleRefresh();
-    } else if (refreshRecords.length) {
-      scheduleStyleRefresh();
+      if (toggleRecords.length) {
+        scheduleStyleRefresh(
+          mask | DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES,
+          decorationRoots,
+        );
+      } else if (state.styleRefreshTimer) {
+        state.pendingDirty |= mask;
+        addDecorationRoots(decorationRoots);
+      } else {
+        scheduleRefresh(mask, decorationRoots);
+      }
+    } else if (hasStyleRefresh) {
+      scheduleStyleRefresh(mask, decorationRoots);
+    } else if (toggleRecords.length) {
+      scheduleStyleRefresh(
+        DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES,
+      );
     }
   });
   state.observer.observe(document.body || root, {

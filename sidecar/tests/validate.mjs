@@ -3091,14 +3091,21 @@ function assertObserverStability(payload) {
     main.setAttribute("role", "main");
     const assistant = harness.document.createElement("article");
     assistant.setAttribute("data-content-search-unit-key", "task:assistant");
-    main.append(assistant);
+    const composer = harness.document.createElement("form");
+    composer.classList.add("composer-surface-chrome");
+    main.append(assistant, composer);
     harness.document.body.append(main);
     vm.runInContext(payload, harness.context, { timeout: 1000 });
-    return { harness, main, state: harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__ };
+    return {
+      harness,
+      main,
+      composer,
+      state: harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__,
+    };
   };
 
   const fixture = makeTaskHarness();
-  const { harness, main, state } = fixture;
+  const { harness, main, composer, state } = fixture;
   const chrome = harness.document.getElementById("denia-old-days-ds-chrome");
   const rail = harness.document.getElementById("denia-old-days-ds-state-art");
   assert(state.observer.options.attributeOldValue === true, "the mutation observer must retain attribute old values for class-token filtering");
@@ -3202,6 +3209,29 @@ function assertObserverStability(payload) {
     "the observer harness must deliver a native remount child-list batch",
   );
   assert(harness.flushAnimationFrames() === 1, "a native remount batch must not be swallowed merely because its nodes currently have an owned ancestor");
+
+  harness.clearMutationRecords();
+  const baseline = { ...state.metrics.domainRuns };
+  const tool = harness.document.createElement("details");
+  main.append(tool);
+  assert(harness.flushMutations() === 1);
+  assert(harness.flushAnimationFrames() === 1);
+  assert(state.metrics.domainRuns.route === baseline.route + 1);
+  assert(state.metrics.domainRuns.taskState === baseline.taskState + 1);
+  assert(state.metrics.domainRuns.taskDecoration === baseline.taskDecoration + 1);
+  assert(state.metrics.domainRuns.sidebar === baseline.sidebar);
+  assert(state.metrics.domainRuns.layout === baseline.layout);
+  assert(state.metrics.domainRuns.composer === baseline.composer);
+  assert(state.metrics.domainRuns.home === baseline.home);
+
+  harness.clearMutationRecords();
+  const replacement = harness.document.createElement("form");
+  replacement.classList.add("composer-surface-chrome");
+  composer.remove();
+  main.append(replacement);
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(replacement.classList.contains("denia-old-days-ds-composer"));
 
   harness.clearMutationRecords();
   main.dataset.state = "observer-probe";
