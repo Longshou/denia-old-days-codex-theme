@@ -32,7 +32,7 @@
 - Consumes: existing `stylesheetRules`, `assertCssDeclarations`, and `findCssRule` helpers.
 - Produces: a static contract for light and dark palette variables, task-only application selectors, narrow-screen variants, and reduced-transparency fallback.
 
-- [ ] **Step 1: Add exact palette and selector assertions**
+- [x] **Step 1: Add exact palette and selector assertions**
 
 Add the following contract after the existing task-main stacking-context assertions:
 
@@ -82,7 +82,7 @@ for (const forbidden of ["url(", "repeating-", "filter(", "animation"]) {
 }
 ```
 
-- [ ] **Step 2: Run the Sidecar validator and confirm the new contract fails**
+- [x] **Step 2: Run the Sidecar validator and confirm the new contract fails**
 
 Run:
 
@@ -92,7 +92,7 @@ node sidecar/tests/validate.mjs sidecar
 
 Expected: FAIL because `--denia-task-background-color-light` and the task background selectors do not exist.
 
-- [ ] **Step 3: Commit the failing contract**
+- [x] **Step 3: Commit the failing contract**
 
 ```bash
 git add sidecar/tests/validate.mjs
@@ -109,7 +109,7 @@ git commit -m "test: define dual-theme task background contract"
 - Consumes: the contract introduced in Task 1.
 - Produces: `--denia-task-background-color`, `--denia-task-background-image`, and the future-facing `data-denia-theme="dark"` activation interface.
 
-- [ ] **Step 1: Add light, dark, and compact gradient variables**
+- [x] **Step 1: Add light, dark, and compact gradient variables**
 
 Extend `.denia-old-days-ds-extension` with the following variables:
 
@@ -139,7 +139,7 @@ Extend `.denia-old-days-ds-extension` with the following variables:
     linear-gradient(145deg, rgba(29, 37, 95, .28), transparent 50%);
 ```
 
-- [ ] **Step 2: Add task-only activation and body paint**
+- [x] **Step 2: Add task-only activation and body paint**
 
 Add the scoped rules directly after the shared `body::before` rule:
 
@@ -168,7 +168,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
 }
 ```
 
-- [ ] **Step 3: Add narrow-screen palette reduction**
+- [x] **Step 3: Add narrow-screen palette reduction**
 
 Inside `@media (max-width: 919px)`, add:
 
@@ -182,7 +182,7 @@ Inside `@media (max-width: 919px)`, add:
   }
 ```
 
-- [ ] **Step 4: Add reduced-transparency fallback**
+- [x] **Step 4: Add reduced-transparency fallback**
 
 Inside `@media (prefers-reduced-transparency: reduce)`, add:
 
@@ -193,7 +193,7 @@ Inside `@media (prefers-reduced-transparency: reduce)`, add:
   }
 ```
 
-- [ ] **Step 5: Run the validator**
+- [x] **Step 5: Run the validator**
 
 Run:
 
@@ -203,7 +203,7 @@ node sidecar/tests/validate.mjs sidecar
 
 Expected: PASS with the existing “Validated 达妮娅 · 旧日斑斓 extension 0.1.0” summary.
 
-- [ ] **Step 6: Commit the implementation**
+- [x] **Step 6: Commit the implementation**
 
 ```bash
 git add sidecar/src/denia-old-days-extension.css
@@ -222,7 +222,7 @@ git commit -m "feat: add Denia dual-theme task backgrounds"
 - Consumes: `data-denia-theme="dark"` and the task background custom properties from Task 2.
 - Produces: maintained documentation and full validation evidence.
 
-- [ ] **Step 1: Update current theme documentation**
+- [x] **Step 1: Update current theme documentation**
 
 Add to the task-page section:
 
@@ -231,7 +231,7 @@ Add to the task-page section:
 - 背景只使用静态柔焦渐变，正文中心保持低干扰；不使用人物、手账、具象花朵、位图、动画或重复纹理。
 ```
 
-- [ ] **Step 2: Clarify dark-theme activation timing in the design spec**
+- [x] **Step 2: Clarify dark-theme activation timing in the design spec**
 
 Replace the ambiguous system-preference fallback statement with:
 
@@ -239,7 +239,7 @@ Replace the ambiguous system-preference fallback statement with:
 本次实现以 `data-denia-theme="dark"` 作为显式接口，默认仍使用浅色背景。系统深色偏好不会单独切换背景，避免在完整深色内容表面尚未接入时出现深色背景与浅色正文混用；后续双主题任务统一维护该属性。
 ```
 
-- [ ] **Step 3: Run source and Sidecar checks**
+- [x] **Step 3: Run source and Sidecar checks**
 
 Run:
 
@@ -249,7 +249,7 @@ npm run check
 
 Expected: `source structure ok` followed by the Sidecar validation success summary.
 
-- [ ] **Step 4: Build the local Kaboo release**
+- [x] **Step 4: Build the local Kaboo release**
 
 Run:
 
@@ -259,7 +259,7 @@ npm run build:kaboo
 
 Expected: a successful local package under `sidecar/release/kaboo-local/` with no missing asset or checksum errors.
 
-- [ ] **Step 5: Audit scope and palette**
+- [x] **Step 5: Audit scope and palette**
 
 Run:
 
@@ -275,10 +275,9 @@ Expected:
 - The second command shows the CSS contract, tests, and documentation.
 - The third command is silent because this task adds no runtime DOM behavior.
 
-- [ ] **Step 6: Commit documentation**
+- [x] **Step 6: Commit documentation**
 
 ```bash
 git add docs/current-theme-design.md docs/superpowers/specs/2026-07-27-task-dual-theme-background-design.md
 git commit -m "docs: document Denia task background themes"
 ```
-
