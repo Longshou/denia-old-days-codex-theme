@@ -188,6 +188,7 @@ assertFallbackCleanupBehavior(loader);
 assertHomeLayoutPreservation(runtimePayload);
 assertFormStateRecognition(runtimePayload);
 assertStateArtRailLifecycle(runtimePayload);
+assertIncrementalTaskDecoration(runtimePayload);
 assertObserverStability(runtimePayload);
 
 assert(loader.includes("127.0.0.1"), "loader must bind to loopback");
@@ -214,7 +215,8 @@ for (const token of [
   "syncStateArt",
   "syncHomeViewport",
   "decorateComposer",
-  "decorateTask",
+  "decorateTaskRoots",
+  "syncFinalAssistantCard",
   "syncNativeLeftSidebar",
   "deriveFormState",
   "scheduleRefresh",
@@ -1627,8 +1629,20 @@ function createRuntimeHarness(createObjectUrl) {
   let pointTarget = null;
   let nextAnimationFrame = 1;
   let nextTimer = 1;
+  const classMutations = new Map();
 
   function recordAttributeMutation(target, attributeName, oldValue) {
+    if (attributeName === "class") {
+      const oldClasses = new Set(String(oldValue || "").split(/\s+/u).filter(Boolean));
+      const currentClasses = new Set(String(target.className || "").split(/\s+/u).filter(Boolean));
+      for (const className of new Set([...oldClasses, ...currentClasses])) {
+        if (oldClasses.has(className) !== currentClasses.has(className)) {
+          const counts = classMutations.get(target) || new Map();
+          counts.set(className, (counts.get(className) || 0) + 1);
+          classMutations.set(target, counts);
+        }
+      }
+    }
     for (const observer of mutationObservers) {
       if (!observer.target || !observer.options?.attributes) continue;
       if (target !== observer.target && !(observer.options.subtree && observer.target.contains(target))) continue;
@@ -2038,6 +2052,9 @@ function createRuntimeHarness(createObjectUrl) {
     revoked,
     events,
     freezeCalls,
+    classMutationCount(node, className) {
+      return classMutations.get(node)?.get(className) || 0;
+    },
     setPointTarget(node) {
       pointTarget = node;
     },
@@ -3481,6 +3498,53 @@ function assertStateArtRailLifecycle(payload) {
   assert(reducedApproval?.dataset.deniaArtFamily === "taskApproval", "reduced motion must still switch to the correct artwork");
   assert(!reducedWarm, "reduced motion must clear the outgoing layer immediately");
   assert(!reducedRail.querySelector(".denia-old-days-ds-state-art-layer.is-leaving"), "reduced motion must not leave a fading layer");
+}
+
+function assertIncrementalTaskDecoration(payload) {
+  const harness = createRuntimeHarness((index) => `blob:incremental-decoration-${index + 1}`);
+  const main = harness.document.createElement("main");
+  main.setAttribute("role", "main");
+  harness.document.body.append(main);
+  const existing = harness.document.createElement("details");
+  main.append(existing);
+  vm.runInContext(payload, harness.context, { timeout: 1000 });
+  const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  state.refresh();
+  const existingTouches = harness.classMutationCount(existing, "denia-old-days-ds-observation");
+
+  const added = harness.document.createElement("details");
+  main.append(added);
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+
+  assert(added.classList.contains("denia-old-days-ds-observation"), "incremental decoration must decorate an added observation");
+  assert(
+    harness.classMutationCount(existing, "denia-old-days-ds-observation") === existingTouches,
+    "incremental decoration must not retouch historical observations",
+  );
+
+  const firstAssistant = harness.document.createElement("div");
+  firstAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  const latestAssistant = harness.document.createElement("div");
+  latestAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  main.append(firstAssistant, latestAssistant);
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(!firstAssistant.classList.contains("denia-old-days-ds-final-card"), "only the latest assistant may be the final card");
+  assert(latestAssistant.classList.contains("denia-old-days-ds-final-card"), "the latest assistant must become the final card");
+
+  latestAssistant.remove();
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(firstAssistant.classList.contains("denia-old-days-ds-final-card"), "removing the latest assistant must promote the remaining assistant");
+  assert(!latestAssistant.classList.contains("denia-old-days-ds-final-card"), "a disconnected assistant must lose final-card decoration");
+
+  firstAssistant.remove();
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(state.formState !== "complete", "removing the final assistant must leave the complete state");
+  assert(!firstAssistant.classList.contains("denia-old-days-ds-final-card"), "non-complete state must remove final-card decoration");
+  state.cleanup();
 }
 
 function assertFormStateRecognition(payload) {

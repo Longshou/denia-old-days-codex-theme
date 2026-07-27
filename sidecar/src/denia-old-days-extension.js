@@ -26,6 +26,14 @@
   const nativeSidebarTogglePattern = /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu;
   const nativeSummaryTogglePattern = /(?:切换(?:置顶)?摘要|toggle (?:pinned )?summary)/iu;
   const nativeBottomPanelTogglePattern = /(?:切换底部面板显示|toggle bottom panel)/iu;
+  const observationSelector = [
+    '[data-content-search-unit-key*="tool"]',
+    '[data-content-search-unit-key*="reasoning"]',
+    '[data-testid*="tool"]',
+    '[data-testid*="reasoning"]',
+    "details",
+  ].join(",");
+  const assistantSelector = '[data-content-search-unit-key$=":assistant"]';
   const DIRTY = Object.freeze({
     ROUTE: 1 << 0,
     COMPOSER: 1 << 1,
@@ -105,6 +113,7 @@
     artFamily: "",
     artCurrent: null,
     artNext: null,
+    finalAssistantCard: null,
     pendingDirty: 0,
     pendingDecorationRoots: new Set(),
     pendingStyleDirty: 0,
@@ -1028,31 +1037,31 @@
     return "staged";
   }
 
-  function decorateTask(roots) {
-    const observationSelector = [
-      '[data-content-search-unit-key*="tool"]',
-      '[data-content-search-unit-key*="reasoning"]',
-      '[data-testid*="tool"]',
-      '[data-testid*="reasoning"]',
-      "details",
-    ].join(",");
-    const observations = new Set();
+  function decorateTaskRoots(roots) {
     for (const decorationRoot of roots) {
-      if (decorationRoot?.matches?.(observationSelector)) observations.add(decorationRoot);
+      if (decorationRoot?.matches?.(observationSelector)) {
+        touch(decorationRoot, "denia-old-days-ds-observation");
+        setDatasetValue(decorationRoot, "deniaObservationLabel", "观察记录");
+      }
       for (const node of decorationRoot?.querySelectorAll?.(observationSelector) || []) {
-        observations.add(node);
+        touch(node, "denia-old-days-ds-observation");
+        setDatasetValue(node, "deniaObservationLabel", "观察记录");
       }
     }
-    for (const node of observations) {
-      touch(node, "denia-old-days-ds-observation");
-      setDatasetValue(node, "deniaObservationLabel", "观察记录");
-    }
+  }
 
-    const assistants = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')];
-    assistants.forEach((node, index) => {
-      syncClass(node, "denia-old-days-ds-final-card", state.formState === "complete" && index === assistants.length - 1);
-      touchedNodes.add(node);
-    });
+  function syncFinalAssistantCard() {
+    const main = findMain();
+    const assistants = main ? [...main.querySelectorAll(assistantSelector)] : [];
+    const nextCard = state.formState === "complete" ? assistants.at(-1) || null : null;
+    if (state.finalAssistantCard && state.finalAssistantCard !== nextCard) {
+      syncClass(state.finalAssistantCard, "denia-old-days-ds-final-card", false);
+    }
+    if (nextCard) {
+      syncClass(nextCard, "denia-old-days-ds-final-card", true);
+      touchedNodes.add(nextCard);
+    }
+    state.finalAssistantCard = nextCard;
   }
 
   function removeHomeNodes() {
@@ -1096,7 +1105,7 @@
       syncClass(root, "denia-old-days-ds-task", !home);
       if (routeChanged) {
         currentMask |= DIRTY.ALL & ~DIRTY.ROUTE;
-        decorationRoots.add(document.body);
+        decorationRoots.add(findMain() || document.body);
       }
     }
     if (currentMask & DIRTY.COMPOSER) {
@@ -1129,7 +1138,10 @@
     }
     if (!state.homeActive && (currentMask & DIRTY.TASK_DECORATION)) {
       state.metrics.domainRuns.taskDecoration += 1;
-      decorateTask(decorationRoots);
+      decorateTaskRoots(decorationRoots);
+    }
+    if (currentMask & DIRTY.TASK_STATE) {
+      syncFinalAssistantCard();
     }
     if (currentMask & DIRTY.ART) {
       state.metrics.domainRuns.art += 1;
@@ -1138,7 +1150,7 @@
   }
 
   function refresh() {
-    runRefresh(DIRTY.ALL, new Set([document.body]));
+    runRefresh(DIRTY.ALL, new Set([findMain() || document.body]));
   }
 
   function addPendingRoots(target, decorationRoots) {
@@ -1362,6 +1374,7 @@
     state.pendingDecorationRoots.clear();
     state.pendingStyleDirty = 0;
     state.pendingStyleDecorationRoots.clear();
+    state.finalAssistantCard = null;
     invalidateComposerCache();
     invalidateToggleCache();
     clearHomeViewportBinding();
@@ -1400,7 +1413,7 @@
     return true;
   }
 
-  const scheduleRouteRefresh = () => scheduleRefresh(DIRTY.ALL, [document.body]);
+  const scheduleRouteRefresh = () => scheduleRefresh(DIRTY.ALL, [findMain() || document.body]);
   const scheduleResizeRefresh = () => scheduleRefresh(
     DIRTY.SIDEBAR
       | DIRTY.LAYOUT
