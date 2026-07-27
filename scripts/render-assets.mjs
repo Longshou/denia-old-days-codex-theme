@@ -145,7 +145,6 @@ function homeLayoutOverlay({ width, height, compact }) {
         <g filter="url(#book-shadow)">
           <rect x="44" y="42" width="1112" height="714" rx="34" fill="url(#compact-paper)" stroke="#79c8d2" stroke-opacity=".52"/>
         </g>
-        <path d="M596 65C573 121 583 672 596 733" fill="none" stroke="#8ebec5" stroke-opacity=".22"/>
         <path d="M62 83C207 68 382 78 596 102C792 73 960 70 1138 91" fill="none" stroke="#fffdf9" stroke-width="20" stroke-opacity=".62"/>
         <path d="M72 126C220 104 390 112 558 130" fill="none" stroke="#efb4c2" stroke-opacity=".18" stroke-width="3"/>
         <text x="92" y="120" fill="#6a7f86" font-family="Arial, sans-serif" font-size="10" letter-spacing="3.6">DENIA / OLD DAYS IN COLOR</text>
@@ -175,7 +174,6 @@ function homeLayoutOverlay({ width, height, compact }) {
       <g filter="url(#book-shadow)">
         <rect x="74" y="64" width="1452" height="870" rx="42" fill="url(#wide-paper)" stroke="#79c8d2" stroke-opacity=".54"/>
       </g>
-      <path d="M772 87C746 172 756 798 772 910" fill="none" stroke="#8ebec5" stroke-opacity=".2"/>
       <path d="M92 110C286 82 508 96 772 128C1012 92 1250 91 1508 120" fill="none" stroke="#fffdf9" stroke-width="24" stroke-opacity=".68"/>
       <path d="M104 146C304 116 518 126 722 151" fill="none" stroke="#efb4c2" stroke-opacity=".18" stroke-width="4"/>
       <text x="146" y="178" fill="#647f86" font-family="Arial, sans-serif" font-size="13" letter-spacing="4.7">DENIA / OLD DAYS IN COLOR</text>

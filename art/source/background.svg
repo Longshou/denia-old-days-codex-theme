@@ -39,8 +39,8 @@
   <path d="M-80 252C126 91 245 89 420 180" fill="none" stroke="#f0a4bb" stroke-width="18" opacity=".08"/>
   <path d="M-90 277C111 122 252 116 428 203" fill="none" stroke="#73ced9" stroke-width="12" opacity=".1"/>
   <g filter="url(#paperShadow)">
-    <path d="M206 122Q185 122 185 148V939Q185 964 211 964H948V142Q721 96 512 127Z" fill="url(#paper)" stroke="#9ccfd8" stroke-opacity=".45"/>
-    <path d="M948 142V964H1697Q1724 964 1724 937V153Q1724 126 1697 128L1367 105Q1142 100 948 142Z" fill="url(#paper)" stroke="#9ccfd8" stroke-opacity=".45"/>
+    <path id="denia-paper-surface" d="M206 122Q185 122 185 148V939Q185 964 211 964H1697Q1724 964 1724 937V153Q1724 126 1697 128L1367 105Q1142 100 948 142Q721 96 512 127Z" fill="url(#paper)"/>
+    <path id="denia-paper-outline" d="M206 122Q185 122 185 148V939Q185 964 211 964H1697Q1724 964 1724 937V153Q1724 126 1697 128L1367 105Q1142 100 948 142Q721 96 512 127Z" fill="none" stroke="#9ccfd8" stroke-opacity=".45"/>
   </g>
   <g opacity=".46" fill="none" stroke="#8fd2dd">
     <path d="M272 286H826M272 356H826M272 426H826M272 496H826M272 566H826M272 636H826M272 706H826M272 776H826"/>

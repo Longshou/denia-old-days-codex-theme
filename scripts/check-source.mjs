@@ -67,6 +67,26 @@ for (const spineFragment of [
     throw new Error(`background must not contain a center spine: ${spineFragment}`);
   }
 }
+for (const retiredPaperPanelId of ["denia-paper-left", "denia-paper-right"]) {
+  if (backgroundSource.includes(`id="${retiredPaperPanelId}"`)) {
+    throw new Error(`background must not split paper at the center: ${retiredPaperPanelId}`);
+  }
+}
+const paperSurface = backgroundSource.match(/<path id="denia-paper-surface"[^>]*>/)?.[0];
+if (!paperSurface || !paperSurface.includes('fill="url(#paper)"')) {
+  throw new Error("background must define one continuous paper surface");
+}
+if (!backgroundSource.includes('id="denia-paper-outline"')) {
+  throw new Error("background must define one seam-free outer paper outline");
+}
+for (const previewSpineFragment of [
+  "M596 65C573 121 583 672 596 733",
+  "M772 87C746 172 756 798 772 910",
+]) {
+  if (rendererSource.includes(previewSpineFragment)) {
+    throw new Error(`home preview must not contain a center spine: ${previewSpineFragment}`);
+  }
+}
 for (const marker of [
   "renderHomePreview",
   "renderTaskPreview",
