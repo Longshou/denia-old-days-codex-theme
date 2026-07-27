@@ -597,9 +597,9 @@
     nativeHomePrompt = null;
   }
 
-  function syncNativeHomePromptPosition(prompt) {
+  function syncNativeHomePromptPosition(prompt, title) {
     const heroRect = measuredRect(document.getElementById("denia-old-days-ds-hero-copy"));
-    const promptRect = measuredRect(prompt);
+    const titleRect = measuredRect(title);
     const composer = document.querySelector(".composer-surface-chrome");
     let composerBoundary = composer;
     for (let current = composer; current && current !== findMain(); current = current.parentElement) {
@@ -610,15 +610,15 @@
       }
     }
     const composerRect = measuredRect(composerBoundary);
-    if (!heroRect || !promptRect || !composerRect) {
+    if (!heroRect || !titleRect || !composerRect) {
       removeStyleProperty(prompt, nativeHomePromptShiftProperty);
       return;
     }
 
     const currentShift = Number.parseFloat(prompt.style.getPropertyValue(nativeHomePromptShiftProperty)) || 0;
-    const naturalTop = promptRect.top - currentShift;
+    const naturalTop = titleRect.top - currentShift;
     const minimumTop = heroRect.bottom + 16;
-    const inputAlignedTop = composerRect.top - promptRect.height - 24;
+    const inputAlignedTop = composerRect.top - titleRect.height - 24;
     const shift = Math.max(0, Math.round(Math.max(minimumTop, inputAlignedTop) - naturalTop));
     setStyleProperty(prompt, nativeHomePromptShiftProperty, `${shift}px`);
   }
@@ -650,7 +650,7 @@
     }
     if (nativeHomePrompt && nativeHomePrompt !== prompt) clearNativeHomePrompt();
     nativeHomePrompt = touch(prompt, "denia-old-days-ds-native-home-prompt");
-    syncNativeHomePromptPosition(nativeHomePrompt);
+    syncNativeHomePromptPosition(nativeHomePrompt, title);
     return nativeHomePrompt;
   }
 

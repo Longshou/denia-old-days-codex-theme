@@ -332,6 +332,16 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home-visuals", {
   contain: "layout paint style",
   "pointer-events": "none",
 });
+const homeSidebarOpeningVisualSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-sidebar-state="unknown"][data-denia-sidebar-toggle-state="open"] .denia-old-days-ds-home-visuals';
+const homeSidebarClosingVisualSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-sidebar-state="unknown"][data-denia-sidebar-toggle-state="closed"] .denia-old-days-ds-home-visuals';
+assertCssDeclarations(stylesheetRules, homeSidebarOpeningVisualSelector, {
+  width: "calc(var(--denia-home-visual-width, 100%) - var(--denia-native-sidebar-width, 0px))",
+  transition: "width 350ms ease",
+});
+assertCssDeclarations(stylesheetRules, homeSidebarClosingVisualSelector, {
+  width: "calc(var(--denia-home-visual-width, 100%) + var(--denia-native-sidebar-width, 0px))",
+  transition: "width 350ms ease",
+});
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home .dream-skin-home", {
   "overflow-y": "hidden !important",
   "scrollbar-gutter": "auto !important",
@@ -549,6 +559,7 @@ assert(
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"][data-denia-work-surface-state="closed"] main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
+const taskClosedWorkSurfaceMotionSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"][data-denia-work-surface-state="closed"] main .thread-scroll-container > [class*="min-h-full"][class*="shrink-0"]';
 const taskSidebarClosingAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="unknown"][data-denia-sidebar-toggle-state="closed"][data-denia-summary-state="closed"][data-denia-bottom-panel-state="closed"] main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
 const taskContentAlignmentRule = findCssRule(stylesheetRules, taskContentAlignmentSelector);
 const taskSidebarClosingAlignmentRule = findCssRule(stylesheetRules, taskSidebarClosingAlignmentSelector);
@@ -572,6 +583,10 @@ for (const rule of stylesheetRules) {
 assertCssDeclarations(stylesheetRules, taskContentAlignmentSelector, {
   "margin-inline-start": "max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important",
   "margin-inline-end": "auto !important",
+});
+assertCssDeclarations(stylesheetRules, taskClosedWorkSurfaceMotionSelector, {
+  transform: "none !important",
+  transition: "none !important",
 });
 assertCssDeclarations(stylesheetRules, taskSidebarClosingAlignmentSelector, {
   "margin-inline-start": "max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important",
@@ -1849,7 +1864,10 @@ function createRuntimeHarness(createObjectUrl) {
     }
     getBoundingClientRect() {
       const { x, width, height } = this.rect;
-      const shift = Number.parseFloat(this.style.getPropertyValue("--denia-old-days-native-prompt-shift")) || 0;
+      let shift = 0;
+      for (let node = this; node; node = node.parentElement) {
+        shift += Number.parseFloat(node.style.getPropertyValue("--denia-old-days-native-prompt-shift")) || 0;
+      }
       const y = this.rect.y + shift;
       return {
         x,
@@ -2814,6 +2832,7 @@ function assertHomeLayoutPreservation(payload) {
   nativePromptBody.textContent = promptText;
   nativeHeading.textContent = promptText;
   nativeTitle.textContent = promptText;
+  nativeTitle.setRect({ x: 404, y: 443, width: 392, height: 42 });
   inlineProjectButton.textContent = "denia-old-days-codex-theme";
   nativeTitle.append(inlineProjectButton);
   nativeHeading.append(nativeTitle);
@@ -2885,6 +2904,7 @@ function assertHomeLayoutPreservation(payload) {
   assert(main.scrollTop === 0, "home visual mount must keep the native home viewport at its non-scrolling origin");
 
   input.value = "typing must not create layout replacements";
+  nativePrompt.setRect({ x: 196, y: 116, width: 1120, height: 465 });
   main.scrollHeight = 1200;
   state.refresh();
   for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
@@ -2894,6 +2914,10 @@ function assertHomeLayoutPreservation(payload) {
     "typing-state refresh must preserve Codex native home geometry",
   );
   assert(main.scrollTop === 0, "typing must not move the home viewport away from its origin");
+  assert(
+    nativeTitle.getBoundingClientRect().bottom <= composerBoundary.getBoundingClientRect().top - 24,
+    "typing must keep the native home title above the composer when its flex wrapper expands",
+  );
 
   const replacementComposer = harness.document.createElement("form");
   replacementComposer.classList.add("composer-surface-chrome");
