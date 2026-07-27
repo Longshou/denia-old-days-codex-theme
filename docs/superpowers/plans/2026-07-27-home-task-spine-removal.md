@@ -78,6 +78,8 @@ Expected: the source check rejects `M948 145V960`, and the Sidecar validator rej
 
 **Files:**
 - Modify: `art/source/background.svg:45-54`
+- Modify: `scripts/render-assets.mjs:148`
+- Modify: `scripts/render-assets.mjs:178`
 - Modify: `sidecar/src/denia-old-days-extension.css:58-69`
 - Modify: `sidecar/src/denia-old-days-extension.css:310-319`
 - Modify: `sidecar/src/denia-old-days-extension.css:947-949`
@@ -90,17 +92,21 @@ Expected: the source check rejects `M948 145V960`, and the Sidecar validator rej
 
 - [ ] **Step 1: Delete the shared SVG spine**
 
-Delete the two center seam `<path>` elements and the complete six-path binding-ring `<g>`. Keep both paper panels and the ruled-line group unchanged.
+Delete the two center seam `<path>` elements and the complete six-path binding-ring `<g>`. Replace the two separately filled paper panels with one continuous paper surface plus one outer outline so their overlapping inner strokes and gradients cannot leave a residual seam. Keep the outer silhouette and ruled-line group unchanged.
 
-- [ ] **Step 2: Delete the Sidecar spine pseudos**
+- [ ] **Step 2: Delete preview-only center seams**
+
+Delete the compact and wide center-seam paths from `homeLayoutOverlay` so generated evidence matches the live spineless UI.
+
+- [ ] **Step 3: Delete the Sidecar spine pseudos**
 
 Delete the complete `.denia-old-days-ds-chrome::before` and `.denia-old-days-ds-hero::before` rules.
 
-- [ ] **Step 3: Delete stale responsive overrides**
+- [ ] **Step 4: Delete stale responsive overrides**
 
 Delete only the two `display: none` blocks that target those removed pseudo-elements. Keep all neighboring responsive rules unchanged.
 
-- [ ] **Step 4: Run focused tests and confirm GREEN**
+- [ ] **Step 5: Run focused tests and confirm GREEN**
 
 Run:
 
@@ -111,12 +117,12 @@ node sidecar/tests/validate.mjs sidecar
 
 Expected: both commands exit zero.
 
-- [ ] **Step 5: Commit the source fix**
+- [ ] **Step 6: Commit the source fix**
 
 Run:
 
 ```bash
-git add art/source/background.svg sidecar/src/denia-old-days-extension.css scripts/check-source.mjs sidecar/tests/validate.mjs
+git add art/source/background.svg scripts/render-assets.mjs sidecar/src/denia-old-days-extension.css scripts/check-source.mjs sidecar/tests/validate.mjs
 git commit -m "fix: remove global spine decoration"
 ```
 

@@ -41,7 +41,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 
 | 文件 | SHA-256 |
 | --- | --- |
-| `art/source/background.svg` | `e5e48058261a5ed08ad628afbe477cfa0f2ad075a8712a84c17b5a1da136c9b2` |
+| `art/source/background.svg` | `1169ea2d6968951d73fff3a25c7aec8c4519537d4e564e7b2c44374d4376ae06` |
 | `art/source/task-preview.svg` | `79a6b9698cacca28c58c9165ad69074c5bbd92a8866df512a93b41e35ea8b53e` |
 
 上述哈希对应 `0.1.0` 首发候选原创源文件。官方源文件的固定哈希见前表；构建产物在构建时重新校验。
@@ -52,14 +52,14 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 
 | 输出 | 尺寸 | SHA-256 | 渲染设置 |
 | --- | --- | --- | --- |
-| `theme/background.jpg` | 1920×1080 | `9487911f2fea67f07cc97b8677727cacd8c4c3e35e0af971e0f0da3f9a4e473c` | `background.svg`；resize 1920×1080、cover；flatten `#f7eee9`；JPEG quality 90、4:4:4 |
+| `theme/background.jpg` | 1920×1080 | `75f90080bcca721a2a0a41318f159b56e0723e0c90383493c03d51f535df31fc` | `background.svg`；resize 1920×1080、cover；flatten `#f7eee9`；JPEG quality 90、4:4:4 |
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
 | `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
 | `sidecar/assets/denia-task-approval.webp` | 640×2000 | `d8e9124ad68a04021c8911819a6e21cba51b543f480a505cb3a24b98caa347a9` | 双形态竖幅的明色正脸与暗色注视；`470,220,896×2800`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-error.webp` | 640×2000 | `55ebb464e95001b96f6a68c5a18054e80e0764450551e4e912a4c4b525f1c8c6` | 完整无笑意正脸与抬臂动势；`1140,100,282×880`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-complete.webp` | 640×2000 | `8328e475e0b73cd7f94b7425b85747a228fa70f78bcf9fd267c26a175bd66bc3` | 周年贺图的无字近景；`330,100,464×1450`；WebP quality 86 |
-| `evidence/home.png` | 1600×1000 | `ee899ec6e0dbd24c3cef54d13e250174dc7d9d6ce223269d2f8ff9e5b864d57f` | Bright 单一画面；P2 背纸、纸纹、显影边和虹彩泡泡；PNG compressionLevel 9 |
-| `evidence/home-compact.png` | 1200×800 | `f62fe79c5e0e5f708125394da5bf388dd3c8b6aee71ff15f90628eec9457d41b` | 与宽屏首页共用 Bright 画面，只改变拍立得尺寸和裁切 |
+| `evidence/home.png` | 1600×1000 | `e86c91fae29a8c68612784868881d19fca4b33487f1227acb94c1b05a676c0de` | Bright 单一画面；P2 背纸、纸纹、显影边和虹彩泡泡；PNG compressionLevel 9 |
+| `evidence/home-compact.png` | 1200×800 | `2cdec02ca28303c20f6f14009d8f12e6d82b53710c00989cb78cc5dfb3228cf6` | 与宽屏首页共用 Bright 画面，只改变拍立得尺寸和裁切 |
 | `evidence/task-staged.png` | 1600×1000 | `6c013fb586d4c63a4bb1b95784a1cc1c327112d0b4318400e6e563272676f3d9` | 暖日泡泡近景低透明待命态，输入框止于右栏安全区 |
 | `evidence/task.png` | 1600×1000 | `7719c000b70ed5f94858ebe4bf341c756fee77c1776bc43b47ec32d27f21d3e4` | 同一暖日泡泡近景提高对比、轻微靠近工作区后的工作态，输入框止于右栏安全区 |
 | `evidence/task-approval.png` | 1600×1000 | `84501cff187d8f40d480fef78e5235870ba75eb7e47867d0791faf33b7ed895a` | 双形态审批态；源图 extract `470,220,896×2800`；输入框止于右栏安全区 |
