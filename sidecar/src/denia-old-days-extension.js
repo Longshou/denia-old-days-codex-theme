@@ -88,12 +88,7 @@
     frame: 0,
     styleRefreshTimer: 0,
     homeActive: false,
-    homeAutoPin: false,
-    homeScrollAdjusting: false,
-    homeScrollFrame: 0,
     homeScrollMain: null,
-    homeScrollHandler: null,
-    homeComposer: null,
     ownedNodes,
     refresh,
     cleanup,
@@ -646,43 +641,13 @@
   }
 
   function clearHomeViewportBinding() {
-    if (state.homeScrollFrame) cancelAnimationFrame(state.homeScrollFrame);
-    state.homeScrollFrame = 0;
-    if (state.homeScrollMain && state.homeScrollHandler) {
-      state.homeScrollMain.removeEventListener("scroll", state.homeScrollHandler);
-    }
     state.homeScrollMain = null;
-    state.homeScrollHandler = null;
-    state.homeScrollAdjusting = false;
   }
 
-  function bindHomeViewport(main) {
-    if (state.homeScrollMain === main && state.homeScrollHandler) return;
-    clearHomeViewportBinding();
+  function syncHomeViewport(main) {
+    if (!main || !state.homeActive) return;
     state.homeScrollMain = main;
-    state.homeScrollHandler = () => {
-      if (state.homeScrollAdjusting || state.homeScrollFrame) return;
-      const maximum = Math.max(0, main.scrollHeight - main.clientHeight);
-      state.homeAutoPin = maximum - main.scrollTop <= 32;
-    };
-    main.addEventListener("scroll", state.homeScrollHandler, { passive: true });
-  }
-
-  function syncHomeViewport(main, settleFrames = 2) {
-    if (!main || !state.homeActive || !state.homeAutoPin) return;
-    bindHomeViewport(main);
-    if (state.homeScrollFrame) return;
-    let remaining = settleFrames;
-    const align = () => {
-      state.homeScrollFrame = 0;
-      if (!state.homeActive || !state.homeAutoPin || main.isConnected === false) return;
-      state.homeScrollAdjusting = true;
-      main.scrollTop = Math.max(0, main.scrollHeight - main.clientHeight);
-      state.homeScrollAdjusting = false;
-      remaining -= 1;
-      if (remaining > 0) state.homeScrollFrame = requestAnimationFrame(align);
-    };
-    state.homeScrollFrame = requestAnimationFrame(align);
+    if (main.scrollTop !== 0) main.scrollTop = 0;
   }
 
   function ensureChrome() {
@@ -942,6 +907,7 @@
         ownedNodes.delete(deck);
       }
       restoreNativeSuggestionClasses();
+      syncNativeHomePrompt(nativeButtons);
       return null;
     }
     if (!slot) return null;
@@ -1107,13 +1073,8 @@
   function refresh() {
     state.metrics.refreshes += 1;
     ensureChrome();
-    const composer = decorateComposer();
+    decorateComposer();
     const home = isHomeView();
-    const enteringHome = home && !state.homeActive;
-    const homeSurfaceChanged = home && (
-      state.homeScrollMain !== findMain()
-      || state.homeComposer !== composer
-    );
     state.homeActive = home;
     syncClass(root, "denia-old-days-ds-home", home);
     syncClass(root, "denia-old-days-ds-task", !home);
@@ -1126,12 +1087,8 @@
       ensureHomeHero();
       ensureSuggestionDeck();
       syncHomeVisualFrame(findMain());
-      if (enteringHome || homeSurfaceChanged) state.homeAutoPin = true;
-      state.homeComposer = composer;
-      syncHomeViewport(findMain(), enteringHome || homeSurfaceChanged ? 60 : 2);
+      syncHomeViewport(findMain());
     } else {
-      state.homeAutoPin = false;
-      state.homeComposer = null;
       clearHomeViewportBinding();
       removeSidebarBrand();
       removeHomeNodes();

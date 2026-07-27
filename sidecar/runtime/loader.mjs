@@ -330,6 +330,8 @@ const verifyExpression = `(() => {
   const nativeHomePrompts = [...document.querySelectorAll('.denia-old-days-ds-native-home-prompt')];
   const nativeHomePrompt = nativeHomePrompts[0] || null;
   const nativeHomePromptStyle = nativeHomePrompt ? getComputedStyle(nativeHomePrompt) : null;
+  const homeScroller = document.querySelector('.dream-skin-home');
+  const homeScrollerStyle = homeScroller ? getComputedStyle(homeScroller) : null;
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
   const sidebarBrandNode = document.getElementById('denia-old-days-ds-sidebar-brand');
@@ -458,6 +460,12 @@ const verifyExpression = `(() => {
       ...box(nativeHomePrompt),
       display: nativeHomePromptStyle.display,
     } : null,
+    homeScroll: homeScroller ? {
+      scrollHeight: homeScroller.scrollHeight,
+      clientHeight: homeScroller.clientHeight,
+      scrollTop: homeScroller.scrollTop,
+      overflowY: homeScrollerStyle.overflowY,
+    } : null,
     visibleCardCount: cards.filter((card) => card.visible).length,
     clickableCardCount: cards.filter((card) => card.clickable).length,
     composer: box(composer),
@@ -500,7 +508,12 @@ const verifyExpression = `(() => {
       && suggestionSlotStyle?.display === 'none'
       && suggestions?.parentElement === suggestionSlot
       && nativeHomePrompts.length === 1
-      && nativeHomePromptStyle?.display === 'none'
+      && box(nativeHomePrompt)?.visible === true
+      && nativeHomePromptStyle?.display !== 'none'
+      && homeScroller
+      && homeScroller.scrollHeight <= homeScroller.clientHeight + 1
+      && homeScroller.scrollTop === 0
+      && homeScrollerStyle?.overflowY === 'hidden'
   );
   const composerRect = composer?.getBoundingClientRect?.() || null;
   result.composerViewportPass = !home || Boolean(

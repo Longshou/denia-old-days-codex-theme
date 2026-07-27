@@ -332,6 +332,13 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home-visuals", {
   contain: "layout paint style",
   "pointer-events": "none",
 });
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home .dream-skin-home", {
+  "overflow-y": "hidden !important",
+  "scrollbar-gutter": "auto !important",
+});
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home .dream-skin-home > div:has(> .home-banners:empty)", {
+  display: "none !important",
+});
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
   display: "none",
   width: "min(1120px, calc(100% - 32px))",
@@ -357,12 +364,13 @@ for (const nativeSuggestionClass of [
     `${nativeSuggestionClass} related hiding rules must not declare opacity`,
   );
 }
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", {
+assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-native-home-prompt [class*="heading-xl"]::after', {
   display: "none !important",
+  content: "none !important",
 });
 assert(
-  /function ensureSuggestionDeck\(\) \{[\s\S]*?if \(!slot\) return null;[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
-  "themed suggestions must hide the duplicate native home prompt after the themed slot is available",
+  /function ensureSuggestionDeck\(\) \{[\s\S]*?restoreNativeSuggestionClasses\(\);[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?if \(!slot\) return null;[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
+  "the home theme must keep the native prompt decorated and visible across complete and incomplete action states",
 );
 const composerPaintProperties = new Set([
   "background",
@@ -574,8 +582,7 @@ assertCssDeclarations(stylesheetRules, "to", {
 }, ["@keyframes denia-old-days-sidebar-close-align"]);
 assert(
   runtime.includes("if (home) {\n      ensureSidebarBrand();")
-    && runtime.includes("state.homeAutoPin = false;")
-    && runtime.includes("state.homeComposer = null;")
+    && runtime.includes("syncHomeViewport(findMain());")
     && runtime.includes("clearHomeViewportBinding();\n      removeSidebarBrand();"),
   "sidebar brand must be created only on home and removed on task routes",
 );
@@ -657,20 +664,20 @@ assert(
     && narrowHeroGridRule.sourceIndex > compactHeroRule.sourceIndex,
   "narrow breakpoint must follow compact breakpoint so the single-column hero wins the cascade",
 );
-const shortDesktopMedia = ["min-width: 1200px", "max-height: 919px"];
+const shortDesktopMedia = ["max-height: 1099px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
-  "grid-template-columns": "minmax(340px, .9fr) minmax(420px, 1.1fr)",
-  "column-gap": "32px",
+  "grid-template-columns": "minmax(300px, .9fr) minmax(360px, 1.1fr)",
+  "column-gap": "28px",
   width: "min(1120px, calc(100% - 32px))",
   "min-height": "0",
   margin: "12px auto",
-  padding: "22px 32px",
+  padding: "18px 28px",
 }, shortDesktopMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   display: "block",
-  width: "min(100%, 440px)",
+  width: "min(100%, 390px)",
   "aspect-ratio": "16 / 9.2",
-  padding: "10px 10px 42px",
+  padding: "9px 9px 38px",
 }, shortDesktopMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
   "grid-template-columns": "repeat(4, minmax(0, 1fr))",
@@ -678,7 +685,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
 assert(
   findCssRule(stylesheetRules, ".denia-old-days-ds-hero", shortDesktopMedia).sourceIndex
     > compactHeroRule.sourceIndex,
-  "short desktop layout must override the generic low-height compact rules",
+  "short viewport layout must override the generic compact rules",
 );
 
 const transparencyMedia = ["prefers-reduced-transparency: reduce"];
@@ -2278,7 +2285,9 @@ function assertLiveTaskVerification(loaderSource) {
     const hero = home ? makeNode(["denia-old-days-ds-hero"]) : null;
     const heroCopy = hero;
     const photoFront = home ? makeNode(["denia-old-days-ds-photo-front"]) : null;
-    const nativeHomePrompt = home ? makeNode(["denia-old-days-ds-native-home-prompt"]) : null;
+    const nativeHomePrompt = home
+      ? makeNode(["denia-old-days-ds-native-home-prompt"], {}, { x: 220, y: 420, width: 760, height: 112 })
+      : null;
     const homeCards = home
       ? Array.from({ length: 4 }, () => makeNode([], {}, { x: 0, y: 0, width: 0, height: 0 }))
       : [];
@@ -2307,7 +2316,10 @@ function assertLiveTaskVerification(loaderSource) {
         || (includeSidebarBrand && sidebarBrandHost === "right" && node === sidebar);
     }
     const body = makeNode();
-    const main = makeNode([], {}, mainRect);
+    const main = makeNode(home ? ["dream-skin-home"] : [], {}, mainRect);
+    main.scrollHeight = mainRect.height;
+    main.clientHeight = mainRect.height;
+    main.scrollTop = 0;
     if (homeVisuals) homeVisuals.parentElement = body;
     if (heroCopy) heroCopy.parentElement = homeVisuals;
     if (suggestionSlot) {
@@ -2354,6 +2366,7 @@ function assertLiveTaskVerification(loaderSource) {
         if (selector === ".denia-old-days-ds-hero") return hero;
         if (selector === ".denia-old-days-ds-photo-front") return photoFront;
         if (selector === ".denia-old-days-ds-native-home-prompt") return nativeHomePrompt;
+        if (selector === ".dream-skin-home") return home ? main : null;
         if (selector === ".composer-surface-chrome") return composer;
         if (selector === ".denia-old-days-ds-native-right-sidebar") return nativeSidebar;
         if (selector === '[role="main"]' || selector === "main") return main;
@@ -2423,7 +2436,16 @@ function assertLiveTaskVerification(loaderSource) {
           return { backgroundImage: "none", display: "none", opacity: "1", visibility: "visible" };
         }
         if (node === nativeHomePrompt) {
-          return { backgroundImage: "none", display: "none", opacity: "1", visibility: "visible" };
+          return { backgroundImage: "none", display: "flex", opacity: "1", visibility: "visible" };
+        }
+        if (node === main) {
+          return {
+            backgroundImage: "none",
+            display: "flex",
+            opacity: "1",
+            overflowY: home ? "hidden" : "visible",
+            visibility: "visible",
+          };
         }
         if (node === composer && pseudo === "::before") {
           return { content: "none", display: "none", height: "auto", position: "static", width: "auto" };
@@ -2826,11 +2848,11 @@ function assertHomeLayoutPreservation(payload) {
   );
   assert(
     nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "home theme must hide the duplicate Codex native prompt while themed cards are active",
+    "home theme must retain and decorate the visible Codex native title",
   );
   assert(
     nativePrompt.contains(inlineProjectButton) && inlineProjectButton.isConnected,
-    "hiding the native prompt must preserve its inline project button in the DOM",
+    "the visible native prompt must preserve its inline project button in the DOM",
   );
   assert(
     nativeSuggestions.classList.contains("denia-old-days-ds-native-suggestions")
@@ -2839,7 +2861,7 @@ function assertHomeLayoutPreservation(payload) {
   );
   assert(composer.classList.contains("denia-old-days-ds-composer"), "home composer may retain paint-only theme chrome");
   for (let frame = 0; frame < 60; frame += 1) harness.flushAnimationFrames();
-  assert(main.scrollTop === 362, "home visual mount must restore the native bottom composer anchor");
+  assert(main.scrollTop === 0, "home visual mount must keep the native home viewport at its non-scrolling origin");
 
   input.value = "typing must not create layout replacements";
   main.scrollHeight = 1200;
@@ -2850,7 +2872,7 @@ function assertHomeLayoutPreservation(payload) {
       && nativeChildren.every((node, index) => main.children[index] === node),
     "typing-state refresh must preserve Codex native home geometry",
   );
-  assert(main.scrollTop === 433, "a pinned home composer must remain bottom-aligned when its content height changes");
+  assert(main.scrollTop === 0, "typing must not move the home viewport away from its origin");
 
   const replacementComposer = harness.document.createElement("form");
   replacementComposer.classList.add("composer-surface-chrome");
@@ -2861,15 +2883,15 @@ function assertHomeLayoutPreservation(payload) {
   state.refresh();
   for (let frame = 0; frame < 60; frame += 1) harness.flushAnimationFrames();
   assert(
-    main.scrollTop === 433,
-    "a remounted home composer must be treated as a fresh surface and return to the shared card/composer viewport",
+    main.scrollTop === 0,
+    "a remounted home composer must remain in the non-scrolling viewport",
   );
 
   main.scrollTop = 0;
   for (const handler of main.listeners.get("scroll") || []) handler();
   state.refresh();
   for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
-  assert(main.scrollTop === 0, "manual upward browsing after initial settling must disable automatic bottom pinning");
+  assert(main.scrollTop === 0, "home refresh must keep the native viewport locked at the origin");
 }
 
 function assertSuggestionDeckLifecycle(payload) {
@@ -2966,8 +2988,8 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(!short.harness.document.getElementById("denia-old-days-ds-card-deck"), "suggestion deck must not be created for only three native actions");
   assert(!short.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "three native actions must remain visible and undecorated");
   assert(
-    !short.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "an incomplete native action set must keep the native prompt visible",
+    short.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "an incomplete native action set must retain the visible native prompt decoration",
   );
 
   const complete = makeHarness(labels);
@@ -2981,7 +3003,7 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4, "suggestion deck must proxy all four native actions");
   assert(
     complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "four themed actions must hide the duplicate native prompt",
+    "four themed actions must retain the visible native prompt decoration",
   );
   deck.setRect({ x: 196, y: 620, width: 1120, height: 116 });
   state.refresh();
@@ -3005,8 +3027,8 @@ function assertSuggestionDeckLifecycle(payload) {
   assert(!complete.nativeContainer().classList.contains("denia-old-days-ds-native-suggestions"), "native action container must be restored after count drop");
   assert(dropped.every((button) => !button.classList.contains("denia-old-days-ds-native-card")), "native action buttons must be restored after count drop");
   assert(
-    !complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "dropping below four actions must restore the native prompt",
+    complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "dropping below four actions must keep the native prompt decorated",
   );
 
   const reordered = complete.remount([labels[3], labels[0], labels[2], labels[1]]);
@@ -3016,7 +3038,7 @@ function assertSuggestionDeckLifecycle(payload) {
   const proxyButtons = deck.querySelectorAll("button[data-denia-old-days-card]");
   assert(
     complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "restoring four semantic actions must hide the duplicate native prompt again",
+    "restoring four semantic actions must keep the native prompt decorated",
   );
   const semanticTargets = [reordered[1], reordered[3], reordered[2], reordered[0]];
   ["Explore", "Build", "Review", "Fix"].forEach((action, index) => {
@@ -3088,7 +3110,7 @@ function assertSuggestionDeckLifecycle(payload) {
   state.refresh();
   assert(
     complete.nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
-    "returning home with four semantic actions must hide the duplicate native prompt",
+    "returning home with four semantic actions must restore the visible native prompt decoration",
   );
   state.cleanup();
   assert(!complete.harness.document.getElementById("denia-old-days-ds-suggestion-slot"), "cleanup must not leave a suggestion slot behind");
