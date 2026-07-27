@@ -1,0 +1,16 @@
+{
+  "name": "denia-old-days-codex-theme",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:kaboo": "node scripts/build-local-kaboo-release.mjs",
+    "check": "node scripts/check-source.mjs && node sidecar/tests/validate.mjs sidecar"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "sharp": "0.34.5"
+  }
+}

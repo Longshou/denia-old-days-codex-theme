@@ -28,12 +28,19 @@
 ## 命令
 
 ```bash
-KABOO_SHARP_ENTRY=/absolute/path/to/sharp/lib/index.js node scripts/render-assets.mjs
+npm ci
 node scripts/check-source.mjs
 node sidecar/tests/validate.mjs sidecar
-KABOO_SHARP_ENTRY=/absolute/path/to/sharp/lib/index.js node scripts/build-local-kaboo-release.mjs
+npm run build:kaboo
 ```
 
-完整的 Kaboo 本地包生成在 `sidecar/release/kaboo-local/`。构建器同时生成 `start-local-test.command`；完全退出 Codex 后运行它，会从本地源码安装 Dream Skin Studio 和主题，并关闭 Kaboo 自动更新。该流程不访问 Registry、CDN 或发布接口。
+完整的 Kaboo 本地包生成在 `sidecar/release/kaboo-local/`。本地安装使用 Kaboo 的正式离线入口；Kaboo 会物化其内嵌、版本固定的 Dream Skin runtime，不需要另一个 Studio 源码仓库，也不会访问 Registry、CDN、发布接口或自动更新服务：
+
+```bash
+kaboo-cli codex-theme install-local sidecar/release/kaboo-local/denia-old-days/0.1.0/catalog-version.json
+kaboo-cli codex-theme verify denia-old-days
+```
+
+如果安装结果为 `prepared`，按 CLI 提示显式执行 `kaboo-cli codex-theme activate --restart`；主题仓库不会自行启动或重启 ChatGPT。
 
 运行时不读取网络素材，不修改 Codex.app、`app.asar`、签名、账户、模型或 API 配置。

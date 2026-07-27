@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { RELEASE_COPY_SOURCES, RENDERER_SOURCE_INPUTS } from "./release-inputs.mjs";
@@ -41,6 +42,7 @@ if (fs.existsSync(path.join(root, "art/source/official/denia-portrait.png"))) {
 const backgroundSource = fs.readFileSync(path.join(root, "art/source/background.svg"), "utf8");
 const rendererSource = fs.readFileSync(path.join(root, "scripts/render-assets.mjs"), "utf8");
 const localReleaseBuilder = fs.readFileSync(path.join(root, "scripts/build-local-kaboo-release.mjs"), "utf8");
+const localLauncher = fs.readFileSync(path.join(root, "scripts/start-themed-codex.sh"), "utf8");
 const runtimeCss = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.css"), "utf8");
 const runtimeJs = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.js"), "utf8");
 const runtimeLoader = fs.readFileSync(path.join(root, "sidecar/runtime/loader.mjs"), "utf8");
@@ -111,33 +113,113 @@ for (const marker of [
   "SHA256SUMS",
   "preview-home.webp",
   "preview-task.webp",
-  "start-local-test.command",
   "zip",
 ]) {
   if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing ${marker}`);
 }
-const localInstallIndex = localReleaseBuilder.indexOf(
-  '"$STUDIO_ROOT/scripts/install-dream-skin-macos.sh" --no-launchers --no-launch',
+const workerTargetIndex = localLauncher.indexOf('WORKER_TARGET="gui/$(/usr/bin/id -u)/$WORKER_LABEL"');
+const workerSubmitIndex = localLauncher.indexOf("/bin/launchctl submit");
+const workerKickstartIndex = localLauncher.indexOf(
+  '/bin/launchctl kickstart "$WORKER_TARGET"',
+  workerSubmitIndex,
 );
-const themeInstallIndex = localReleaseBuilder.indexOf(
-  'codex-theme install-local "$CATALOG"',
-  localInstallIndex,
-);
-const studioStartIndex = localReleaseBuilder.indexOf(
-  '"$STUDIO_ROOT/scripts/start-dream-skin-macos.sh" --port 9341',
-  themeInstallIndex,
-);
-const themeActivateIndex = localReleaseBuilder.indexOf(
-  "codex-theme activate ${id}",
-  studioStartIndex,
+const workerStartedMessageIndex = localLauncher.indexOf(
+  "The themed Codex startup is running.",
+  workerSubmitIndex,
 );
 if (
-  localInstallIndex < 0
-  || themeInstallIndex < localInstallIndex
-  || studioStartIndex < themeInstallIndex
-  || themeActivateIndex < studioStartIndex
+  workerTargetIndex < 0
+  || workerSubmitIndex < workerTargetIndex
+  || workerKickstartIndex < workerSubmitIndex
+  || workerStartedMessageIndex < workerKickstartIndex
 ) {
-  throw new Error("local launcher must install Denia before starting Codex, then activate it");
+  throw new Error("local launcher must kickstart the submitted worker before reporting startup");
+}
+const waitForCodexToStopBody = localLauncher.match(
+  /wait_for_codex_to_stop\(\) \{(?<body>[\s\S]*?)\n\}/u,
+)?.groups?.body || "";
+if (!/codex_is_running && fail "Codex did not quit within 20 seconds"\s+return 0\s*$/u.test(waitForCodexToStopBody)) {
+  throw new Error("local launcher must return success after Codex has stopped");
+}
+const injectorDetectorProgram = localLauncher.match(
+  /injector_is_running\(\) \{[\s\S]*?\/usr\/bin\/awk[^']*'(?<program>[\s\S]*?)'\n\}/u,
+)?.groups?.program || "";
+const injectorDetectorResult = spawnSync(
+  "/usr/bin/awk",
+  [
+    "-v", "injector=/runtime/injector.mjs",
+    "-v", "port=9341",
+    "-v", "theme=/theme",
+    injectorDetectorProgram,
+  ],
+  {
+    encoding: "utf8",
+    input: "node /runtime/injector.mjs --watch --port 9341 --theme-dir /theme\n",
+  },
+);
+if (injectorDetectorResult.status !== 0) {
+  throw new Error(`local launcher injector detector must accept a matching process: ${injectorDetectorResult.stderr.trim()}`);
+}
+const managedCodexLaunchIndex = localLauncher.indexOf("/usr/bin/open -n");
+const managedCodexBundleIndex = localLauncher.indexOf('"$CODEX_BUNDLE"', managedCodexLaunchIndex);
+const managedCodexArgsIndex = localLauncher.indexOf("--args", managedCodexBundleIndex);
+const cdpWaitAfterManagedLaunchIndex = localLauncher.indexOf("\nwait_for_cdp\n", managedCodexArgsIndex);
+if (
+  managedCodexLaunchIndex < 0
+  || managedCodexBundleIndex < managedCodexLaunchIndex
+  || managedCodexArgsIndex < managedCodexBundleIndex
+  || cdpWaitAfterManagedLaunchIndex < managedCodexArgsIndex
+  || localLauncher.includes('/usr/bin/nohup "$CODEX_EXE"')
+) {
+  throw new Error("local launcher must start Codex as a managed LaunchServices application");
+}
+const injectorSubmitIndex = localLauncher.indexOf('/bin/launchctl submit \\\n    -l "$INJECTOR_LABEL"');
+const injectorKickstartIndex = localLauncher.indexOf(
+  '/bin/launchctl kickstart "$INJECTOR_TARGET"',
+  injectorSubmitIndex,
+);
+if (
+  injectorSubmitIndex < 0
+  || injectorKickstartIndex < injectorSubmitIndex
+  || localLauncher.includes('/usr/bin/nohup "$CODEX_NODE" "$INJECTOR"')
+) {
+  throw new Error("local launcher must keep the injector in its own launchd job");
+}
+const sidecarPathIndex = localLauncher.indexOf('SIDECAR_PATH="${CODEX_NODE%/*}:/usr/bin:/bin:/usr/sbin:/sbin"');
+const sidecarStartIndex = localLauncher.indexOf(
+  'PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/start.sh"',
+  sidecarPathIndex,
+);
+const sidecarVerifyIndex = localLauncher.indexOf(
+  'PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/verify.sh" --home',
+  sidecarStartIndex,
+);
+if (
+  sidecarPathIndex < 0
+  || sidecarStartIndex < sidecarPathIndex
+  || sidecarVerifyIndex < sidecarStartIndex
+) {
+  throw new Error("local launcher must provide Codex's Node runtime to the Sidecar scripts");
+}
+for (const [label, sourceText] of [
+  ["asset renderer", rendererSource],
+  ["local release builder", localReleaseBuilder],
+  ["README", readme],
+]) {
+  for (const forbidden of [
+    /\/Users\//u,
+    /\/Applications\//u,
+    /ByteDance\/workspace/u,
+    /Codex-Dream-Skin/u,
+    /\bKABOO_SHARP_ENTRY\b/u,
+    /\bSTUDIO_ROOT\b/u,
+    /\bKABOO_CLI\b/u,
+    /start-local-test\.command/u,
+  ]) {
+    if (forbidden.test(sourceText)) {
+      throw new Error(`${label} must use Kaboo's managed runtime instead of an external source checkout: ${forbidden}`);
+    }
+  }
 }
 for (const marker of [
   "四组本地角色美术",

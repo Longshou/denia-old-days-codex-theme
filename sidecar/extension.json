@@ -8,7 +8,7 @@
     "kind": "codex-dream-skin-sidecar",
     "transport": "cdp-loopback-v1",
     "target": "app://-/index.html",
-    "minimumDreamSkinVersion": "1.1.2"
+    "minimumDreamSkinVersion": "1.2.0"
   },
   "entrypoints": {
     "style": "src/denia-old-days-extension.css",

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import sharp from "sharp";
 import { RELEASE_COPY_SOURCES } from "./release-inputs.mjs";
 
 const sourceRoot = path.resolve(import.meta.dirname, "..");
@@ -32,9 +32,6 @@ for (let index = 0; index < args.length; index += 1) {
 
 const outputRoot = path.resolve(value("--output", path.join(sourceRoot, "sidecar/release/kaboo-local")));
 const releaseDir = path.join(outputRoot, id, version);
-const sharpEntry = process.env.KABOO_SHARP_ENTRY
-  || "/Applications/Codex.app/Contents/Resources/cua_node/lib/node_modules/sharp/lib/index.js";
-const sharp = (await import(pathToFileURL(sharpEntry).href)).default;
 const extension = JSON.parse(await fs.readFile(path.join(releaseSource(RELEASE_COPY_SOURCES.sidecar), "extension.json"), "utf8"));
 const manifest = {
   schemaVersion: 1,
@@ -167,10 +164,6 @@ async function normalizeTimes(directory) {
   await visit(directory);
 }
 
-function shellQuote(valueToQuote) {
-  return `'${String(valueToQuote).replaceAll("'", "'\"'\"'")}'`;
-}
-
 const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "denia-kaboo-local-"));
 const bundleDir = path.join(temporaryRoot, rootName);
 try {
@@ -262,36 +255,7 @@ try {
     manifest,
   };
   await writeJson(path.join(releaseDir, "catalog-version.json"), catalogVersion);
-  const launcherPath = path.join(outputRoot, "start-local-test.command");
-  const studioRoot = "/Users/bytedance/ByteDance/workspace/Codex-Dream-Skin/macos";
-  const kabooCli = "/Users/bytedance/.local/share/kaboo/bin/kaboo-cli";
-  const catalogPath = path.join(releaseDir, "catalog-version.json");
-  const launcher = `#!/bin/bash
-
-set -euo pipefail
-
-STUDIO_ROOT=${shellQuote(studioRoot)}
-KABOO_CLI=${shellQuote(kabooCli)}
-CATALOG=${shellQuote(catalogPath)}
-
-. "$STUDIO_ROOT/scripts/common-macos.sh"
-discover_codex_app
-if codex_is_running; then
-  /usr/bin/printf '%s\n' '请先从菜单栏完全退出 Codex，再运行此文件。'
-  exit 1
-fi
-
-"$STUDIO_ROOT/scripts/install-dream-skin-macos.sh" --no-launchers --no-launch
-KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme install-local "$CATALOG"
-"$STUDIO_ROOT/scripts/start-dream-skin-macos.sh" --port 9341
-KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme activate ${id}
-KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme status ${id}
-KABOO_AUTO_UPDATE=0 "$KABOO_CLI" codex-theme verify ${id}
-/usr/bin/printf '%s\n' '达妮娅 · 旧日斑斓已安装并通过本地验证。'
-`;
-  await fs.writeFile(launcherPath, launcher, { mode: 0o700 });
-  run("/bin/bash", ["-n", launcherPath]);
-  console.log(JSON.stringify({ releaseDir, launcherPath, ...catalogVersion }, null, 2));
+  console.log(JSON.stringify({ releaseDir, ...catalogVersion }, null, 2));
 } finally {
   await fs.rm(temporaryRoot, { recursive: true, force: true });
 }
