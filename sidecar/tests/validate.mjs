@@ -127,6 +127,19 @@ const [loader, styles, runtime, packageReadme, packageNotice, ...scripts] = awai
   ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
 ]);
+const combinedExtensionSource = [JSON.stringify(manifest), styles, runtime, loader].join("\n");
+for (const removedToken of [
+  "cardLabels",
+  "home.suggestion-cards",
+  "denia-old-days-ds-suggestion-slot",
+  "denia-old-days-ds-card-deck",
+  "denia-old-days-ds-native-card",
+  "denia-old-days-ds-native-suggestions",
+  "nativeSuggestionButtons",
+  "ensureSuggestionDeck",
+]) {
+  assert(!combinedExtensionSource.includes(removedToken), `removed suggestion token must be absent: ${removedToken}`);
+}
 const startScript = scripts[2];
 const launchBootstrapIndex = startScript.lastIndexOf('/bin/launchctl bootstrap "$LAUNCH_DOMAIN" "$LAUNCH_PLIST"');
 const launchKickstartIndex = startScript.indexOf('/bin/launchctl kickstart -k "$LAUNCH_DOMAIN/$LAUNCH_LABEL"');
@@ -187,7 +200,6 @@ for (const assetKey of Object.keys(expectedAssets)) {
   assert(loader.includes(`manifest.assets.${assetKey}`), `loader must resolve ${assetKey}`);
 }
 assert(loader.includes("--denia-old-days-art-bright"), "live verification must read bright artwork variable");
-assert(loader.includes("denia-old-days-ds-suggestion-slot"), "loader cleanup and verification must recognize the persistent suggestion slot");
 assert(loader.includes("denia-old-days-ds-home-visuals"), "loader cleanup and verification must recognize the out-of-flow home visual layer");
 assert(loader.includes("homeLayoutPreserved"), "live verification must enforce native home layout preservation");
 assert(loader.includes("composerViewportPass"), "live verification must keep the home composer inside the viewport");
@@ -196,8 +208,8 @@ for (const token of [
   "ensureSidebarBrand",
   "ensureHomeVisuals",
   "ensureHomeHero",
-  "ensureSuggestionSlot",
-  "ensureSuggestionDeck",
+  "findNativeHomeTitle",
+  "syncNativeHomePrompt",
   "ensureStateArt",
   "syncStateArt",
   "syncHomeViewport",
@@ -349,31 +361,6 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home .dream-skin-home
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home .dream-skin-home > div:has(> .home-banners:empty)", {
   display: "none !important",
 });
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
-  display: "none",
-  width: "min(1120px, calc(100% - 32px))",
-  "min-height": "var(--denia-old-days-suggestion-slot-height)",
-  margin: "0 auto 24px",
-  "pointer-events": "none",
-  "--denia-old-days-suggestion-slot-height": "92px",
-});
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
-  width: "100%",
-  height: "100%",
-  margin: "0",
-  "pointer-events": "auto",
-});
-for (const nativeSuggestionClass of [
-  ".denia-old-days-ds-native-card",
-  ".denia-old-days-ds-native-suggestions",
-]) {
-  const relatedRules = stylesheetRules.filter((rule) => rule.selectors.some((selector) => selector.includes(nativeSuggestionClass)));
-  assert(relatedRules.length > 0, `${nativeSuggestionClass} must retain a native suggestion hiding rule`);
-  assert(
-    relatedRules.every((rule) => !rule.declarations.has("opacity")),
-    `${nativeSuggestionClass} related hiding rules must not declare opacity`,
-  );
-}
 assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-native-home-prompt [class*="heading-xl"]::after', {
   display: "none !important",
   content: "none !important",
@@ -383,10 +370,6 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", 
   "z-index": "1",
   translate: "0 var(--denia-old-days-native-prompt-shift, 0)",
 });
-assert(
-  /function ensureSuggestionDeck\(\) \{[\s\S]*?restoreNativeSuggestionClasses\(\);[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?if \(!slot\) return null;[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
-  "the home theme must keep the native prompt decorated and visible across complete and incomplete action states",
-);
 const composerPaintProperties = new Set([
   "background",
   "background-color",
@@ -413,11 +396,6 @@ for (const rule of stylesheetRules) {
     );
   }
 }
-assert(
-  runtime.includes("function layoutVisible(node)")
-    && /function nativeSuggestionButtons\(\) \{[\s\S]*?layoutVisible\(button\)/u.test(runtime),
-  "home suggestions must remain discoverable during the native opacity entrance frame",
-);
 assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-bright", {
     selector: ".denia-old-days-ds-photo-front",
@@ -648,10 +626,6 @@ const compactMedia = ["max-width: 1199px", "max-height: 759px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   width: "min(980px, calc(100% - 32px))",
 }, compactMedia);
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
-  width: "min(980px, calc(100% - 32px))",
-  "--denia-old-days-suggestion-slot-height": "196px",
-}, compactMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   display: "block",
   "aspect-ratio": "16 / 10",
@@ -660,10 +634,6 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
   inset: "11px 11px 48px",
 }, compactMedia);
 const narrowMedia = ["max-width: 919px"];
-assertCssCascadeDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
-  width: "calc(100% - 32px)",
-  "--denia-old-days-suggestion-slot-height": "404px",
-}, narrowMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   width: "min(100%, 640px)",
   "aspect-ratio": "16 / 8.6",
@@ -699,9 +669,6 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   "aspect-ratio": "16 / 9.2",
   padding: "10px 10px 42px",
 }, shortDesktopMedia);
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
-  "grid-template-columns": "repeat(4, minmax(0, 1fr))",
-}, shortDesktopMedia);
 assert(
   findCssRule(stylesheetRules, ".denia-old-days-ds-hero", shortDesktopMedia).sourceIndex
     > compactHeroRule.sourceIndex,
@@ -711,7 +678,6 @@ assert(
 const transparencyMedia = ["prefers-reduced-transparency: reduce"];
 for (const [selector, background] of [
   [".denia-old-days-ds-hero", "#f9ffff"],
-  [".denia-old-days-ds-card-deck button", "#f9ffff"],
   [".denia-old-days-ds-composer", "#f9ffff !important"],
   [".denia-old-days-ds-final-card", "#fffdf1 !important"],
   [".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar", "#fffdf9 !important"],
@@ -950,14 +916,6 @@ async function assertRejectsStylesheetMutations() {
       name: "base composer webkit backdrop filter",
       expected: ".denia-old-days-ds-composer must set -webkit-backdrop-filter: none",
       failure: "validator must require a reduced-transparency override when composer uses webkit backdrop filtering",
-    },
-    {
-      prefix: "denia-validator-css-native-suggestion-opacity-",
-      target: "  border: 0 !important;\n  pointer-events: none !important;",
-      replacement: "  border: 0 !important;\n  opacity: 0 !important;\n  pointer-events: none !important;",
-      name: "native suggestion visibility rule",
-      expected: ".denia-old-days-ds-native-card related hiding rules must not declare opacity",
-      failure: "validator must reject opacity on native suggestion hiding rules",
     },
     {
       prefix: "denia-validator-css-motion-before-",
@@ -2315,16 +2273,6 @@ function assertLiveTaskVerification(loaderSource) {
     const nativeHomePrompt = home
       ? makeNode(["denia-old-days-ds-native-home-prompt"], {}, { x: 220, y: 420, width: 760, height: 112 })
       : null;
-    const homeCards = home
-      ? Array.from({ length: 4 }, () => makeNode([], {}, { x: 0, y: 0, width: 0, height: 0 }))
-      : [];
-    for (const card of homeCards) card.contains = () => false;
-    const suggestionSlot = home ? makeNode(["denia-old-days-ds-suggestion-slot"]) : null;
-    const suggestions = home ? makeNode(["denia-old-days-ds-card-deck"]) : null;
-    if (suggestions) {
-      suggestions.children = homeCards;
-      suggestions.querySelectorAll = (selector) => selector === "button[data-denia-old-days-card]" ? homeCards : [];
-    }
     const nativeSidebarPanels = Array.from(
       { length: nativeSidebarPanelCount },
       () => makeNode(["denia-old-days-ds-native-right-sidebar"], {}, nativeSidebarRect),
@@ -2349,12 +2297,6 @@ function assertLiveTaskVerification(loaderSource) {
     main.scrollTop = 0;
     if (homeVisuals) homeVisuals.parentElement = body;
     if (heroCopy) heroCopy.parentElement = homeVisuals;
-    if (suggestionSlot) {
-      suggestionSlot.parentElement = homeVisuals;
-      suggestionSlot.children = suggestions ? [suggestions] : [];
-      suggestionSlot.style = { getPropertyValue: () => "" };
-    }
-    if (suggestions) suggestions.parentElement = suggestionSlot;
     const toggle = togglePresent ? makeNode([], {}, toggleRect) : null;
     if (toggle) {
       toggle.getAttribute = (name) => name === "aria-label" ? "显示/隐藏侧边栏" : null;
@@ -2385,8 +2327,6 @@ function assertLiveTaskVerification(loaderSource) {
         if (id === "denia-old-days-ds-sidebar-brand") return includeSidebarBrand ? sidebar : null;
         if (id === "denia-old-days-ds-home-visuals") return homeVisuals;
         if (id === "denia-old-days-ds-hero-copy") return heroCopy;
-        if (id === "denia-old-days-ds-suggestion-slot") return suggestionSlot;
-        if (id === "denia-old-days-ds-card-deck") return suggestions;
         return null;
       },
       querySelector(selector) {
@@ -2458,9 +2398,6 @@ function assertLiveTaskVerification(loaderSource) {
             position: "fixed",
             visibility: "visible",
           };
-        }
-        if (node === suggestionSlot) {
-          return { backgroundImage: "none", display: "none", opacity: "1", visibility: "visible" };
         }
         if (node === nativeHomePrompt) {
           return { backgroundImage: "none", display: "flex", opacity: "1", visibility: "visible" };
@@ -2737,8 +2674,6 @@ function assertFallbackCleanupBehavior(loaderSource) {
     "denia-old-days-ds-hero-badge",
     "denia-old-days-ds-stage-pass",
     "denia-old-days-ds-custom-card",
-    "denia-old-days-ds-suggestion-slot",
-    "denia-old-days-ds-card-deck",
     "denia-old-days-ds-state-art",
   ];
   for (const id of ownedIds) {
@@ -2748,8 +2683,6 @@ function assertFallbackCleanupBehavior(loaderSource) {
   }
 
   const removableClasses = [
-    "denia-old-days-ds-native-card",
-    "denia-old-days-ds-native-suggestions",
     "denia-old-days-ds-composer",
     "denia-old-days-ds-send",
     "denia-old-days-ds-attachment",
@@ -2763,7 +2696,6 @@ function assertFallbackCleanupBehavior(loaderSource) {
     const node = harness.document.createElement("div");
     node.classList.add(className);
     node.dataset.deniaObservationLabel = "观察记录";
-    node.dataset.deniaOldDaysCard = "0";
     harness.document.body.append(node);
     return node;
   });
@@ -2805,7 +2737,6 @@ function assertFallbackCleanupBehavior(loaderSource) {
   removableClasses.forEach((className, index) => {
     assert(!touched[index].classList.contains(className), `fallback cleanup must remove touched class ${className}`);
     assert(!("deniaObservationLabel" in touched[index].dataset), `fallback cleanup must remove observation data from ${className}`);
-    assert(!("deniaOldDaysCard" in touched[index].dataset), `fallback cleanup must remove card data from ${className}`);
   });
   for (const property of ["background-image", "background-position", "background-size", "background-repeat", "background-color"]) {
     assert(!hero.style.getPropertyValue(property), `fallback cleanup must remove legacy hero ${property}`);
@@ -2838,12 +2769,11 @@ function assertHomeLayoutPreservation(payload) {
   nativeHeading.append(nativeTitle);
   nativePromptBody.append(nativeHeading);
   nativePrompt.append(nativePromptBody);
-  const nativeSuggestions = harness.document.createElement("div");
-  for (const label of ["Explore code", "Build feature", "Review changes", "Fix bug"]) {
+  const nativeButtons = ["Explore code", "Build feature", "Review changes", "Fix bug"].map((label) => {
     const button = harness.document.createElement("button");
     button.textContent = label;
-    nativeSuggestions.append(button);
-  }
+    return button;
+  });
   const composerBoundary = harness.document.createElement("div");
   composerBoundary.computedPosition = "relative";
   composerBoundary.computedZIndex = "20";
@@ -2854,7 +2784,7 @@ function assertHomeLayoutPreservation(payload) {
   const input = harness.document.createElement("textarea");
   composer.append(input);
   composerBoundary.append(composer);
-  main.append(nativePrompt, nativeSuggestions, composerBoundary);
+  main.append(nativePrompt, ...nativeButtons, composerBoundary);
   harness.document.body.append(main);
 
   const nativeChildren = [...main.children];
@@ -2863,8 +2793,6 @@ function assertHomeLayoutPreservation(payload) {
   const visuals = harness.document.getElementById("denia-old-days-ds-home-visuals");
   const hero = harness.document.getElementById("denia-old-days-ds-hero-copy");
   hero.setRect({ x: 196, y: 121, width: 1120, height: 455 });
-  const slot = harness.document.getElementById("denia-old-days-ds-suggestion-slot");
-  const deck = harness.document.getElementById("denia-old-days-ds-card-deck");
 
   assert(
     main.children.length === nativeChildren.length
@@ -2872,16 +2800,12 @@ function assertHomeLayoutPreservation(payload) {
     "fixed home visual layer must not add or reorder Codex native main-flow children",
   );
   assert(visuals?.parentElement === harness.document.body, "home visual layer must mount outside the native scrolling main");
-  assert(
-    hero?.parentElement === visuals
-      && slot?.parentElement === visuals
-      && deck?.parentElement === slot,
-    "home hero and themed suggestion deck must stay contained by the out-of-flow visual layer",
-  );
-  assert(
-    deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4,
-    "home visual layer must retain all four themed suggestion cards",
-  );
+  assert(hero?.parentElement === visuals, "home hero must stay contained by the out-of-flow visual layer");
+  assert(!harness.document.getElementById("denia-old-days-ds-suggestion-slot"));
+  assert(!harness.document.getElementById("denia-old-days-ds-card-deck"));
+  assert(nativeButtons.every((button) =>
+    !button.classList.contains("denia-old-days-ds-native-card")));
+  assert(state.homeActive === true);
   assert(
     nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
     "home theme must retain and decorate the visible Codex native title",
@@ -2893,11 +2817,6 @@ function assertHomeLayoutPreservation(payload) {
   assert(
     nativePrompt.contains(inlineProjectButton) && inlineProjectButton.isConnected,
     "the visible native prompt must preserve its inline project button in the DOM",
-  );
-  assert(
-    nativeSuggestions.classList.contains("denia-old-days-ds-native-suggestions")
-      && [...nativeSuggestions.children].every((node) => node.classList.contains("denia-old-days-ds-native-card")),
-    "the out-of-flow themed deck must proxy the native actions without touching the prompt or composer",
   );
   assert(composer.classList.contains("denia-old-days-ds-composer"), "home composer may retain paint-only theme chrome");
   for (let frame = 0; frame < 60; frame += 1) harness.flushAnimationFrames();

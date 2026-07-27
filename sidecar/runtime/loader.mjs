@@ -174,8 +174,6 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-hero-badge',
     'denia-old-days-ds-stage-pass',
     'denia-old-days-ds-custom-card',
-    'denia-old-days-ds-suggestion-slot',
-    'denia-old-days-ds-card-deck',
     'denia-old-days-ds-state-art',
   ]) document.getElementById(id)?.remove();
   root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home', 'denia-old-days-ds-task');
@@ -195,12 +193,10 @@ const cleanupExpression = `(() => {
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
     for (const property of ['background-image', 'background-position', 'background-size', 'background-repeat', 'background-color']) node.style.removeProperty(property);
   });
-  for (const name of ['mode-button', 'native-hero-copy', 'hero', 'suggestions', 'home-main']) {
+  for (const name of ['mode-button', 'native-hero-copy', 'hero', 'home-main']) {
     document.querySelectorAll('.denia-old-days-ds-' + name).forEach((node) => node.classList.remove('denia-old-days-ds-' + name));
   }
   for (const className of [
-    'denia-old-days-ds-native-card',
-    'denia-old-days-ds-native-suggestions',
     'denia-old-days-ds-composer',
     'denia-old-days-ds-send',
     'denia-old-days-ds-attachment',
@@ -210,9 +206,8 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-native-sidebar-group',
     'denia-old-days-ds-native-sidebar-row',
   ]) document.querySelectorAll('.' + className).forEach((node) => node.classList.remove(className));
-  document.querySelectorAll('[data-denia-observation-label], [data-denia-old-days-card]').forEach((node) => {
+  document.querySelectorAll('[data-denia-observation-label]').forEach((node) => {
     delete node.dataset.deniaObservationLabel;
-    delete node.dataset.deniaOldDaysCard;
   });
   return true;
 })()`;
@@ -324,9 +319,6 @@ const verifyExpression = `(() => {
   const stateArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(stateArt)?.[1] || '';
   const taskRailStyle = stateArtRail ? getComputedStyle(stateArtRail) : null;
   const taskArtLayerStyle = activeStateArtLayer ? getComputedStyle(activeStateArtLayer) : null;
-  const suggestionSlot = document.getElementById('denia-old-days-ds-suggestion-slot');
-  const suggestionSlotStyle = suggestionSlot ? getComputedStyle(suggestionSlot) : null;
-  const suggestions = document.getElementById('denia-old-days-ds-card-deck');
   const nativeHomePrompts = [...document.querySelectorAll('.denia-old-days-ds-native-home-prompt')];
   const nativeHomePrompt = nativeHomePrompts[0] || null;
   const nativeHomePromptStyle = nativeHomePrompt ? getComputedStyle(nativeHomePrompt) : null;
@@ -391,33 +383,6 @@ const verifyExpression = `(() => {
     .filter((node) => box(node)?.visible);
   const assistants = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')];
   const finalCard = document.querySelector('.denia-old-days-ds-final-card');
-  const cards = suggestions ? [...suggestions.querySelectorAll('button[data-denia-old-days-card]')].map((button) => {
-    const item = box(button);
-    if (!item) return null;
-    const r = button.getBoundingClientRect();
-    const style = getComputedStyle(button);
-    const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-    item.clickable = Boolean(top && (top === button || button.contains(top)));
-    item.id = button.id || null;
-    item.display = style.display;
-    item.visibility = style.visibility;
-    item.opacity = style.opacity;
-    item.disabled = Boolean(button.disabled);
-    item.parentClass = button.parentElement?.className || null;
-    item.ancestors = [];
-    for (let node = button.parentElement; node && node !== suggestions; node = node.parentElement) {
-      const ancestorStyle = getComputedStyle(node);
-      item.ancestors.push({
-        className: typeof node.className === 'string' ? node.className : '',
-        ...box(node),
-        display: ancestorStyle.display,
-        overflow: ancestorStyle.overflow,
-        transform: ancestorStyle.transform,
-      });
-    }
-    return item;
-  }).filter(Boolean) : [];
-  const suggestionsStyle = suggestions ? getComputedStyle(suggestions) : null;
   const result = {
     id: state?.id || null,
     version: state?.version || null,
@@ -443,19 +408,6 @@ const verifyExpression = `(() => {
       parentIsBody: homeVisuals.parentElement === document.body,
     } : null,
     heroCopy: box(document.getElementById('denia-old-days-ds-hero-copy')),
-    suggestionSlot: suggestionSlot ? {
-      ...box(suggestionSlot),
-      display: suggestionSlotStyle.display,
-      childCount: suggestionSlot.children.length,
-      retainedHeight: suggestionSlot.style.getPropertyValue('--denia-old-days-suggestion-slot-height') || null,
-    } : null,
-    cards,
-    suggestions: suggestions ? {
-      ...box(suggestions),
-      display: suggestionsStyle.display,
-      gridTemplateColumns: suggestionsStyle.gridTemplateColumns,
-      childCount: suggestions.children.length,
-    } : null,
     nativeHomePrompt: nativeHomePrompt ? {
       ...box(nativeHomePrompt),
       display: nativeHomePromptStyle.display,
@@ -466,8 +418,6 @@ const verifyExpression = `(() => {
       scrollTop: homeScroller.scrollTop,
       overflowY: homeScrollerStyle.overflowY,
     } : null,
-    visibleCardCount: cards.filter((card) => card.visible).length,
-    clickableCardCount: cards.filter((card) => card.clickable).length,
     composer: box(composer),
     composerBefore: composerBeforeStyle ? {
       content: composerBeforeStyle.content,
@@ -504,9 +454,6 @@ const verifyExpression = `(() => {
       && homeVisualsStyle?.overflow === 'hidden'
       && homeVisuals.parentElement === document.body
       && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === homeVisuals
-      && suggestionSlot?.parentElement === homeVisuals
-      && suggestionSlotStyle?.display === 'none'
-      && suggestions?.parentElement === suggestionSlot
       && nativeHomePrompts.length === 1
       && box(nativeHomePrompt)?.visible === true
       && nativeHomePromptStyle?.display !== 'none'
@@ -531,9 +478,6 @@ const verifyExpression = `(() => {
     result.homeLayoutPreserved
       && result.heroUsesRuntimeArt
       && Boolean(result.heroCopy?.visible)
-      && result.cards.length === 4
-      && result.visibleCardCount === 0
-      && result.clickableCardCount === 0
   );
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
   const railMustBeHidden = innerWidth <= 919 || sidebarOpen || sidebarState === 'unknown';
@@ -699,19 +643,13 @@ async function openHomeRoute(session) {
       const composer = document.querySelector('.composer-surface-chrome');
       const box = composer?.getBoundingClientRect();
       const visuals = document.getElementById('denia-old-days-ds-home-visuals');
-      const deck = document.getElementById('denia-old-days-ds-card-deck');
-      const slot = document.getElementById('denia-old-days-ds-suggestion-slot');
-      const cards = deck ? [...deck.querySelectorAll('button[data-denia-old-days-card]')] : [];
       return Boolean(home
         && box?.width > 0
         && box?.height > 0
         && box.bottom <= innerHeight - 8
         && visuals?.parentElement === document.body
         && getComputedStyle(visuals).position === 'fixed'
-        && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === visuals
-        && slot
-        && getComputedStyle(slot).display === 'none'
-        && cards.length === 4);
+        && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === visuals);
     })()`);
     stableSamples = ready ? stableSamples + 1 : 0;
     if (stableSamples >= 3) break;

@@ -37,8 +37,6 @@
     complete: Object.freeze({ family: "taskComplete", opacity: ".28" }),
   });
   const removableClasses = [
-    "denia-old-days-ds-native-card",
-    "denia-old-days-ds-native-suggestions",
     "denia-old-days-ds-native-home-prompt",
     "denia-old-days-ds-composer",
     "denia-old-days-ds-send",
@@ -83,7 +81,6 @@
     artFamily: "",
     artCurrent: null,
     artNext: null,
-    suggestionSlotHeight: 0,
     metrics: { refreshes: 0, createdNodes: 0 },
     observer: null,
     frame: 0,
@@ -565,32 +562,6 @@
     return input?.closest("form") || null;
   }
 
-  function nativeSuggestionButtons() {
-    const approved = [
-      /explore|understand|解释|理解|翻阅/iu,
-      /build|implement|feature|构建|实现|写下/iu,
-      /review|修改建议|审查|校对/iu,
-      /fix|debug|修复|失败|问题/iu,
-    ];
-    const candidates = [...document.querySelectorAll("button")].filter((button) => {
-      if (!layoutVisible(button) || button.closest("#denia-old-days-ds-card-deck")) return false;
-      if (button.closest("aside, nav, .composer-surface-chrome")) return false;
-      const text = (button.innerText || button.textContent || "").trim();
-      return text.length > 2 && text.length < 180 && approved.some((pattern) => pattern.test(text));
-    }).sort((first, second) => Number(visible(second)) - Number(visible(first)));
-    const semanticButtons = [];
-    for (const pattern of approved) {
-      const button = candidates.find((candidate) => {
-        if (semanticButtons.includes(candidate)) return false;
-        const text = (candidate.innerText || candidate.textContent || "").trim();
-        return pattern.test(text);
-      });
-      if (!button) return [];
-      semanticButtons.push(button);
-    }
-    return semanticButtons;
-  }
-
   function clearNativeHomePrompt() {
     syncClass(nativeHomePrompt, "denia-old-days-ds-native-home-prompt", false);
     removeStyleProperty(nativeHomePrompt, nativeHomePromptShiftProperty);
@@ -623,9 +594,9 @@
     setStyleProperty(prompt, nativeHomePromptShiftProperty, `${shift}px`);
   }
 
-  function syncNativeHomePrompt(nativeButtons) {
+  function findNativeHomeTitle() {
     const promptPattern = /(?:what should we build in|what would you like to build|想在.+中构建什么|要在.+中构建什么)/iu;
-    const title = [...document.querySelectorAll("span, h1, h2, h3, [role='heading']")]
+    return [...document.querySelectorAll("span, h1, h2, h3, [role='heading']")]
       .find((node) => {
         if (isOwnedSubtree(node)) return false;
         const directText = [...node.childNodes]
@@ -633,9 +604,13 @@
           .map((child) => child.textContent || "")
           .join(" ")
           .replace(/\s+/gu, " ")
-          .trim();
+        .trim();
         return promptPattern.test(directText);
-      });
+      }) || null;
+  }
+
+  function syncNativeHomePrompt() {
+    const title = findNativeHomeTitle();
     if (!title) {
       clearNativeHomePrompt();
       return null;
@@ -644,8 +619,7 @@
     const titleText = normalizedNodeLabel(title);
     let prompt = title;
     while (prompt.parentElement
-      && normalizedNodeLabel(prompt.parentElement) === titleText
-      && !nativeButtons.some((button) => prompt.parentElement.contains(button))) {
+      && normalizedNodeLabel(prompt.parentElement) === titleText) {
       prompt = prompt.parentElement;
     }
     if (nativeHomePrompt && nativeHomePrompt !== prompt) clearNativeHomePrompt();
@@ -654,22 +628,12 @@
     return nativeHomePrompt;
   }
 
-  function nativeActionDisabled(button) {
-    return Boolean(button?.disabled || button?.getAttribute("aria-disabled") === "true");
-  }
-
-  function syncDisabledState(button, disabled) {
-    if (button.disabled === disabled) return false;
-    button.disabled = disabled;
-    return true;
-  }
-
   function isHomeView() {
     const main = findMain();
     if (!main) return false;
     if (main.matches(".dream-skin-home") || main.querySelector(".dream-skin-home")) return true;
     const assistants = document.querySelectorAll('[data-content-search-unit-key$=":assistant"]');
-    return assistants.length === 0 && nativeSuggestionButtons().length >= 3;
+    return assistants.length === 0 && Boolean(findNativeHomeTitle());
   }
 
   function clearHomeViewportBinding() {
@@ -893,92 +857,6 @@
     return hero;
   }
 
-  function ensureSuggestionSlot() {
-    let slot = document.getElementById("denia-old-days-ds-suggestion-slot");
-    const hero = ensureHomeHero();
-    if (!hero) return null;
-    if (slot?.isConnected && slot.parentElement === hero.parentElement) {
-      return slot;
-    }
-    if (slot) {
-      slot.remove();
-      ownedNodes.delete(slot);
-    }
-    slot = own(document.createElement("div"));
-    slot.id = "denia-old-days-ds-suggestion-slot";
-    slot.className = "denia-old-days-ds-suggestion-slot";
-    if (state.suggestionSlotHeight > 0) {
-      setStyleProperty(slot, "--denia-old-days-suggestion-slot-height", `${state.suggestionSlotHeight}px`);
-    }
-    hero.parentElement.append(slot);
-    return slot;
-  }
-
-  function retainSuggestionSlotHeight(slot, deck) {
-    const height = Math.ceil(deck.getBoundingClientRect().height);
-    if (!Number.isFinite(height) || height <= 0 || state.suggestionSlotHeight === height) return;
-    state.suggestionSlotHeight = height;
-    setStyleProperty(slot, "--denia-old-days-suggestion-slot-height", `${height}px`);
-  }
-
-  function restoreNativeSuggestionClasses() {
-    clearNativeHomePrompt();
-    for (const node of touchedNodes) {
-      syncClass(node, "denia-old-days-ds-native-card", false);
-      syncClass(node, "denia-old-days-ds-native-suggestions", false);
-    }
-  }
-
-  function ensureSuggestionDeck() {
-    const slot = ensureSuggestionSlot();
-    let deck = document.getElementById("denia-old-days-ds-card-deck");
-    const nativeButtons = nativeSuggestionButtons();
-    if (nativeButtons.length !== 4) {
-      if (deck) {
-        deck.remove();
-        ownedNodes.delete(deck);
-      }
-      restoreNativeSuggestionClasses();
-      syncNativeHomePrompt(nativeButtons);
-      return null;
-    }
-    if (!slot) return null;
-    syncNativeHomePrompt(nativeButtons);
-    const nativeContainer = nativeButtons[0].parentElement;
-    if (nativeContainer) touch(nativeContainer, "denia-old-days-ds-native-suggestions");
-    nativeButtons.forEach((button) => touch(button, "denia-old-days-ds-native-card"));
-    if (deck?.isConnected) {
-      if (deck.parentElement !== slot) slot.append(deck);
-      [...deck.querySelectorAll("button")].forEach((button, index) => {
-        syncDisabledState(button, nativeActionDisabled(nativeButtons[index]));
-      });
-      retainSuggestionSlotHeight(slot, deck);
-      return deck;
-    }
-
-    deck = own(document.createElement("div"));
-    deck.id = "denia-old-days-ds-card-deck";
-    deck.className = "denia-old-days-ds-card-deck";
-    manifest.ui.cardLabels.forEach((label, index) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.id = `denia-old-days-ds-card-${index + 1}`;
-      setDatasetValue(button, "deniaOldDaysCard", String(index));
-      syncDisabledState(button, nativeActionDisabled(nativeButtons[index]));
-      const number = document.createElement("span");
-      number.className = "denia-old-days-ds-card-number";
-      number.textContent = `0${index + 1}`;
-      const text = document.createElement("span");
-      text.textContent = label;
-      button.append(number, text);
-      button.addEventListener("click", () => nativeSuggestionButtons()[index]?.click());
-      deck.append(button);
-    });
-    slot.append(deck);
-    retainSuggestionSlotHeight(slot, deck);
-    return deck;
-  }
-
   function decorateComposer() {
     const composer = findComposer();
     if (!composer) return null;
@@ -1087,10 +965,7 @@
   }
 
   function removeHomeNodes() {
-    restoreNativeSuggestionClasses();
     for (const id of [
-      "denia-old-days-ds-card-deck",
-      "denia-old-days-ds-suggestion-slot",
       "denia-old-days-ds-hero-copy",
       "denia-old-days-ds-home-visuals",
     ]) {
@@ -1099,7 +974,6 @@
       node.remove();
       ownedNodes.delete(node);
     }
-    state.suggestionSlotHeight = 0;
   }
 
   function refresh() {
@@ -1117,7 +991,7 @@
       ensureSidebarBrand();
       state.formState = "staged";
       ensureHomeHero();
-      ensureSuggestionDeck();
+      syncNativeHomePrompt();
       syncHomeVisualFrame(findMain());
       syncHomeViewport(findMain());
     } else {
@@ -1227,12 +1101,10 @@
       node.remove();
       ownedNodes.delete(node);
     }
-    state.suggestionSlotHeight = 0;
     for (const node of touchedNodes) {
       for (const className of removableClasses) node.classList?.remove(className);
       if (node.dataset) {
         delete node.dataset.deniaObservationLabel;
-        delete node.dataset.deniaOldDaysCard;
       }
     }
     style.remove();

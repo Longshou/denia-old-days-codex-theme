@@ -33,20 +33,13 @@
     "description": "让思绪显影，也让每一步留下记录。",
     "projectPrefix": "翻到项目 · ",
     "projectFallback": "选择项目",
-    "brandMark": "",
-    "cardLabels": [
-      "翻阅并理解代码",
-      "写下新的实现",
-      "校对这页改动",
-      "修补未完成的记录"
-    ]
+    "brandMark": ""
   },
   "capabilities": [
     "sidebar.brand-overlay",
     "sidebar.visual-states",
     "home.brand-status",
     "home.hero-copy",
-    "home.suggestion-cards",
     "home.project-selector",
     "composer.skin",
     "task.diary-cards",
