@@ -12,6 +12,29 @@
   --denia-panel: rgba(255, 250, 246, 0.92);
   --denia-line: rgba(111, 184, 231, 0.28);
   --denia-shadow: 0 18px 48px rgba(38, 53, 72, 0.13);
+  --denia-task-background-color-light: #F3EDF2;
+  --denia-task-background-image-light:
+    radial-gradient(ellipse at 92% 8%, rgba(230, 168, 177, .22), rgba(230, 168, 177, .07) 24%, transparent 48%),
+    radial-gradient(ellipse at 6% 92%, rgba(91, 106, 172, .14), transparent 44%),
+    radial-gradient(circle at 82% 82%, rgba(126, 201, 226, .1), transparent 24%),
+    radial-gradient(circle at 10% 10%, rgba(49, 44, 91, .055), transparent 18%),
+    linear-gradient(135deg, rgba(255, 255, 255, .44), transparent 48%);
+  --denia-task-background-image-light-compact:
+    radial-gradient(ellipse at 100% 4%, rgba(230, 168, 177, .14), transparent 42%),
+    radial-gradient(ellipse at 0 100%, rgba(91, 106, 172, .09), transparent 40%),
+    linear-gradient(135deg, rgba(255, 255, 255, .38), transparent 52%);
+  --denia-task-background-color-dark: #0F133B;
+  --denia-task-background-image-dark:
+    radial-gradient(ellipse at 92% 8%, rgba(190, 132, 164, .18), rgba(149, 103, 143, .06) 24%, transparent 48%),
+    radial-gradient(ellipse at 6% 92%, rgba(46, 59, 126, .46), transparent 48%),
+    radial-gradient(circle at 82% 82%, rgba(86, 113, 177, .18), transparent 26%),
+    radial-gradient(circle at 10% 10%, rgba(149, 103, 143, .12), transparent 20%),
+    radial-gradient(circle at 94% 88%, rgba(212, 170, 193, .1), transparent 6%),
+    linear-gradient(145deg, rgba(29, 37, 95, .34), transparent 46%);
+  --denia-task-background-image-dark-compact:
+    radial-gradient(ellipse at 100% 4%, rgba(190, 132, 164, .12), transparent 42%),
+    radial-gradient(ellipse at 0 100%, rgba(46, 59, 126, .28), transparent 44%),
+    linear-gradient(145deg, rgba(29, 37, 95, .28), transparent 50%);
   --denia-state-rail-width: clamp(280px, 20vw, 320px);
   color-scheme: light;
   accent-color: var(--denia-crystal);
@@ -36,6 +59,29 @@
     radial-gradient(circle at 8% 82%, rgba(242, 154, 171, 0.12), transparent 18%),
     radial-gradient(circle at 91% 16%, rgba(111, 184, 231, 0.14), transparent 22%),
     linear-gradient(125deg, rgba(255, 253, 249, 0.4), transparent 44%);
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task {
+  --denia-task-background-color: var(--denia-task-background-color-light);
+  --denia-task-background-image: var(--denia-task-background-image-light);
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"] {
+  --denia-task-background-color: var(--denia-task-background-color-dark);
+  --denia-task-background-image: var(--denia-task-background-image-dark);
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body {
+  background-color: var(--denia-task-background-color);
+  background-image: var(--denia-task-background-image);
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::before {
+  background: none;
 }
 
 .denia-old-days-ds-extension button:focus-visible,
@@ -844,6 +890,14 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 }
 
 @media (max-width: 919px) {
+  html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task {
+    --denia-task-background-image: var(--denia-task-background-image-light-compact);
+  }
+
+  html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"] {
+    --denia-task-background-image: var(--denia-task-background-image-dark-compact);
+  }
+
   .denia-old-days-ds-state-art {
     display: none;
   }
@@ -895,6 +949,11 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 }
 
 @media (prefers-reduced-transparency: reduce) {
+  html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body {
+    background-color: var(--denia-task-background-color);
+    background-image: none;
+  }
+
   .denia-old-days-ds-hero {
     background: #f9ffff;
   }
