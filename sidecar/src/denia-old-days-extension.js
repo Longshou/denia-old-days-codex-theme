@@ -9,6 +9,7 @@
   const stateKey = "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__";
   const styleId = "denia-old-days-dream-skin-extension-style";
   const rootClass = "denia-old-days-ds-extension";
+  const nativeHomePromptShiftProperty = "--denia-old-days-native-prompt-shift";
   const root = document.documentElement;
   const touchedNodes = new Set();
   const ownedNodes = new Set();
@@ -592,11 +593,37 @@
 
   function clearNativeHomePrompt() {
     syncClass(nativeHomePrompt, "denia-old-days-ds-native-home-prompt", false);
+    removeStyleProperty(nativeHomePrompt, nativeHomePromptShiftProperty);
     nativeHomePrompt = null;
   }
 
+  function syncNativeHomePromptPosition(prompt) {
+    const heroRect = measuredRect(document.getElementById("denia-old-days-ds-hero-copy"));
+    const promptRect = measuredRect(prompt);
+    const composer = document.querySelector(".composer-surface-chrome");
+    let composerBoundary = composer;
+    for (let current = composer; current && current !== findMain(); current = current.parentElement) {
+      const computed = getComputedStyle(current);
+      const zIndex = Number.parseFloat(computed.zIndex);
+      if (computed.position !== "static" && Number.isFinite(zIndex) && zIndex > 0) {
+        composerBoundary = current;
+      }
+    }
+    const composerRect = measuredRect(composerBoundary);
+    if (!heroRect || !promptRect || !composerRect) {
+      removeStyleProperty(prompt, nativeHomePromptShiftProperty);
+      return;
+    }
+
+    const currentShift = Number.parseFloat(prompt.style.getPropertyValue(nativeHomePromptShiftProperty)) || 0;
+    const naturalTop = promptRect.top - currentShift;
+    const minimumTop = heroRect.bottom + 16;
+    const inputAlignedTop = composerRect.top - promptRect.height - 24;
+    const shift = Math.max(0, Math.round(Math.max(minimumTop, inputAlignedTop) - naturalTop));
+    setStyleProperty(prompt, nativeHomePromptShiftProperty, `${shift}px`);
+  }
+
   function syncNativeHomePrompt(nativeButtons) {
-    clearNativeHomePrompt();
     const promptPattern = /(?:what should we build in|what would you like to build|想在.+中构建什么|要在.+中构建什么)/iu;
     const title = [...document.querySelectorAll("span, h1, h2, h3, [role='heading']")]
       .find((node) => {
@@ -609,7 +636,10 @@
           .trim();
         return promptPattern.test(directText);
       });
-    if (!title) return null;
+    if (!title) {
+      clearNativeHomePrompt();
+      return null;
+    }
 
     const titleText = normalizedNodeLabel(title);
     let prompt = title;
@@ -618,7 +648,9 @@
       && !nativeButtons.some((button) => prompt.parentElement.contains(button))) {
       prompt = prompt.parentElement;
     }
+    if (nativeHomePrompt && nativeHomePrompt !== prompt) clearNativeHomePrompt();
     nativeHomePrompt = touch(prompt, "denia-old-days-ds-native-home-prompt");
+    syncNativeHomePromptPosition(nativeHomePrompt);
     return nativeHomePrompt;
   }
 

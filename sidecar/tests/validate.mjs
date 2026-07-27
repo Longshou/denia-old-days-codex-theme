@@ -368,6 +368,11 @@ assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-native-home-prompt [c
   display: "none !important",
   content: "none !important",
 });
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", {
+  position: "relative",
+  "z-index": "1",
+  translate: "0 var(--denia-old-days-native-prompt-shift, 0)",
+});
 assert(
   /function ensureSuggestionDeck\(\) \{[\s\S]*?restoreNativeSuggestionClasses\(\);[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?if \(!slot\) return null;[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
   "the home theme must keep the native prompt decorated and visible across complete and incomplete action states",
@@ -664,20 +669,20 @@ assert(
     && narrowHeroGridRule.sourceIndex > compactHeroRule.sourceIndex,
   "narrow breakpoint must follow compact breakpoint so the single-column hero wins the cascade",
 );
-const shortDesktopMedia = ["max-height: 1099px"];
+const shortDesktopMedia = ["min-width: 1200px", "max-height: 919px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
-  "grid-template-columns": "minmax(300px, .9fr) minmax(360px, 1.1fr)",
-  "column-gap": "28px",
+  "grid-template-columns": "minmax(340px, .9fr) minmax(420px, 1.1fr)",
+  "column-gap": "32px",
   width: "min(1120px, calc(100% - 32px))",
   "min-height": "0",
   margin: "12px auto",
-  padding: "18px 28px",
+  padding: "22px 32px",
 }, shortDesktopMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   display: "block",
-  width: "min(100%, 390px)",
+  width: "min(100%, 440px)",
   "aspect-ratio": "16 / 9.2",
-  padding: "9px 9px 38px",
+  padding: "10px 10px 42px",
 }, shortDesktopMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
   "grid-template-columns": "repeat(4, minmax(0, 1fr))",
@@ -685,7 +690,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
 assert(
   findCssRule(stylesheetRules, ".denia-old-days-ds-hero", shortDesktopMedia).sourceIndex
     > compactHeroRule.sourceIndex,
-  "short viewport layout must override the generic compact rules",
+  "short desktop layout must override the generic low-height compact rules",
 );
 
 const transparencyMedia = ["prefers-reduced-transparency: reduce"];
@@ -1843,7 +1848,9 @@ function createRuntimeHarness(createObjectUrl) {
       return this;
     }
     getBoundingClientRect() {
-      const { x, y, width, height } = this.rect;
+      const { x, width, height } = this.rect;
+      const shift = Number.parseFloat(this.style.getPropertyValue("--denia-old-days-native-prompt-shift")) || 0;
+      const y = this.rect.y + shift;
       return {
         x,
         y,
@@ -1988,7 +1995,9 @@ function createRuntimeHarness(createObjectUrl) {
       backgroundImage: node?.computedBackgroundImage || "none",
       display: node?.computedDisplay || "block",
       opacity: node?.computedOpacity || "1",
+      position: node?.computedPosition || "static",
       visibility: node?.computedVisibility || "visible",
+      zIndex: node?.computedZIndex || "auto",
       getPropertyValue: (name) => node?.style?.getPropertyValue(name) || "",
     }),
     matchMedia: () => ({ matches: false }),
@@ -2795,6 +2804,7 @@ function assertHomeLayoutPreservation(payload) {
   main.scrollTop = 0;
 
   const nativePrompt = harness.document.createElement("div");
+  nativePrompt.setRect({ x: 220, y: 373, width: 760, height: 112 });
   const nativePromptBody = harness.document.createElement("div");
   const nativeHeading = harness.document.createElement("div");
   const nativeTitle = harness.document.createElement("span");
@@ -2815,11 +2825,17 @@ function assertHomeLayoutPreservation(payload) {
     button.textContent = label;
     nativeSuggestions.append(button);
   }
+  const composerBoundary = harness.document.createElement("div");
+  composerBoundary.computedPosition = "relative";
+  composerBoundary.computedZIndex = "20";
+  composerBoundary.setRect({ x: 196, y: 755, width: 1120, height: 194 });
   const composer = harness.document.createElement("form");
   composer.classList.add("composer-surface-chrome");
+  composer.setRect({ x: 220, y: 835, width: 760, height: 104 });
   const input = harness.document.createElement("textarea");
   composer.append(input);
-  main.append(nativePrompt, nativeSuggestions, composer);
+  composerBoundary.append(composer);
+  main.append(nativePrompt, nativeSuggestions, composerBoundary);
   harness.document.body.append(main);
 
   const nativeChildren = [...main.children];
@@ -2827,6 +2843,7 @@ function assertHomeLayoutPreservation(payload) {
   const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const visuals = harness.document.getElementById("denia-old-days-ds-home-visuals");
   const hero = harness.document.getElementById("denia-old-days-ds-hero-copy");
+  hero.setRect({ x: 196, y: 121, width: 1120, height: 455 });
   const slot = harness.document.getElementById("denia-old-days-ds-suggestion-slot");
   const deck = harness.document.getElementById("denia-old-days-ds-card-deck");
 
@@ -2849,6 +2866,10 @@ function assertHomeLayoutPreservation(payload) {
   assert(
     nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
     "home theme must retain and decorate the visible Codex native title",
+  );
+  assert(
+    nativePrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px",
+    "the native home title must sit directly above the composer without overlapping the restored hero",
   );
   assert(
     nativePrompt.contains(inlineProjectButton) && inlineProjectButton.isConnected,
