@@ -1384,6 +1384,10 @@
 
   const taskStateActionPattern = /^(?:allow once|always allow|stop|cancel|允许一次|始终允许|停止|取消)$/iu;
 
+  function hasButtonContext(candidate) {
+    return candidate?.matches?.("button") || Boolean(candidate?.closest?.("button"));
+  }
+
   function elementIsTaskStateContainer(candidate) {
     if (!candidate?.matches) return false;
     const semanticValue = [
@@ -1404,8 +1408,9 @@
       && taskStateActionPattern.test(label);
   }
 
-  function nodeCarriesTaskStateSemantics(node) {
-    if (taskStateActionPattern.test(normalizedNodeLabel(node))) return true;
+  function nodeCarriesTaskStateSemantics(node, mutationTarget = null) {
+    if (hasButtonContext(mutationTarget)
+      && taskStateActionPattern.test(normalizedNodeLabel(node))) return true;
     if (!node?.matches) return false;
     return [
       node,
@@ -1432,6 +1437,21 @@
     return false;
   }
 
+  function oldAttributeCarriesTaskStateSemantics(record) {
+    const oldValue = String(record.oldValue || "").replace(/\s+/gu, " ").trim();
+    if (!oldValue) return false;
+    if (record.attributeName === "role") {
+      return /^(?:alert|dialog|alertdialog|progressbar)$/iu.test(oldValue);
+    }
+    if (record.attributeName === "aria-busy") return oldValue.toLowerCase() === "true";
+    if (["data-state", "data-status", "data-testid"].includes(record.attributeName)) {
+      return /(?:error|failed|approval|permission|loading|running)/iu.test(oldValue);
+    }
+    if (!["aria-label", "title"].includes(record.attributeName)) return false;
+    return /(?:error|failed|failure|approval|permission)/iu.test(oldValue)
+      || (hasButtonContext(record.target) && taskStateActionPattern.test(oldValue));
+  }
+
   function recordTouchesExternalTaskState(record, main) {
     if (state.homeActive
       || !main
@@ -1440,19 +1460,11 @@
     if (record.type === "childList") {
       return targetOrExternalAncestorHasTaskStateSemantics(record.target)
         || [...record.addedNodes, ...record.removedNodes]
-        .some(nodeCarriesTaskStateSemantics);
+        .some((node) => nodeCarriesTaskStateSemantics(node, record.target));
     }
     if (record.type !== "attributes") return false;
     if (nodeCarriesTaskStateSemantics(record.target)) return true;
-    return [
-      "aria-busy",
-      "aria-label",
-      "data-state",
-      "data-status",
-      "data-testid",
-      "title",
-    ].includes(record.attributeName)
-      && /(?:error|failed|approval|permission|loading|running)/iu.test(record.oldValue || "");
+    return oldAttributeCarriesTaskStateSemantics(record);
   }
 
   function classifySemanticRecord(record, main, decorationRoots) {

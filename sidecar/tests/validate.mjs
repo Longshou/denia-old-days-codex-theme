@@ -1869,6 +1869,19 @@ function createRuntimeHarness(createObjectUrl) {
       return this.attributes.get(name) || null;
     }
 
+    removeAttribute(name) {
+      const oldValue = this.getAttribute(name);
+      if (oldValue == null) return;
+      if (name.startsWith("data-")) {
+        delete this.dataset[dataAttributeKey(name)];
+        return;
+      }
+      this.attributes.delete(name);
+      if (name === "id") this.id = "";
+      if (name === "class") this.className = "";
+      recordAttributeMutation(this, name, oldValue);
+    }
+
     addEventListener(name, handler) {
       const handlers = this.listeners.get(name) || [];
       handlers.push(handler);
@@ -3551,6 +3564,89 @@ function assertFinalReviewRegressions(payload) {
 
   portalState.cleanup();
 
+  const assertExternalAttributeDowngrade = ({
+    label,
+    tagName = "section",
+    attributeName,
+    semanticValue,
+    downgradeValue = null,
+    textContent = "",
+    initialState,
+  }) => {
+    const harness = createRuntimeHarness((index) => `blob:attribute-downgrade-${label}-${index + 1}`);
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    harness.document.body.append(main);
+    const marker = harness.document.createElement(tagName);
+    marker.textContent = textContent;
+    marker.setAttribute(attributeName, semanticValue);
+    harness.document.body.append(marker);
+    vm.runInContext(payload, harness.context, { timeout: 1000 });
+    const runtimeState = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+    assert(runtimeState.formState === initialState, `${label} must establish ${initialState}`);
+    harness.clearMutationRecords();
+    const baseline = { ...runtimeState.metrics.domainRuns };
+    if (downgradeValue == null) marker.removeAttribute(attributeName);
+    else marker.setAttribute(attributeName, downgradeValue);
+    assert(harness.flushMutations() === 1, `${label} downgrade must produce one real attribute record`);
+    assert(harness.flushAnimationFrames() === 1, `${label} downgrade must schedule one refresh`);
+    assert(runtimeState.formState === "staged", `${label} downgrade must leave ${initialState}`);
+    assert(
+      runtimeState.metrics.domainRuns.taskState === baseline.taskState + 1,
+      `${label} downgrade must schedule task state`,
+    );
+    assert(
+      runtimeState.metrics.domainRuns.art === baseline.art + 1,
+      `${label} downgrade must schedule task art`,
+    );
+    runtimeState.cleanup();
+  };
+
+  assertExternalAttributeDowngrade({
+    label: "role-alert",
+    attributeName: "role",
+    semanticValue: "alert",
+    downgradeValue: "status",
+    textContent: "Error: failed",
+    initialState: "error",
+  });
+  assertExternalAttributeDowngrade({
+    label: "role-dialog",
+    attributeName: "role",
+    semanticValue: "dialog",
+    textContent: "Allow this action",
+    initialState: "approval",
+  });
+  assertExternalAttributeDowngrade({
+    label: "role-progressbar",
+    attributeName: "role",
+    semanticValue: "progressbar",
+    initialState: "working",
+  });
+  assertExternalAttributeDowngrade({
+    label: "aria-busy",
+    attributeName: "aria-busy",
+    semanticValue: "true",
+    downgradeValue: "false",
+    initialState: "working",
+  });
+  assertExternalAttributeDowngrade({
+    label: "approval-button-label",
+    tagName: "button",
+    attributeName: "aria-label",
+    semanticValue: "Allow once",
+    downgradeValue: "Continue",
+    initialState: "approval",
+  });
+  assertExternalAttributeDowngrade({
+    label: "working-button-label",
+    tagName: "button",
+    attributeName: "aria-label",
+    semanticValue: "Stop",
+    downgradeValue: "Done",
+    initialState: "working",
+  });
+
   const contentHarness = createRuntimeHarness((index) => `blob:portal-content-${index + 1}`);
   const contentMain = contentHarness.document.createElement("main");
   contentMain.setAttribute("role", "main");
@@ -3667,6 +3763,34 @@ function assertFinalReviewRegressions(payload) {
     contentState.metrics.domainRuns.taskState === unrelatedBaseline.taskState
       && contentState.metrics.domainRuns.art === unrelatedBaseline.art,
     "ordinary external text deletion must not run task state or art",
+  );
+
+  contentHarness.clearMutationRecords();
+  const standaloneActionBaseline = { ...contentState.metrics.domainRuns };
+  const standaloneActionCopy = contentHarness.document.createElement("span");
+  standaloneActionCopy.textContent = "Stop";
+  unrelatedHost.append(standaloneActionCopy);
+  assert(contentHarness.flushMutations() === 1, "standalone Stop text must produce a real child-list record");
+  assert(contentHarness.flushAnimationFrames() === 1, "standalone Stop text may schedule structure work");
+  assert(contentState.formState === "staged", "standalone Stop text must not select working");
+  assert(
+    contentState.metrics.domainRuns.taskState === standaloneActionBaseline.taskState
+      && contentState.metrics.domainRuns.art === standaloneActionBaseline.art,
+    "standalone Stop text must not run task state or art",
+  );
+
+  const standaloneLabel = contentHarness.document.createElement("span");
+  settleExternalMount(standaloneLabel);
+  contentHarness.clearMutationRecords();
+  const standaloneLabelBaseline = { ...contentState.metrics.domainRuns };
+  standaloneLabel.setAttribute("aria-label", "Stop");
+  assert(contentHarness.flushMutations() === 1, "standalone Stop aria-label must produce a real attribute record");
+  assert(contentHarness.flushAnimationFrames() === 1, "standalone Stop aria-label may schedule structure work");
+  assert(contentState.formState === "staged", "standalone Stop aria-label must not select working");
+  assert(
+    contentState.metrics.domainRuns.taskState === standaloneLabelBaseline.taskState
+      && contentState.metrics.domainRuns.art === standaloneLabelBaseline.art,
+    "standalone Stop aria-label must not run task state or art",
   );
   contentState.cleanup();
 
