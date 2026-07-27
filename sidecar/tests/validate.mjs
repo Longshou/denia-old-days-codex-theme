@@ -2768,6 +2768,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
     "denia-old-days-ds-attachment",
     "denia-old-days-ds-observation",
     "denia-old-days-ds-final-card",
+    "denia-old-days-ds-native-left-sidebar",
     "denia-old-days-ds-native-right-sidebar",
     "denia-old-days-ds-native-sidebar-group",
     "denia-old-days-ds-native-sidebar-row",
@@ -2795,6 +2796,9 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.dataset.deniaSidebarState = "open";
   harness.root.dataset.deniaSidebarConfidence = "high";
   harness.root.dataset.deniaSidebarToggleState = "open";
+  harness.root.dataset.deniaSummaryState = "open";
+  harness.root.dataset.deniaBottomPanelState = "open";
+  harness.root.dataset.deniaWorkSurfaceState = "open";
   harness.root.style.setProperty("--denia-native-sidebar-width", "320px");
   harness.root.style.setProperty("--denia-thread-content-width", "1242px");
   for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
@@ -2810,6 +2814,9 @@ function assertFallbackCleanupBehavior(loaderSource) {
   assert(!("deniaSidebarState" in harness.root.dataset), "fallback cleanup must remove the sidebar state marker");
   assert(!("deniaSidebarConfidence" in harness.root.dataset), "fallback cleanup must remove the sidebar confidence marker");
   assert(!("deniaSidebarToggleState" in harness.root.dataset), "fallback cleanup must remove the sidebar toggle state marker");
+  assert(!("deniaSummaryState" in harness.root.dataset), "fallback cleanup must remove the summary state marker");
+  assert(!("deniaBottomPanelState" in harness.root.dataset), "fallback cleanup must remove the bottom panel state marker");
+  assert(!("deniaWorkSurfaceState" in harness.root.dataset), "fallback cleanup must remove the work-surface state marker");
   assert(!harness.root.style.getPropertyValue("--denia-native-sidebar-width"), "fallback cleanup must remove the native sidebar width snapshot");
   assert(!harness.root.style.getPropertyValue("--denia-thread-content-width"), "fallback cleanup must remove the thread content width snapshot");
   for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
@@ -3541,6 +3548,78 @@ function assertFinalReviewRegressions(payload) {
   assert(portalState.formState === "working");
   assert(portalState.metrics.domainRuns.taskState === workingBaseline.taskState + 1);
   assert(portalState.metrics.domainRuns.art === workingBaseline.art + 1);
+
+  const portalContent = portalHarness.document.createElement("div");
+  portal.append(portalContent);
+  portalHarness.clearMutationRecords();
+  const assertPortalChildListRefresh = (target, addedNodes, removedNodes, label) => {
+    const baseline = { ...portalState.metrics.domainRuns };
+    assert(
+      portalHarness.deliverMutationRecords([{
+        type: "childList",
+        target,
+        addedNodes,
+        removedNodes,
+      }]) === 1,
+      `${label} must reach the observer`,
+    );
+    assert(portalHarness.flushAnimationFrames() === 1, `${label} must schedule one refresh`);
+    assert(
+      portalState.metrics.domainRuns.taskState === baseline.taskState + 1,
+      `${label} must schedule task state`,
+    );
+    assert(
+      portalState.metrics.domainRuns.art === baseline.art + 1,
+      `${label} must schedule task art`,
+    );
+    portalHarness.clearMutationRecords();
+  };
+  const addedText = { nodeType: 3, textContent: "Working…" };
+  assertPortalChildListRefresh(
+    portal,
+    [addedText],
+    [],
+    "text appended directly to an external semantic portal",
+  );
+  assertPortalChildListRefresh(
+    portalContent,
+    [{ nodeType: 3, textContent: "Still working…" }],
+    [{ nodeType: 3, textContent: "Working…" }],
+    "text replaced below an external semantic portal ancestor",
+  );
+  const ordinarySpan = portalHarness.document.createElement("span");
+  assertPortalChildListRefresh(
+    portalContent,
+    [ordinarySpan],
+    [],
+    "an ordinary span appended below an external semantic portal ancestor",
+  );
+  assertPortalChildListRefresh(
+    portalContent,
+    [],
+    [ordinarySpan],
+    "an ordinary span removed below an external semantic portal ancestor",
+  );
+
+  const unrelatedHost = portalHarness.document.createElement("section");
+  portalHarness.document.body.append(unrelatedHost);
+  portalHarness.clearMutationRecords();
+  const unrelatedBaseline = { ...portalState.metrics.domainRuns };
+  assert(
+    portalHarness.deliverMutationRecords([{
+      type: "childList",
+      target: unrelatedHost,
+      addedNodes: [portalHarness.document.createElement("span")],
+      removedNodes: [],
+    }]) === 1,
+    "an unrelated external child-list record must reach the observer",
+  );
+  assert(portalHarness.flushAnimationFrames() === 1, "unrelated external structure may still schedule structure work");
+  assert(
+    portalState.metrics.domainRuns.taskState === unrelatedBaseline.taskState
+      && portalState.metrics.domainRuns.art === unrelatedBaseline.art,
+    "unrelated external child-list records must not be upgraded to task state or art",
+  );
   portalState.cleanup();
 
   const toggleHarness = createRuntimeHarness((index) => `blob:final-toggle-${index + 1}`);

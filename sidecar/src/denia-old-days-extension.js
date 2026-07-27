@@ -1382,9 +1382,29 @@
     return record.target === cachedComposer || cachedComposer.contains?.(record.target);
   }
 
+  function elementHasTaskStateSemantics(candidate) {
+    if (!candidate?.matches) return false;
+    const semanticValue = [
+      candidate.getAttribute?.("aria-busy"),
+      candidate.getAttribute?.("data-state"),
+      candidate.getAttribute?.("data-status"),
+      candidate.getAttribute?.("data-testid"),
+    ].filter(Boolean).join(" ");
+    if (/(?:error|failed|approval|permission|loading|running)/iu.test(semanticValue)) return true;
+    const role = candidate.getAttribute?.("role") || "";
+    const label = normalizedNodeLabel(candidate);
+    if (role === "alert") return /error|failed|failure|错误|失败/iu.test(label);
+    if (role === "dialog" || role === "alertdialog") {
+      return /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(label);
+    }
+    if (role === "progressbar" || candidate.getAttribute?.("aria-busy") === "true") return true;
+    return candidate.matches?.("button")
+      && /^(?:allow once|always allow|stop|cancel|允许一次|始终允许|停止|取消)$/iu.test(label);
+  }
+
   function nodeCarriesTaskStateSemantics(node) {
     if (!node?.matches) return false;
-    const candidates = [
+    return [
       node,
       ...node.querySelectorAll?.([
         "[aria-busy]",
@@ -1397,25 +1417,16 @@
         '[role="progressbar"]',
         "button",
       ].join(",")) || [],
-    ];
-    return candidates.some((candidate) => {
-      const semanticValue = [
-        candidate.getAttribute?.("aria-busy"),
-        candidate.getAttribute?.("data-state"),
-        candidate.getAttribute?.("data-status"),
-        candidate.getAttribute?.("data-testid"),
-      ].filter(Boolean).join(" ");
-      if (/(?:error|failed|approval|permission|loading|running)/iu.test(semanticValue)) return true;
-      const role = candidate.getAttribute?.("role") || "";
-      const label = normalizedNodeLabel(candidate);
-      if (role === "alert") return /error|failed|failure|错误|失败/iu.test(label);
-      if (role === "dialog" || role === "alertdialog") {
-        return /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(label);
-      }
-      if (role === "progressbar" || candidate.getAttribute?.("aria-busy") === "true") return true;
-      return candidate.matches?.("button")
-        && /^(?:allow once|always allow|stop|cancel|允许一次|始终允许|停止|取消)$/iu.test(label);
-    });
+    ].some(elementHasTaskStateSemantics);
+  }
+
+  function targetOrExternalAncestorHasTaskStateSemantics(target) {
+    for (let current = target;
+      current && current !== document.body && current !== root;
+      current = current.parentElement) {
+      if (elementHasTaskStateSemantics(current)) return true;
+    }
+    return false;
   }
 
   function recordTouchesExternalTaskState(record, main) {
@@ -1424,7 +1435,8 @@
       || record.target === main
       || main.contains(record.target)) return false;
     if (record.type === "childList") {
-      return [...record.addedNodes, ...record.removedNodes]
+      return targetOrExternalAncestorHasTaskStateSemantics(record.target)
+        || [...record.addedNodes, ...record.removedNodes]
         .some(nodeCarriesTaskStateSemantics);
     }
     if (record.type !== "attributes") return false;

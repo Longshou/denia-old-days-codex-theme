@@ -182,6 +182,9 @@ const cleanupExpression = `(() => {
   delete root.dataset.deniaSidebarState;
   delete root.dataset.deniaSidebarConfidence;
   delete root.dataset.deniaSidebarToggleState;
+  delete root.dataset.deniaSummaryState;
+  delete root.dataset.deniaBottomPanelState;
+  delete root.dataset.deniaWorkSurfaceState;
   root.style.removeProperty('--denia-native-sidebar-width');
   root.style.removeProperty('--denia-thread-content-width');
   root.style.removeProperty('--denia-old-days-art-bright');
@@ -203,6 +206,7 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-attachment',
     'denia-old-days-ds-observation',
     'denia-old-days-ds-final-card',
+    'denia-old-days-ds-native-left-sidebar',
     'denia-old-days-ds-native-right-sidebar',
     'denia-old-days-ds-native-sidebar-group',
     'denia-old-days-ds-native-sidebar-row',
