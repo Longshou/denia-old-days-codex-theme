@@ -373,6 +373,9 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", 
   "z-index": "1",
   translate: "0 var(--denia-old-days-native-prompt-shift, 0)",
 });
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-suggestions", {
+  display: "none !important",
+});
 const composerPaintProperties = new Set([
   "background",
   "background-color",
@@ -2332,6 +2335,7 @@ function assertLiveTaskVerification(loaderSource) {
     includeSidebarBrand = home,
     sidebarBrandHost = includeSafeLeftHost ? "left" : "none",
     composerRect = { x: 100, y: 100, width: 320, height: 80 },
+    hideNativeSuggestions = home,
   }) => {
     const rootClasses = ["denia-old-days-ds-extension", home ? "denia-old-days-ds-home" : "denia-old-days-ds-task"];
     const root = {
@@ -2365,6 +2369,9 @@ function assertLiveTaskVerification(loaderSource) {
     const nativeHomePrompt = home
       ? makeNode(["denia-old-days-ds-native-home-prompt"], {}, { x: 220, y: 420, width: 760, height: 112 })
       : null;
+    const nativeHomeSuggestions = home
+      ? [makeNode(["denia-old-days-ds-native-home-suggestions"])]
+      : [];
     const nativeSidebarPanels = Array.from(
       { length: nativeSidebarPanelCount },
       () => makeNode(["denia-old-days-ds-native-right-sidebar"], {}, nativeSidebarRect),
@@ -2444,6 +2451,7 @@ function assertLiveTaskVerification(loaderSource) {
         if (selector === ".denia-old-days-ds-native-sidebar-group") return nativeSidebarGroups;
         if (selector === ".denia-old-days-ds-native-sidebar-row") return nativeSidebarRows;
         if (selector === ".denia-old-days-ds-native-home-prompt") return nativeHomePrompt ? [nativeHomePrompt] : [];
+        if (selector === ".denia-old-days-ds-native-home-suggestions") return nativeHomeSuggestions;
         if (selector === '[data-content-search-unit-key$=":assistant"]') return [assistant];
         return [];
       },
@@ -2493,6 +2501,14 @@ function assertLiveTaskVerification(loaderSource) {
         }
         if (node === nativeHomePrompt) {
           return { backgroundImage: "none", display: "flex", opacity: "1", visibility: "visible" };
+        }
+        if (nativeHomeSuggestions.includes(node)) {
+          return {
+            backgroundImage: "none",
+            display: hideNativeSuggestions ? "none" : "grid",
+            opacity: "1",
+            visibility: "visible",
+          };
         }
         if (node === main) {
           return {
@@ -2685,6 +2701,16 @@ function assertLiveTaskVerification(loaderSource) {
       home: true,
       sidebarState: "open",
       railDisplay: "none",
+      hideNativeSuggestions: false,
+    }).pass === false,
+    "live verification must reject a home view whose native suggestion cards remain visible",
+  );
+  assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
       composerRect: { x: 100, y: 900, width: 320, height: 80 },
     }).composerViewportPass === false,
     "live verification must report a home composer pushed below the viewport",
@@ -2776,6 +2802,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
 
   const removableClasses = [
     "denia-old-days-ds-native-home-prompt",
+    "denia-old-days-ds-native-home-suggestions",
     "denia-old-days-ds-composer",
     "denia-old-days-ds-send",
     "denia-old-days-ds-attachment",
@@ -2880,6 +2907,8 @@ function assertHomeLayoutPreservation(payload) {
     button.textContent = label;
     return button;
   });
+  const nativeSuggestions = harness.document.createElement("div");
+  nativeSuggestions.append(...nativeButtons);
   const composerBoundary = harness.document.createElement("div");
   composerBoundary.computedPosition = "relative";
   composerBoundary.computedZIndex = "20";
@@ -2890,7 +2919,7 @@ function assertHomeLayoutPreservation(payload) {
   const input = harness.document.createElement("textarea");
   composer.append(input);
   composerBoundary.append(composer);
-  main.append(nativePrompt, ...nativeButtons, composerBoundary);
+  main.append(nativePrompt, nativeSuggestions, composerBoundary);
   harness.document.body.append(main);
 
   const nativeChildren = [...main.children];
@@ -2911,6 +2940,10 @@ function assertHomeLayoutPreservation(payload) {
   assert(!harness.document.getElementById("denia-old-days-ds-card-deck"));
   assert(nativeButtons.every((button) =>
     !button.classList.contains("denia-old-days-ds-native-card")));
+  assert(
+    nativeSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"),
+    "home theme must remove the four native suggestion cards without replacing their DOM",
+  );
   assert(state.homeActive === true);
   assert(
     nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
@@ -3459,6 +3492,16 @@ function assertFinalReviewRegressions(payload) {
     main.append(boundary);
     return boundary;
   };
+  const appendHomeSuggestions = (harness, main) => {
+    const suggestions = harness.document.createElement("div");
+    for (const label of ["Explore code", "Build feature", "Review changes", "Fix bug"]) {
+      const button = harness.document.createElement("button");
+      button.textContent = label;
+      suggestions.append(button);
+    }
+    main.append(suggestions);
+    return suggestions;
+  };
   const appendLeftNav = (harness) => {
     const nav = harness.document.createElement("nav");
     nav.setRect({ x: 0, y: 46, width: 280, height: 813 });
@@ -3472,6 +3515,7 @@ function assertFinalReviewRegressions(payload) {
   homeMain.classList.add("dream-skin-home");
   homeMain.setRect({ x: 280, y: 46, width: 1232, height: 813 });
   const initialPrompt = appendHomePrompt(homeHarness, homeMain);
+  const initialSuggestions = appendHomeSuggestions(homeHarness, homeMain);
   const initialComposerBoundary = appendComposer(homeHarness, homeMain);
   homeHarness.document.body.append(homeMain);
   const initialNav = appendLeftNav(homeHarness);
@@ -3480,6 +3524,7 @@ function assertFinalReviewRegressions(payload) {
   homeHarness.document.getElementById("denia-old-days-ds-hero-copy")
     .setRect({ x: 196, y: 121, width: 1120, height: 455 });
   assert(initialPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
+  assert(initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
   assert(initialNav.contains(homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand")));
 
   homeHarness.clearMutationRecords();
@@ -3514,6 +3559,7 @@ function assertFinalReviewRegressions(payload) {
   assert(homeState.homeActive === false);
   assert(!replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
   assert(!replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"));
+  assert(!initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
 
   homeHarness.clearMutationRecords();
   homeMain.classList.add("dream-skin-home");
@@ -3522,9 +3568,11 @@ function assertFinalReviewRegressions(payload) {
   homeHarness.flushAnimationFrames();
   assert(replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
   assert(replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px");
+  assert(initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
   homeState.cleanup();
   assert(!replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
   assert(!replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"));
+  assert(!initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
   void replacementComposerBoundary;
 
   const portalHarness = createRuntimeHarness((index) => `blob:final-portal-${index + 1}`);

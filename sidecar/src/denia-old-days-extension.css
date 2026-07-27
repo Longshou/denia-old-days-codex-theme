@@ -508,6 +508,10 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   translate: 0 var(--denia-old-days-native-prompt-shift, 0);
 }
 
+.denia-old-days-ds-native-home-suggestions {
+  display: none !important;
+}
+
 .denia-old-days-ds-composer {
   border-color: rgba(143, 210, 221, 0.76) !important;
   border-radius: 23px !important;

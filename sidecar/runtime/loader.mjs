@@ -201,6 +201,7 @@ const cleanupExpression = `(() => {
   }
   for (const className of [
     'denia-old-days-ds-native-home-prompt',
+    'denia-old-days-ds-native-home-suggestions',
     'denia-old-days-ds-composer',
     'denia-old-days-ds-send',
     'denia-old-days-ds-attachment',
@@ -332,6 +333,11 @@ const verifyExpression = `(() => {
   const nativeHomePrompts = [...document.querySelectorAll('.denia-old-days-ds-native-home-prompt')];
   const nativeHomePrompt = nativeHomePrompts[0] || null;
   const nativeHomePromptStyle = nativeHomePrompt ? getComputedStyle(nativeHomePrompt) : null;
+  const nativeHomeSuggestionTargets = [
+    ...document.querySelectorAll('.denia-old-days-ds-native-home-suggestions'),
+  ];
+  const nativeHomeSuggestionsHidden = nativeHomeSuggestionTargets.length > 0
+    && nativeHomeSuggestionTargets.every((node) => getComputedStyle(node).display === 'none');
   const homeScroller = document.querySelector('.dream-skin-home');
   const homeScrollerStyle = homeScroller ? getComputedStyle(homeScroller) : null;
   const composer = document.querySelector('.composer-surface-chrome');
@@ -422,6 +428,10 @@ const verifyExpression = `(() => {
       ...box(nativeHomePrompt),
       display: nativeHomePromptStyle.display,
     } : null,
+    nativeHomeSuggestions: {
+      targetCount: nativeHomeSuggestionTargets.length,
+      hidden: nativeHomeSuggestionsHidden,
+    },
     homeScroll: homeScroller ? {
       scrollHeight: homeScroller.scrollHeight,
       clientHeight: homeScroller.clientHeight,
@@ -488,6 +498,7 @@ const verifyExpression = `(() => {
     result.homeLayoutPreserved
       && result.heroUsesRuntimeArt
       && Boolean(result.heroCopy?.visible)
+      && result.nativeHomeSuggestions.hidden
   );
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
   const railMustBeHidden = innerWidth <= 919 || sidebarOpen || sidebarState === 'unknown';

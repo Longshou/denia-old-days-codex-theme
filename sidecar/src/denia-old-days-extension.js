@@ -18,6 +18,7 @@
   let nativeLeftSidebarPanel = null;
   let nativeSidebarPanel = null;
   let nativeHomePrompt = null;
+  const nativeHomeSuggestionTargets = new Set();
   let cachedComposer = null;
   const nativeSidebarGroups = new Set();
   const nativeSidebarRows = new Set();
@@ -70,6 +71,7 @@
   });
   const removableClasses = [
     "denia-old-days-ds-native-home-prompt",
+    "denia-old-days-ds-native-home-suggestions",
     "denia-old-days-ds-composer",
     "denia-old-days-ds-send",
     "denia-old-days-ds-attachment",
@@ -656,6 +658,75 @@
     return cachedComposer;
   }
 
+  function clearNativeHomeSuggestions() {
+    for (const target of nativeHomeSuggestionTargets) {
+      syncClass(target, "denia-old-days-ds-native-home-suggestions", false);
+    }
+    nativeHomeSuggestionTargets.clear();
+  }
+
+  function findHomeSuggestionActions() {
+    const main = findMain();
+    if (!main) return [];
+    const title = findNativeHomeTitle();
+    const patterns = [
+      /explore|understand|探索|理解|解释|翻阅/iu,
+      /build|implement|feature|构建|实现|新功能|应用|工具/iu,
+      /review|suggest changes|审查|修改建议|校对/iu,
+      /fix|debug|修复|失败|问题|故障/iu,
+    ];
+    const managed = (button) => [...nativeHomeSuggestionTargets]
+      .some((target) => target === button || target.contains?.(button));
+    const candidates = [...main.querySelectorAll("button")].filter((button) => {
+      if (isOwnedSubtree(button) || button.closest("aside, nav, .composer-surface-chrome")) return false;
+      if (title?.contains(button)) return false;
+      const text = (button.innerText || button.textContent || "").replace(/\s+/gu, " ").trim();
+      return text.length > 2
+        && text.length < 180
+        && (managed(button) || layoutVisible(button))
+        && patterns.some((pattern) => pattern.test(text));
+    }).sort((first, second) =>
+      Number(managed(second)) - Number(managed(first))
+      || Number(layoutVisible(second)) - Number(layoutVisible(first)));
+    const actions = [];
+    for (const pattern of patterns) {
+      const action = candidates.find((candidate) =>
+        !actions.includes(candidate)
+        && pattern.test((candidate.innerText || candidate.textContent || "").trim()));
+      if (!action) return [];
+      actions.push(action);
+    }
+    return actions;
+  }
+
+  function syncNativeHomeSuggestions() {
+    const actions = findHomeSuggestionActions();
+    if (actions.length !== 4) {
+      clearNativeHomeSuggestions();
+      return [];
+    }
+    const main = findMain();
+    const title = findNativeHomeTitle();
+    const composer = findComposer();
+    const commonParent = actions[0].parentElement;
+    const safeCommonParent = commonParent
+      && commonParent !== main
+      && actions.every((action) => action.parentElement === commonParent)
+      && !commonParent.contains(title)
+      && !commonParent.contains(composer);
+    const nextTargets = new Set(safeCommonParent ? [commonParent] : actions);
+    for (const target of nativeHomeSuggestionTargets) {
+      if (!nextTargets.has(target)) {
+        syncClass(target, "denia-old-days-ds-native-home-suggestions", false);
+      }
+    }
+    nativeHomeSuggestionTargets.clear();
+    for (const target of nextTargets) {
+      nativeHomeSuggestionTargets.add(touch(target, "denia-old-days-ds-native-home-suggestions"));
+    }
+    return actions;
+  }
+
   function clearNativeHomePrompt() {
     syncClass(nativeHomePrompt, "denia-old-days-ds-native-home-prompt", false);
     removeStyleProperty(nativeHomePrompt, nativeHomePromptShiftProperty);
@@ -1071,6 +1142,7 @@
   }
 
   function removeHomeNodes() {
+    clearNativeHomeSuggestions();
     clearNativeHomePrompt();
     for (const id of [
       "denia-old-days-ds-hero-copy",
@@ -1088,6 +1160,7 @@
       ensureSidebarBrand();
       state.formState = "staged";
       ensureHomeHero();
+      syncNativeHomeSuggestions();
       syncNativeHomePrompt();
       syncHomeVisualFrame(findMain());
       syncHomeViewport(findMain());
