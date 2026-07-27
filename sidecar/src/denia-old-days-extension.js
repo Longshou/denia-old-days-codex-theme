@@ -1382,27 +1382,30 @@
     return record.target === cachedComposer || cachedComposer.contains?.(record.target);
   }
 
-  function elementHasTaskStateSemantics(candidate) {
+  const taskStateActionPattern = /^(?:allow once|always allow|stop|cancel|允许一次|始终允许|停止|取消)$/iu;
+
+  function elementIsTaskStateContainer(candidate) {
     if (!candidate?.matches) return false;
     const semanticValue = [
-      candidate.getAttribute?.("aria-busy"),
       candidate.getAttribute?.("data-state"),
       candidate.getAttribute?.("data-status"),
       candidate.getAttribute?.("data-testid"),
     ].filter(Boolean).join(" ");
-    if (/(?:error|failed|approval|permission|loading|running)/iu.test(semanticValue)) return true;
     const role = candidate.getAttribute?.("role") || "";
+    return ["alert", "dialog", "alertdialog", "progressbar"].includes(role)
+      || candidate.getAttribute?.("aria-busy") === "true"
+      || /(?:error|failed|approval|permission|loading|running)/iu.test(semanticValue);
+  }
+
+  function elementHasTaskStateSemantics(candidate) {
+    if (elementIsTaskStateContainer(candidate)) return true;
     const label = normalizedNodeLabel(candidate);
-    if (role === "alert") return /error|failed|failure|错误|失败/iu.test(label);
-    if (role === "dialog" || role === "alertdialog") {
-      return /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(label);
-    }
-    if (role === "progressbar" || candidate.getAttribute?.("aria-busy") === "true") return true;
     return candidate.matches?.("button")
-      && /^(?:allow once|always allow|stop|cancel|允许一次|始终允许|停止|取消)$/iu.test(label);
+      && taskStateActionPattern.test(label);
   }
 
   function nodeCarriesTaskStateSemantics(node) {
+    if (taskStateActionPattern.test(normalizedNodeLabel(node))) return true;
     if (!node?.matches) return false;
     return [
       node,
@@ -1424,7 +1427,7 @@
     for (let current = target;
       current && current !== document.body && current !== root;
       current = current.parentElement) {
-      if (elementHasTaskStateSemantics(current)) return true;
+      if (elementIsTaskStateContainer(current)) return true;
     }
     return false;
   }

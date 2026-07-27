@@ -3549,78 +3549,126 @@ function assertFinalReviewRegressions(payload) {
   assert(portalState.metrics.domainRuns.taskState === workingBaseline.taskState + 1);
   assert(portalState.metrics.domainRuns.art === workingBaseline.art + 1);
 
-  const portalContent = portalHarness.document.createElement("div");
-  portal.append(portalContent);
-  portalHarness.clearMutationRecords();
-  const assertPortalChildListRefresh = (target, addedNodes, removedNodes, label) => {
-    const baseline = { ...portalState.metrics.domainRuns };
+  portalState.cleanup();
+
+  const contentHarness = createRuntimeHarness((index) => `blob:portal-content-${index + 1}`);
+  const contentMain = contentHarness.document.createElement("main");
+  contentMain.setAttribute("role", "main");
+  contentHarness.document.body.append(contentMain);
+  vm.runInContext(payload, contentHarness.context, { timeout: 1000 });
+  const contentState = contentHarness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const settleExternalMount = (node) => {
+    contentHarness.clearMutationRecords();
+    contentHarness.document.body.append(node);
+    assert(contentHarness.flushMutations() === 1, "an external fixture mount must reach the observer");
+    assert(contentHarness.flushAnimationFrames() === 1, "an external fixture mount must settle its structure refresh");
+    contentHarness.clearMutationRecords();
+  };
+  const assertRealChildListRefresh = (mutate, expectedState, label) => {
+    contentHarness.clearMutationRecords();
+    const baseline = { ...contentState.metrics.domainRuns };
+    mutate();
+    assert(contentHarness.flushMutations() > 0, `${label} must produce real child-list records`);
+    assert(contentHarness.flushAnimationFrames() === 1, `${label} must schedule one refresh`);
+    assert(contentState.formState === expectedState, `${label} must derive ${expectedState}`);
     assert(
-      portalHarness.deliverMutationRecords([{
-        type: "childList",
-        target,
-        addedNodes,
-        removedNodes,
-      }]) === 1,
-      `${label} must reach the observer`,
-    );
-    assert(portalHarness.flushAnimationFrames() === 1, `${label} must schedule one refresh`);
-    assert(
-      portalState.metrics.domainRuns.taskState === baseline.taskState + 1,
+      contentState.metrics.domainRuns.taskState === baseline.taskState + 1,
       `${label} must schedule task state`,
     );
     assert(
-      portalState.metrics.domainRuns.art === baseline.art + 1,
+      contentState.metrics.domainRuns.art === baseline.art + 1,
       `${label} must schedule task art`,
     );
-    portalHarness.clearMutationRecords();
+    contentHarness.clearMutationRecords();
   };
-  const addedText = { nodeType: 3, textContent: "Working…" };
-  assertPortalChildListRefresh(
-    portal,
-    [addedText],
-    [],
-    "text appended directly to an external semantic portal",
-  );
-  assertPortalChildListRefresh(
-    portalContent,
-    [{ nodeType: 3, textContent: "Still working…" }],
-    [{ nodeType: 3, textContent: "Working…" }],
-    "text replaced below an external semantic portal ancestor",
-  );
-  const ordinarySpan = portalHarness.document.createElement("span");
-  assertPortalChildListRefresh(
-    portalContent,
-    [ordinarySpan],
-    [],
-    "an ordinary span appended below an external semantic portal ancestor",
-  );
-  assertPortalChildListRefresh(
-    portalContent,
-    [],
-    [ordinarySpan],
-    "an ordinary span removed below an external semantic portal ancestor",
-  );
 
-  const unrelatedHost = portalHarness.document.createElement("section");
-  portalHarness.document.body.append(unrelatedHost);
-  portalHarness.clearMutationRecords();
-  const unrelatedBaseline = { ...portalState.metrics.domainRuns };
+  const alertPortal = contentHarness.document.createElement("section");
+  alertPortal.setAttribute("role", "alert");
+  settleExternalMount(alertPortal);
+  const errorCopy = contentHarness.document.createElement("span");
+  errorCopy.textContent = "Error: failed";
+  assertRealChildListRefresh(() => {
+    alertPortal.textContent = errorCopy.textContent;
+    alertPortal.append(errorCopy);
+  }, "error", "appending error text to an empty role alert");
+  assertRealChildListRefresh(() => {
+    alertPortal.textContent = "";
+    errorCopy.remove();
+  }, "staged", "deleting the final error text from a role alert");
+  assertRealChildListRefresh(() => {
+    alertPortal.textContent = errorCopy.textContent;
+    alertPortal.append(errorCopy);
+  }, "error", "restoring error text in a role alert");
+  const ordinaryAlertCopy = contentHarness.document.createElement("span");
+  ordinaryAlertCopy.textContent = "All clear";
+  assertRealChildListRefresh(() => {
+    alertPortal.textContent = ordinaryAlertCopy.textContent;
+    errorCopy.remove();
+    alertPortal.append(ordinaryAlertCopy);
+  }, "staged", "replacing role alert error text with ordinary text");
+
+  const approvalButton = contentHarness.document.createElement("button");
+  const allowCopy = contentHarness.document.createElement("span");
+  allowCopy.textContent = "Allow once";
+  approvalButton.textContent = allowCopy.textContent;
+  approvalButton.append(allowCopy);
+  settleExternalMount(approvalButton);
+  contentState.refresh();
+  assert(contentState.formState === "approval", "an external Allow once action must establish approval");
+  const continueCopy = contentHarness.document.createElement("span");
+  continueCopy.textContent = "Continue";
+  assertRealChildListRefresh(() => {
+    approvalButton.textContent = continueCopy.textContent;
+    allowCopy.remove();
+    approvalButton.append(continueCopy);
+  }, "staged", "replacing an approval action with ordinary button text");
+
+  approvalButton.remove();
+  contentHarness.flushMutations();
+  contentHarness.flushAnimationFrames();
+  contentHarness.clearMutationRecords();
+  const workingButton = contentHarness.document.createElement("button");
+  const stopCopy = contentHarness.document.createElement("span");
+  stopCopy.textContent = "Stop";
+  workingButton.textContent = stopCopy.textContent;
+  workingButton.append(stopCopy);
+  settleExternalMount(workingButton);
+  contentState.refresh();
+  assert(contentState.formState === "working", "an external Stop action must establish working");
+  const doneCopy = contentHarness.document.createElement("span");
+  doneCopy.textContent = "Done";
+  assertRealChildListRefresh(() => {
+    workingButton.textContent = doneCopy.textContent;
+    stopCopy.remove();
+    workingButton.append(doneCopy);
+  }, "staged", "replacing a working action with ordinary button text");
+
+  const unrelatedHost = contentHarness.document.createElement("section");
+  settleExternalMount(unrelatedHost);
+  contentHarness.clearMutationRecords();
+  const unrelatedBaseline = { ...contentState.metrics.domainRuns };
+  const unrelatedCopy = contentHarness.document.createElement("span");
+  unrelatedCopy.textContent = "Ordinary external copy";
+  unrelatedHost.textContent = unrelatedCopy.textContent;
+  unrelatedHost.append(unrelatedCopy);
+  assert(contentHarness.flushMutations() === 1, "ordinary external text insertion must produce a real child-list record");
+  assert(contentHarness.flushAnimationFrames() === 1, "ordinary external text insertion may schedule structure work");
   assert(
-    portalHarness.deliverMutationRecords([{
-      type: "childList",
-      target: unrelatedHost,
-      addedNodes: [portalHarness.document.createElement("span")],
-      removedNodes: [],
-    }]) === 1,
-    "an unrelated external child-list record must reach the observer",
+    contentState.metrics.domainRuns.taskState === unrelatedBaseline.taskState
+      && contentState.metrics.domainRuns.art === unrelatedBaseline.art,
+    "ordinary external text insertion must not run task state or art",
   );
-  assert(portalHarness.flushAnimationFrames() === 1, "unrelated external structure may still schedule structure work");
+  contentHarness.clearMutationRecords();
+  unrelatedHost.textContent = "";
+  unrelatedCopy.remove();
+  assert(contentHarness.flushMutations() === 1, "ordinary external text deletion must produce a real child-list record");
+  assert(contentHarness.flushAnimationFrames() === 1, "ordinary external text deletion may schedule structure work");
   assert(
-    portalState.metrics.domainRuns.taskState === unrelatedBaseline.taskState
-      && portalState.metrics.domainRuns.art === unrelatedBaseline.art,
-    "unrelated external child-list records must not be upgraded to task state or art",
+    contentState.metrics.domainRuns.taskState === unrelatedBaseline.taskState
+      && contentState.metrics.domainRuns.art === unrelatedBaseline.art,
+    "ordinary external text deletion must not run task state or art",
   );
-  portalState.cleanup();
+  contentState.cleanup();
 
   const toggleHarness = createRuntimeHarness((index) => `blob:final-toggle-${index + 1}`);
   const toggleMain = toggleHarness.document.createElement("main");
