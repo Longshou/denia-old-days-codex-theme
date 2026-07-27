@@ -45,7 +45,7 @@ assert(manifest.version === "0.1.0", "unexpected extension version");
 assert(manifest.protocol?.kind === "codex-dream-skin-sidecar", "unexpected protocol kind");
 assert(manifest.protocol?.transport === "cdp-loopback-v1", "transport must be loopback CDP");
 assert(manifest.protocol?.target === "app://-/index.html", "renderer target must be exact");
-assert(manifest.protocol?.minimumDreamSkinVersion === "1.1.2", "minimum Dream Skin version must be 1.1.2");
+assert(manifest.protocol?.minimumDreamSkinVersion === "1.2.0", "minimum Dream Skin version must be 1.2.0");
 assert(manifest.entrypoints?.style === "src/denia-old-days-extension.css", "unexpected style entrypoint");
 assert(manifest.entrypoints?.runtime === "src/denia-old-days-extension.js", "unexpected runtime entrypoint");
 const expectedAssets = {
@@ -165,12 +165,14 @@ let runtimePayload = runtime;
 for (const [token, replacement] of runtimeReplacements) runtimePayload = runtimePayload.replace(token, replacement);
 assert(!/__DENIA_OLD_DAYS_EXTENSION_[A-Z_]+__/u.test(runtimePayload), "runtime payload must not retain template tokens");
 assertNativeRightSidebarLifecycle(runtimePayload);
+assertNativeWorkSurfaceLifecycle(runtimePayload);
+assertComposerIsolation(runtimePayload);
 assertRuntimeArtworkLifecycle(runtimePayload);
 assertPublicStateUrlCollectionCoverage();
 assertLiveVerificationArtworkTarget(loader);
 assertLiveTaskVerification(loader);
 assertFallbackCleanupBehavior(loader);
-assertSuggestionDeckLifecycle(runtimePayload);
+assertHomeLayoutPreservation(runtimePayload);
 assertFormStateRecognition(runtimePayload);
 assertStateArtRailLifecycle(runtimePayload);
 assertObserverStability(runtimePayload);
@@ -186,16 +188,22 @@ for (const assetKey of Object.keys(expectedAssets)) {
 }
 assert(loader.includes("--denia-old-days-art-bright"), "live verification must read bright artwork variable");
 assert(loader.includes("denia-old-days-ds-suggestion-slot"), "loader cleanup and verification must recognize the persistent suggestion slot");
+assert(loader.includes("denia-old-days-ds-home-visuals"), "loader cleanup and verification must recognize the out-of-flow home visual layer");
+assert(loader.includes("homeLayoutPreserved"), "live verification must enforce native home layout preservation");
+assert(loader.includes("composerViewportPass"), "live verification must keep the home composer inside the viewport");
 
 for (const token of [
   "ensureSidebarBrand",
+  "ensureHomeVisuals",
   "ensureHomeHero",
   "ensureSuggestionSlot",
   "ensureSuggestionDeck",
   "ensureStateArt",
   "syncStateArt",
+  "syncHomeViewport",
   "decorateComposer",
   "decorateTask",
+  "syncNativeLeftSidebar",
   "deriveFormState",
   "scheduleRefresh",
   "requestAnimationFrame",
@@ -217,11 +225,15 @@ for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-
 }
 assert(!runtime.includes("denia-old-days-ds-photo-back"), "home hero must not include generic photo-back markup");
 assert(runtime.includes("denia-old-days-ds-memory-bubbles"), "home hero must own its memory bubbles");
-assert(runtime.includes("denia-old-days-ds-state-bubble"), "chrome must use a bubble state mark");
+assert(!runtime.includes("denia-old-days-ds-state-bubble"), "decorative bubbles must stay in background artwork, not foreground chrome");
 assert(!runtime.includes("denia-old-days-ds-star"), "runtime must retire the star state mark");
 assert(!runtime.includes("denia-old-days-ds-tape"), "P2 polaroid must not use generic tape");
 assert(runtime.includes("data-content-search-unit-key"), "runtime must mark completed assistant units");
 assert(!runtime.includes("fetch("), "injected runtime must not make network requests");
+assert(
+  runtime.includes(".filter((button) => pattern.test(normalizedNodeLabel(button)) && visible(button))"),
+  "native toggle discovery must reject unrelated labels before geometry reads",
+);
 
 for (const color of ["#EAF7F7", "#8FD2DD", "#F29AAB", "#6FB8E7", "#F7D88A", "#263548", "#11162F", "#7556D9", "#E45AA8", "#C5415D"]) {
   assert(styles.toUpperCase().includes(color), `stylesheet missing ${color}`);
@@ -253,14 +265,22 @@ for (const token of [
   ".denia-old-days-ds-state-art-current",
   ".denia-old-days-ds-state-art-next",
   ".denia-old-days-ds-state-art-tint",
+  ".denia-old-days-ds-native-left-sidebar",
   "prefers-reduced-transparency: reduce",
 ]) assert(activeStyles.includes(token), `stylesheet missing ${token}`);
 
 const stylesheetRules = parseCssRules(cssSyntax);
+assert(
+  !stylesheetRules.some((rule) =>
+    rule.selectors.includes(".denia-old-days-ds-extension ::selection")),
+  "stylesheet must not apply selection styling to every renderer descendant",
+);
 assertCssScannerCoverage();
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   "grid-template-columns": "minmax(340px, .85fr) minmax(460px, 1.15fr)",
   "column-gap": "clamp(34px, 4.5vw, 64px)",
+  width: "min(1120px, calc(100% - 32px))",
+  margin: "clamp(16px, 3vh, 32px) auto 16px",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   position: "relative",
@@ -292,9 +312,20 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo::before", {
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-memory-bubbles", {
   "pointer-events": "none",
 });
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-home-visuals", {
+  position: "fixed",
+  top: "var(--denia-home-visual-top, 0)",
+  left: "var(--denia-home-visual-left, 0)",
+  width: "var(--denia-home-visual-width, 100%)",
+  height: "var(--denia-home-visual-height, 100%)",
+  "min-height": "0",
+  overflow: "hidden",
+  contain: "layout paint style",
+  "pointer-events": "none",
+});
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
   display: "block",
-  width: "min(1120px, calc(100vw - 330px))",
+  width: "min(1120px, calc(100% - 32px))",
   "min-height": "var(--denia-old-days-suggestion-slot-height)",
   margin: "0 auto 24px",
   "pointer-events": "none",
@@ -317,6 +348,44 @@ for (const nativeSuggestionClass of [
     `${nativeSuggestionClass} related hiding rules must not declare opacity`,
   );
 }
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", {
+  display: "none !important",
+});
+assert(
+  !/function ensureSuggestionDeck\(\) \{[\s\S]*?syncNativeHomePrompt\(nativeButtons\);[\s\S]*?function decorateComposer/u.test(runtime),
+  "out-of-flow home visuals must not hide or reflow the Codex native prompt",
+);
+const composerPaintProperties = new Set([
+  "background",
+  "background-color",
+  "background-image",
+  "backdrop-filter",
+  "-webkit-backdrop-filter",
+  "border-color",
+  "border-radius",
+  "box-shadow",
+  "color",
+  "filter",
+  "opacity",
+]);
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-composer"))) continue;
+  assert(
+    rule.selectors.every((selector) => !selector.includes("::")),
+    "composer skin must not replace Codex native pseudo-elements",
+  );
+  for (const property of rule.declarations.keys()) {
+    assert(
+      composerPaintProperties.has(property),
+      `composer skin must be paint-only and cannot set ${property}`,
+    );
+  }
+}
+assert(
+  runtime.includes("function layoutVisible(node)")
+    && /function nativeSuggestionButtons\(\) \{[\s\S]*?layoutVisible\(button\)/u.test(runtime),
+  "home suggestions must remain discoverable during the native opacity entrance frame",
+);
 assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-bright", {
     selector: ".denia-old-days-ds-photo-front",
@@ -352,13 +421,16 @@ assert(
 const taskRailSelector = ".denia-old-days-ds-state-art";
 assertCssDeclarations(stylesheetRules, taskRailSelector, {
   position: "absolute",
-  inset: "0 0 0 auto",
+  inset: "46px 0 0 auto",
   width: "var(--denia-state-rail-width)",
   overflow: "hidden",
   isolation: "isolate",
   "pointer-events": "none",
   "border-inline-start": "1px solid rgba(89, 132, 145, .14)",
   "mask-image": "linear-gradient(90deg, transparent 0, #000 42px)",
+});
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-chrome", {
+  "z-index": "2",
 });
 assert(!activeStyles.includes(".denia-old-days-ds-task .denia-old-days-ds-chrome::after"), "retired pseudo-element task rail must be removed");
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer", {
@@ -398,6 +470,7 @@ const sidebarPaintProperties = new Set([
   "transition-duration",
 ]);
 const nativeSidebarClasses = [
+  ".denia-old-days-ds-native-left-sidebar",
   ".denia-old-days-ds-native-right-sidebar",
   ".denia-old-days-ds-native-sidebar-group",
   ".denia-old-days-ds-native-sidebar-row",
@@ -415,17 +488,29 @@ assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-extension:not([data-d
   opacity: "0",
   visibility: "hidden",
 });
-const nativeSidebarPanelRule = findCssRule(stylesheetRules, ".denia-old-days-ds-native-right-sidebar");
-const nativeSidebarGroupRule = findCssRule(stylesheetRules, ".denia-old-days-ds-native-sidebar-group");
+assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-extension[data-denia-work-surface-state="open"] .denia-old-days-ds-state-art', {
+  opacity: "0",
+  visibility: "hidden",
+});
+const nativeSidebarPanelSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar";
+const nativeSidebarGroupSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group";
+const nativeLeftSidebarHostSelector = "html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-denia-sidebar-state][data-denia-sidebar-confidence] aside.app-shell-left-panel.denia-old-days-ds-native-left-sidebar";
+const nativeSidebarPanelRule = findCssRule(stylesheetRules, nativeSidebarPanelSelector);
+const nativeSidebarGroupRule = findCssRule(stylesheetRules, nativeSidebarGroupSelector);
 assert(
   !canonicalCssValue(nativeSidebarPanelRule.declarations.get("background")).includes("!important"),
   "native sidebar base shorthand must not lock background-image with !important",
 );
-assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-right-sidebar", {
-  "background-color": "rgba(255, 251, 247, .98) !important",
-  "background-image": "radial-gradient(circle at 88% 8%, rgba(242, 154, 171, .12), transparent 24%), radial-gradient(circle at 12% 22%, rgba(143, 210, 221, .12), transparent 28%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .045) 31px 32px)",
+assertCssDeclarations(stylesheetRules, nativeSidebarPanelSelector, {
+  "background-color": "rgba(255, 252, 249, .992) !important",
+  "background-image": "radial-gradient(circle at 88% 8%, rgba(242, 154, 171, .14), transparent 24%), radial-gradient(circle at 12% 22%, rgba(143, 210, 221, .15), transparent 28%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .052) 31px 32px)",
 });
-const nativeSidebarHomeRule = findCssRule(stylesheetRules, ".denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar");
+assertCssDeclarations(stylesheetRules, nativeLeftSidebarHostSelector, {
+  color: "var(--denia-ink) !important",
+  background: "radial-gradient(circle at 14% 8%, rgba(143, 210, 221, .15), transparent 24%), radial-gradient(circle at 92% 18%, rgba(242, 154, 171, .1), transparent 28%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .04) 31px 32px), rgb(255, 252, 249) !important",
+  "box-shadow": "inset -2px 0 rgba(111, 184, 231, .3), inset -1px 0 rgba(255, 255, 255, .9), inset -10px 0 26px rgba(111, 184, 231, .045), 10px 0 30px rgba(38, 53, 72, .075) !important",
+});
+const nativeSidebarHomeRule = findCssRule(stylesheetRules, ".denia-old-days-ds-extension.denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar");
 assert(
   nativeSidebarHomeRule.sourceIndex > nativeSidebarPanelRule.sourceIndex
     && nativeSidebarHomeRule.declarations.has("background-image")
@@ -441,15 +526,55 @@ assert(
   "native sidebar group surface must be at least .98 opaque",
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
+const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"][data-denia-work-surface-state="closed"] main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
+const taskSidebarClosingAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="unknown"][data-denia-sidebar-toggle-state="closed"][data-denia-summary-state="closed"][data-denia-bottom-panel-state="closed"] main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
+const taskContentAlignmentRule = findCssRule(stylesheetRules, taskContentAlignmentSelector);
+const taskSidebarClosingAlignmentRule = findCssRule(stylesheetRules, taskSidebarClosingAlignmentSelector);
+assert(
+  taskContentAlignmentRule?.selectors.length === 1,
+  "task content alignment must use one closed-work-surface selector without grouped open-state fallbacks",
+);
+assert(
+  taskSidebarClosingAlignmentRule?.selectors.length === 1,
+  "task sidebar closing alignment must use one exact transition-state selector",
+);
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-task"))) continue;
   for (const property of rule.declarations.keys()) {
+    if ((rule.selectors.includes(taskContentAlignmentSelector)
+        || rule.selectors.includes(taskSidebarClosingAlignmentSelector))
+      && ["margin-inline-start", "margin-inline-end"].includes(property)) continue;
     assert(!taskLayoutProperties.test(property), `task stylesheet must not override native layout property ${property}`);
   }
 }
+assertCssDeclarations(stylesheetRules, taskContentAlignmentSelector, {
+  "margin-inline-start": "max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important",
+  "margin-inline-end": "auto !important",
+});
+assertCssDeclarations(stylesheetRules, taskSidebarClosingAlignmentSelector, {
+  "margin-inline-start": "max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important",
+  "margin-inline-end": "auto !important",
+  transition: "none !important",
+  animation: "denia-old-days-sidebar-close-align 160ms cubic-bezier(.22, 1, .36, 1) both",
+});
+assertCssDeclarations(stylesheetRules, "from", {
+  translate: "calc((var(--denia-state-rail-width) - var(--denia-native-sidebar-width, var(--denia-state-rail-width))) / 2) 0",
+}, ["@keyframes denia-old-days-sidebar-close-align"]);
+assertCssDeclarations(stylesheetRules, "to", {
+  translate: "0 0",
+}, ["@keyframes denia-old-days-sidebar-close-align"]);
 assert(
-  /const home = isHomeView\(\);[\s\S]*?if \(home\) \{\s*ensureSidebarBrand\(\);[\s\S]*?\} else \{\s*removeSidebarBrand\(\);/u.test(runtime),
+  runtime.includes("if (home) {\n      ensureSidebarBrand();")
+    && runtime.includes("state.homeAutoPin = false;")
+    && runtime.includes("state.homeComposer = null;")
+    && runtime.includes("clearHomeViewportBinding();\n      removeSidebarBrand();"),
   "sidebar brand must be created only on home and removed on task routes",
+);
+assert(!runtime.includes("sidebar.prepend(brand)"), "home branding must not become a horizontal sibling of the native sidebar column");
+assert(
+  runtime.includes('const brandHost = sidebar.matches("nav") ? sidebar : sidebar.querySelector("nav");')
+    && runtime.includes("brandHost.insertBefore(brand, brandHost.children[1] || null);"),
+  "home branding must mount inside the native vertical navigation column",
 );
 for (const [state, family, opacity] of [
   ["staged", "taskWarm", ".11"],
@@ -463,21 +588,7 @@ for (const [state, family, opacity] of [
     `runtime state art mapping missing ${state} ${family} ${opacity}`,
   );
 }
-assertCssDeclarations(
-  stylesheetRules,
-  '.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-bubble',
-  { "border-color": "var(--denia-crystal)", background: "rgba(17, 22, 47, .18)" },
-);
-assertCssDeclarations(
-  stylesheetRules,
-  '.denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-state-bubble',
-  { "border-color": "var(--denia-violet)", background: "rgba(117, 86, 217, .26)" },
-);
-assertCssDeclarations(
-  stylesheetRules,
-  '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-bubble',
-  { "border-color": "var(--denia-fracture)", background: "rgba(228, 90, 168, .32)" },
-);
+assert(!activeStyles.includes(".denia-old-days-ds-state-bubble"), "foreground chrome must not render decorative bubbles");
 assertCssDeclarations(
   stylesheetRules,
   '.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"].is-active',
@@ -498,8 +609,11 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-final-card::before", 
 });
 
 const compactMedia = ["max-width: 1199px", "max-height: 759px"];
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
+  width: "min(980px, calc(100% - 32px))",
+}, compactMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
-  width: "min(980px, calc(100vw - 100px))",
+  width: "min(980px, calc(100% - 32px))",
   "--denia-old-days-suggestion-slot-height": "196px",
 }, compactMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
@@ -511,7 +625,7 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo-front", {
 }, compactMedia);
 const narrowMedia = ["max-width: 919px"];
 assertCssCascadeDeclarations(stylesheetRules, ".denia-old-days-ds-suggestion-slot", {
-  width: "calc(100vw - 32px)",
+  width: "calc(100% - 32px)",
   "--denia-old-days-suggestion-slot-height": "404px",
 }, narrowMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
@@ -522,6 +636,7 @@ assertCssDeclarations(stylesheetRules, taskRailSelector, { display: "none" }, na
 assertCssCascadeDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   "grid-template-columns": "1fr",
   "column-gap": "0",
+  width: "calc(100% - 32px)",
 }, narrowMedia);
 const compactHeroRule = findCssRule(stylesheetRules, ".denia-old-days-ds-hero", compactMedia);
 const narrowHeroGridRule = stylesheetRules.find((rule) =>
@@ -533,6 +648,29 @@ assert(
     && narrowHeroGridRule.sourceIndex > compactHeroRule.sourceIndex,
   "narrow breakpoint must follow compact breakpoint so the single-column hero wins the cascade",
 );
+const shortDesktopMedia = ["min-width: 1200px", "max-height: 919px"];
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
+  "grid-template-columns": "minmax(340px, .9fr) minmax(420px, 1.1fr)",
+  "column-gap": "32px",
+  width: "min(1120px, calc(100% - 32px))",
+  "min-height": "0",
+  margin: "12px auto",
+  padding: "22px 32px",
+}, shortDesktopMedia);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
+  display: "block",
+  width: "min(100%, 440px)",
+  "aspect-ratio": "16 / 9.2",
+  padding: "10px 10px 42px",
+}, shortDesktopMedia);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-card-deck", {
+  "grid-template-columns": "repeat(4, minmax(0, 1fr))",
+}, shortDesktopMedia);
+assert(
+  findCssRule(stylesheetRules, ".denia-old-days-ds-hero", shortDesktopMedia).sourceIndex
+    > compactHeroRule.sourceIndex,
+  "short desktop layout must override the generic low-height compact rules",
+);
 
 const transparencyMedia = ["prefers-reduced-transparency: reduce"];
 for (const [selector, background] of [
@@ -540,9 +678,9 @@ for (const [selector, background] of [
   [".denia-old-days-ds-card-deck button", "#f9ffff"],
   [".denia-old-days-ds-composer", "#f9ffff !important"],
   [".denia-old-days-ds-final-card", "#fffdf1 !important"],
-  [".denia-old-days-ds-native-right-sidebar", "#fffdf9 !important"],
-  [".denia-old-days-ds-native-sidebar-group", "#fffdf9 !important"],
-  [".denia-old-days-ds-native-sidebar-row", "#fffdf9 !important"],
+  [".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar", "#fffdf9 !important"],
+  [".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group", "#fffdf9 !important"],
+  [".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row", "#fffdf9 !important"],
 ]) assertCssDeclarations(stylesheetRules, selector, { background }, transparencyMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-composer", {
   "backdrop-filter": "none",
@@ -921,6 +1059,11 @@ function assertNativeRightSidebarLifecycle(payload) {
   const open = createRuntimeHarness((index) => `blob:sidebar-open-${index + 1}`);
   open.setViewport(1512, 859);
   const main = appendTaskMain(open);
+  const threadScroll = open.document.createElement("div");
+  threadScroll.classList.add("thread-scroll-container");
+  threadScroll.clientWidth = 922;
+  threadScroll.setRect({ x: 0, y: 46, width: 952, height: 813 });
+  main.append(threadScroll);
   const toggle = appendToggle(open, { "aria-controls": "native-right-panel", "aria-expanded": "true" });
   const aside = appendRightPanel(open, "native-right-panel");
   const group = open.document.createElement("div");
@@ -966,13 +1109,24 @@ function assertNativeRightSidebarLifecycle(payload) {
   const state = open.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   assert(state.sidebar?.state === "open", "a visible right-docked native aside must be detected as open");
   assert(state.sidebar.confidence === "high", "geometry plus right-edge hit testing must be high confidence");
+  assert(state.sidebar.toggleState === "open", "open sidebar diagnostics must expose the native toggle state");
   assert(aside.classList.contains("denia-old-days-ds-native-right-sidebar"), "only the confirmed aside must receive the skin class");
   assert(open.root.dataset.deniaSidebarState === "open", "the root must expose the open sidebar state");
   assert(open.root.dataset.deniaSidebarConfidence === "high", "the root must expose high sidebar confidence");
+  assert(open.root.dataset.deniaSidebarToggleState === "open", "the root must expose the open native toggle state");
+  assert(
+    open.root.style.getPropertyValue("--denia-native-sidebar-width") === "334px",
+    "an open native sidebar must expose its measured stable width for close alignment",
+  );
+  assert(
+    open.root.style.getPropertyValue("--denia-thread-content-width") === "1482px",
+    "task layout must expose a stable full-width thread content measurement",
+  );
   assert(group.classList.contains("denia-old-days-ds-native-sidebar-group"), "the smallest common row ancestor must receive the group class");
   assert(firstRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "wide visible sidebar buttons must receive the row class");
   assert(secondRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "wide visible sidebar links must receive the row class");
   assert(!leftAside.classList.contains("denia-old-days-ds-native-right-sidebar"), "left navigation must never be skinned as the right sidebar");
+  assert(leftAside.classList.contains("denia-old-days-ds-native-left-sidebar"), "the left navigation must receive its dedicated high-contrast skin class");
   assert(!dialog.classList.contains("denia-old-days-ds-native-right-sidebar"), "dialogs and menus must never be classified as the right sidebar");
   assert(toggle.clickCount === 0, "sidebar detection must never trigger the native toggle");
   assert(
@@ -1005,6 +1159,37 @@ function assertNativeRightSidebarLifecycle(payload) {
   );
   assert(JSON.stringify(rightOnlyPanel.getBoundingClientRect()) === rightOnlyRect, "home branding must not change native right sidebar geometry");
 
+  const nestedPressed = createRuntimeHarness((index) => `blob:sidebar-nested-pressed-${index + 1}`);
+  nestedPressed.setViewport(1512, 859);
+  const nestedMain = nestedPressed.document.createElement("main");
+  nestedMain.setAttribute("role", "main");
+  nestedMain.setRect({ x: 317, y: 46, width: 1195, height: 813 });
+  nestedPressed.document.body.append(nestedMain);
+  appendToggle(nestedPressed, { "aria-pressed": "true" });
+  const nestedPanel = nestedPressed.document.createElement("aside");
+  nestedPanel.setAttribute("role", "complementary");
+  nestedPanel.setRect({ x: 1192, y: 46, width: 320, height: 813 });
+  const nestedAction = nestedPressed.document.createElement("button");
+  nestedAction.setRect({ x: 1204, y: 112, width: 286, height: 40 });
+  nestedPanel.append(nestedAction);
+  nestedMain.append(nestedPanel);
+  nestedPressed.setPointTarget(nestedAction);
+  vm.runInContext(payload, nestedPressed.context, { timeout: 1000 });
+  const nestedPressedState = nestedPressed.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(
+    nestedPressedState.sidebar?.state === "open",
+    "aria-pressed=true must detect a right sidebar nested inside the native main surface",
+  );
+  assert(
+    nestedPanel.classList.contains("denia-old-days-ds-native-right-sidebar"),
+    "a nested pressed sidebar must receive the opaque native sidebar skin",
+  );
+  assert(
+    nestedPressedState.observer.options.attributeFilter.includes("aria-pressed"),
+    "native aria-pressed changes must be observed",
+  );
+  nestedPressedState.cleanup();
+
   const leftHome = createRuntimeHarness((index) => `blob:sidebar-home-left-${index + 1}`);
   const leftHomeMain = appendTaskMain(leftHome);
   leftHomeMain.classList.add("dream-skin-home");
@@ -1014,11 +1199,45 @@ function assertNativeRightSidebarLifecycle(payload) {
   vm.runInContext(payload, leftHome.context, { timeout: 1000 });
   const leftHomeBrand = leftHome.document.getElementById("denia-old-days-ds-sidebar-brand");
   assert(leftHomeBrand && leftHomeSidebar.contains(leftHomeBrand), "a high-confidence left sidebar must retain the home brand");
+  assert(leftHomeSidebar.classList.contains("denia-old-days-ds-native-left-sidebar"), "home left navigation must receive its dedicated skin class");
+  assert(
+    leftHome.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.toggleState === "unknown",
+    "missing native sidebar toggles must remain unknown instead of imitating a close transition",
+  );
+
+  open.clearMutationRecords();
+  toggle.setAttribute("aria-expanded", "false");
+  assert(open.flushMutations() === 1, "closing the sidebar toggle must reach the observer");
+  assert(state.sidebar.state === "unknown", "a visible controlled panel with a closed toggle must remain unknown while collapsing");
+  assert(state.sidebar.toggleState === "closed", "collapsing sidebar diagnostics must expose the closed native toggle state");
+  assert(open.root.dataset.deniaSidebarToggleState === "closed", "the root must expose the closed toggle before geometry settles");
+  assert(open.flushAnimationFrames() === 0, "sidebar toggle state must synchronize before the next animation frame");
+
+  threadScroll.clientWidth = 1000;
+  threadScroll.setRect({ width: 1030 });
+  state.refresh();
+  assert(
+    open.root.style.getPropertyValue("--denia-thread-content-width") === "1482px",
+    "thread content width snapshot must stay stable while the native sidebar collapses",
+  );
+  assert(
+    open.root.style.getPropertyValue("--denia-native-sidebar-width") === "334px",
+    "native sidebar width snapshot must retain the last trusted open geometry while collapsing",
+  );
 
   aside.setRect({ width: 0, height: 0 });
-  toggle.setAttribute("aria-expanded", "false");
+  threadScroll.clientWidth = 1482;
+  threadScroll.setRect({ width: 1512 });
   state.refresh();
   assert(state.sidebar.state === "closed", "aria-expanded=false with an invisible controlled panel must resolve closed");
+  assert(
+    open.root.style.getPropertyValue("--denia-thread-content-width") === "1482px",
+    "thread content width snapshot must remain stable in the final closed layout",
+  );
+  assert(
+    open.root.style.getPropertyValue("--denia-native-sidebar-width") === "334px",
+    "final closed layout must retain the native width needed for the next close transition",
+  );
   assert(!aside.classList.contains("denia-old-days-ds-native-right-sidebar"), "closing the sidebar must remove the old panel class");
   assert(!group.classList.contains("denia-old-days-ds-native-sidebar-group"), "closing the sidebar must remove old group classes");
   assert(!firstRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "closing the sidebar must remove old row classes");
@@ -1033,9 +1252,13 @@ function assertNativeRightSidebarLifecycle(payload) {
   assert(!aside.classList.contains("denia-old-days-ds-native-right-sidebar"), "a remount must not restore the old panel class");
 
   state.cleanup();
+  assert(!leftAside.classList.contains("denia-old-days-ds-native-left-sidebar"), "cleanup must remove the left sidebar skin class");
   assert(!remounted.classList.contains("denia-old-days-ds-native-right-sidebar"), "cleanup must remove the current native sidebar class");
   assert(!("deniaSidebarState" in open.root.dataset), "cleanup must remove the root sidebar state marker");
   assert(!("deniaSidebarConfidence" in open.root.dataset), "cleanup must remove the root sidebar confidence marker");
+  assert(!("deniaSidebarToggleState" in open.root.dataset), "cleanup must remove the root sidebar toggle state marker");
+  assert(!open.root.style.getPropertyValue("--denia-native-sidebar-width"), "cleanup must remove the native sidebar width snapshot");
+  assert(!open.root.style.getPropertyValue("--denia-thread-content-width"), "cleanup must remove the thread content width snapshot");
 
   const closed = createRuntimeHarness((index) => `blob:sidebar-closed-${index + 1}`);
   appendTaskMain(closed);
@@ -1270,6 +1493,113 @@ function assertRuntimeArtworkLifecycle(payload) {
   incompleteState.cleanup();
 }
 
+function assertNativeWorkSurfaceLifecycle(payload) {
+  const harness = createRuntimeHarness((index) => `blob:work-surface-${index + 1}`);
+  const main = harness.document.createElement("main");
+  main.setAttribute("role", "main");
+  const assistant = harness.document.createElement("article");
+  assistant.setAttribute("data-content-search-unit-key", "task:assistant");
+  main.append(assistant);
+  harness.document.body.append(main);
+
+  const appendToggle = (label, pressed) => {
+    const button = harness.document.createElement("button");
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+    button.setRect({ x: 1400, y: 8, width: 28, height: 28 });
+    harness.document.body.append(button);
+    return button;
+  };
+  const summaryToggle = appendToggle("切换置顶摘要", true);
+  const bottomToggle = appendToggle("切换底部面板显示", false);
+  appendToggle("显示/隐藏侧边栏", false);
+
+  vm.runInContext(payload, harness.context, { timeout: 1000 });
+  const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(harness.root.dataset.deniaSummaryState === "open", "pressed summary toggle must expose an open summary state");
+  assert(harness.root.dataset.deniaBottomPanelState === "closed", "unpressed bottom toggle must expose a closed bottom panel state");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "any open native work surface must hide foreground artwork");
+
+  harness.clearMutationRecords();
+  summaryToggle.setAttribute("aria-pressed", "false");
+  assert(harness.flushMutations() === 1, "summary aria-pressed mutation must reach the observer");
+  assert(harness.root.dataset.deniaSummaryState === "closed", "summary toggle state must synchronize before the next animation frame");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "closed", "closing the final native work surface must restore artwork");
+  assert(harness.flushAnimationFrames() === 0, "summary toggle state must not schedule a full refresh");
+
+  harness.clearMutationRecords();
+  bottomToggle.setAttribute("aria-pressed", "true");
+  assert(harness.flushMutations() === 1, "bottom panel aria-pressed mutation must reach the observer");
+  assert(harness.root.dataset.deniaBottomPanelState === "open", "pressed bottom toggle must expose an open bottom panel state");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "open bottom panel must hide foreground artwork");
+  assert(harness.flushAnimationFrames() === 0, "bottom panel toggle state must not schedule a full refresh");
+
+  harness.clearMutationRecords();
+  bottomToggle.setAttribute("aria-pressed", "false");
+  main.append(harness.document.createElement("section"));
+  assert(harness.flushMutations() === 2, "a toggle and native panel remount may arrive in the same observer batch");
+  assert(harness.root.dataset.deniaBottomPanelState === "closed", "a mixed toggle batch must still synchronize native state immediately");
+  assert(harness.flushAnimationFrames() === 0, "a mixed panel-transition batch must not refresh on the next frame");
+  assert(harness.pendingTimerCount() === 1, "a mixed panel-transition batch must schedule one trailing refresh");
+  assert(harness.flushTimers() === 1, "the mixed panel-transition timer must fire once");
+  assert(harness.flushAnimationFrames() === 1, "the mixed panel-transition timer must produce one ordinary refresh");
+
+  state.cleanup();
+  for (const key of ["deniaSummaryState", "deniaBottomPanelState", "deniaWorkSurfaceState"]) {
+    assert(!(key in harness.root.dataset), `cleanup must remove ${key}`);
+  }
+}
+
+function assertComposerIsolation(payload) {
+  const makeTaskMain = (harness) => {
+    const main = harness.document.createElement("main");
+    main.setAttribute("role", "main");
+    const assistant = harness.document.createElement("article");
+    assistant.setAttribute("data-content-search-unit-key", "task:assistant");
+    main.append(assistant);
+    harness.document.body.append(main);
+    return main;
+  };
+
+  const terminalFixture = createRuntimeHarness((index) => `blob:composer-terminal-${index + 1}`);
+  const terminalMain = makeTaskMain(terminalFixture);
+  const terminalScreen = terminalFixture.document.createElement("div");
+  terminalScreen.classList.add("xterm-screen");
+  const terminal = terminalFixture.document.createElement("div");
+  terminal.classList.add("xterm");
+  const terminalTextarea = terminalFixture.document.createElement("textarea");
+  terminal.append(terminalTextarea);
+  terminalScreen.append(terminal);
+  const composer = terminalFixture.document.createElement("div");
+  composer.classList.add("composer-surface-chrome");
+  const editor = terminalFixture.document.createElement("div");
+  editor.setAttribute("contenteditable", "true");
+  composer.append(editor);
+  terminalMain.append(terminalScreen, composer);
+
+  vm.runInContext(payload, terminalFixture.context, { timeout: 1000 });
+  const terminalState = terminalFixture.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(composer.classList.contains("denia-old-days-ds-composer"), "the visible native composer surface must receive composer decoration");
+  assert(!terminal.classList.contains("denia-old-days-ds-composer"), "the terminal host must never receive composer decoration");
+  assert(!terminalScreen.classList.contains("denia-old-days-ds-composer"), "the terminal screen must never receive composer decoration");
+  terminalState.cleanup();
+
+  const formFixture = createRuntimeHarness((index) => `blob:composer-form-${index + 1}`);
+  const formMain = makeTaskMain(formFixture);
+  const tabPanel = formFixture.document.createElement("section");
+  tabPanel.setAttribute("role", "tabpanel");
+  tabPanel.append(formFixture.document.createElement("textarea"));
+  const form = formFixture.document.createElement("form");
+  const textarea = formFixture.document.createElement("textarea");
+  form.append(textarea);
+  formMain.append(tabPanel, form);
+
+  vm.runInContext(payload, formFixture.context, { timeout: 1000 });
+  const formState = formFixture.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(form.classList.contains("denia-old-days-ds-composer"), "a plain form textarea must remain a supported composer fallback");
+  formState.cleanup();
+}
+
 function createRuntimeHarness(createObjectUrl) {
   const created = [];
   const revoked = [];
@@ -1277,8 +1607,10 @@ function createRuntimeHarness(createObjectUrl) {
   const freezeCalls = [];
   const mutationObservers = new Set();
   const animationFrames = new Map();
+  const timers = new Map();
   let pointTarget = null;
   let nextAnimationFrame = 1;
+  let nextTimer = 1;
 
   function recordAttributeMutation(target, attributeName, oldValue) {
     for (const observer of mutationObservers) {
@@ -1571,11 +1903,12 @@ function createRuntimeHarness(createObjectUrl) {
       if (tag && node.tagName !== tag.toUpperCase()) return false;
       for (const id of source.matchAll(/#([a-z0-9_-]+)/giu)) if (node.id !== id[1]) return false;
       for (const className of source.matchAll(/\.([a-z0-9_-]+)/giu)) if (!node.classList.contains(className[1])) return false;
-      for (const attribute of source.matchAll(/\[([^\]=*^$~|]+)(?:([*$]?=)["']?([^\]"']*)["']?)?\]/gu)) {
+      for (const attribute of source.matchAll(/\[([^\]=*^$~|]+)(?:([*$^]?=)["']?([^\]"']*)["']?)?\]/gu)) {
         const actual = attributeValue(node, attribute[1]);
         if (!attribute[2] && actual == null) return false;
         if (attribute[2] === "=" && actual !== attribute[3]) return false;
         if (attribute[2] === "*=" && !String(actual || "").includes(attribute[3])) return false;
+        if (attribute[2] === "^=" && !String(actual || "").startsWith(attribute[3])) return false;
         if (attribute[2] === "$=" && !String(actual || "").endsWith(attribute[3])) return false;
       }
       return true;
@@ -1641,8 +1974,13 @@ function createRuntimeHarness(createObjectUrl) {
       animationFrames.set(id, callback);
       return id;
     },
-    setTimeout,
-    clearTimeout,
+    setTimeout: (callback, delay = 0) => {
+      const id = nextTimer;
+      nextTimer += 1;
+      timers.set(id, { callback, delay });
+      return id;
+    },
+    clearTimeout: (id) => timers.delete(id),
     addEventListener() {},
     removeEventListener() {},
     innerWidth: 1512,
@@ -1708,6 +2046,21 @@ function createRuntimeHarness(createObjectUrl) {
       animationFrames.clear();
       for (const [id, callback] of pending) callback(id);
       return pending.length;
+    },
+    flushTimers() {
+      const pending = [...timers.entries()];
+      timers.clear();
+      for (const [, timer] of pending) timer.callback();
+      return pending.length;
+    },
+    pendingTimerCount() {
+      return timers.size;
+    },
+    pendingTimerIds() {
+      return [...timers.keys()];
+    },
+    pendingTimerDelays() {
+      return [...timers.values()].map((timer) => timer.delay);
     },
   };
 }
@@ -1877,6 +2230,7 @@ function assertLiveTaskVerification(loaderSource) {
     includeFinalCard = false,
     includeSidebarBrand = home,
     sidebarBrandHost = includeSafeLeftHost ? "left" : "none",
+    composerRect = { x: 100, y: 100, width: 320, height: 80 },
   }) => {
     const rootClasses = ["denia-old-days-ds-extension", home ? "denia-old-days-ds-home" : "denia-old-days-ds-task"];
     const root = {
@@ -1903,12 +2257,14 @@ function assertLiveTaskVerification(loaderSource) {
     if (safeLeftHost) {
       safeLeftHost.contains = (node) => includeSidebarBrand && sidebarBrandHost === "left" && node === sidebar;
     }
+    const homeVisuals = home ? makeNode(["denia-old-days-ds-home-visuals"], {}, { x: 0, y: 0, width: 1200, height: 800 }) : null;
     const hero = home ? makeNode(["denia-old-days-ds-hero"]) : null;
-    const heroCopy = home ? makeNode() : null;
+    const heroCopy = hero;
     const photoFront = home ? makeNode(["denia-old-days-ds-photo-front"]) : null;
     const homeCards = home ? Array.from({ length: 4 }, () => makeNode()) : [];
     for (const card of homeCards) card.contains = () => true;
-    const suggestions = home ? makeNode() : null;
+    const suggestionSlot = home ? makeNode(["denia-old-days-ds-suggestion-slot"]) : null;
+    const suggestions = home ? makeNode(["denia-old-days-ds-card-deck"]) : null;
     if (suggestions) {
       suggestions.children = homeCards;
       suggestions.querySelectorAll = (selector) => selector === "button[data-denia-old-days-card]" ? homeCards : [];
@@ -1930,19 +2286,29 @@ function assertLiveTaskVerification(loaderSource) {
       panel.contains = (node) => (skinsContained && (nativeSidebarGroups.includes(node) || nativeSidebarRows.includes(node)))
         || (includeSidebarBrand && sidebarBrandHost === "right" && node === sidebar);
     }
+    const body = makeNode();
     const main = makeNode([], {}, mainRect);
+    if (homeVisuals) homeVisuals.parentElement = body;
+    if (heroCopy) heroCopy.parentElement = homeVisuals;
+    if (suggestionSlot) {
+      suggestionSlot.parentElement = homeVisuals;
+      suggestionSlot.children = suggestions ? [suggestions] : [];
+      suggestionSlot.style = { getPropertyValue: () => "" };
+    }
+    if (suggestions) suggestions.parentElement = suggestionSlot;
     const toggle = togglePresent ? makeNode([], {}, toggleRect) : null;
     if (toggle) {
       toggle.getAttribute = (name) => name === "aria-label" ? "显示/隐藏侧边栏" : null;
       toggle.textContent = "";
     }
     const toggleOccluder = makeNode();
-    const composer = makeNode();
+    const composer = makeNode([], {}, composerRect);
     const nativeObservation = makeNode();
     const observation = decorateObservation ? makeNode(["denia-old-days-ds-observation"]) : null;
     const assistant = makeNode(includeFinalCard ? ["denia-old-days-ds-final-card"] : []);
     const finalCard = includeFinalCard ? assistant : null;
     const document = {
+      body,
       documentElement: root,
       elementFromPoint(x, y) {
         if (toggle) {
@@ -1958,7 +2324,9 @@ function assertLiveTaskVerification(loaderSource) {
         if (id === "denia-old-days-ds-chrome") return chrome;
         if (id === "denia-old-days-ds-state-art") return stateArtRail;
         if (id === "denia-old-days-ds-sidebar-brand") return includeSidebarBrand ? sidebar : null;
+        if (id === "denia-old-days-ds-home-visuals") return homeVisuals;
         if (id === "denia-old-days-ds-hero-copy") return heroCopy;
+        if (id === "denia-old-days-ds-suggestion-slot") return suggestionSlot;
         if (id === "denia-old-days-ds-card-deck") return suggestions;
         return null;
       },
@@ -2018,6 +2386,16 @@ function assertLiveTaskVerification(loaderSource) {
         }
         if (node === photoFront) {
           return { backgroundImage: 'url("blob:bright")', display: "block", opacity: "1", visibility: "visible" };
+        }
+        if (node === homeVisuals) {
+          return {
+            contain: "layout paint style",
+            display: "block",
+            opacity: "1",
+            overflow: "hidden",
+            position: "fixed",
+            visibility: "visible",
+          };
         }
         if (node === composer && pseudo === "::before") {
           return { content: "none", display: "none", height: "auto", position: "static", width: "auto" };
@@ -2196,6 +2574,16 @@ function assertLiveTaskVerification(loaderSource) {
     "live verification must accept a skinned home sidebar with hidden state artwork",
   );
   assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
+      composerRect: { x: 100, y: 900, width: 320, height: 80 },
+    }).composerViewportPass === false,
+    "live verification must report a home composer pushed below the viewport",
+  );
+  assert(
     runCase({ formState: "staged", home: true, sidebarState: "open" }).pass === false,
     "live verification must reject visible state artwork while the home sidebar is open",
   );
@@ -2267,6 +2655,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
     "denia-old-days-dream-skin-extension-style",
     "denia-old-days-ds-chrome",
     "denia-old-days-ds-sidebar-brand",
+    "denia-old-days-ds-home-visuals",
     "denia-old-days-ds-hero-copy",
     "denia-old-days-ds-hero-badge",
     "denia-old-days-ds-stage-pass",
@@ -2314,6 +2703,9 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.dataset.deniaFormState = "working";
   harness.root.dataset.deniaSidebarState = "open";
   harness.root.dataset.deniaSidebarConfidence = "high";
+  harness.root.dataset.deniaSidebarToggleState = "open";
+  harness.root.style.setProperty("--denia-native-sidebar-width", "320px");
+  harness.root.style.setProperty("--denia-thread-content-width", "1242px");
   for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
     harness.root.style.setProperty(`--denia-old-days-art-${name}`, `url(blob:${name})`);
   }
@@ -2326,6 +2718,9 @@ function assertFallbackCleanupBehavior(loaderSource) {
   assert(!("deniaFormState" in harness.root.dataset), "fallback cleanup must remove the form state marker");
   assert(!("deniaSidebarState" in harness.root.dataset), "fallback cleanup must remove the sidebar state marker");
   assert(!("deniaSidebarConfidence" in harness.root.dataset), "fallback cleanup must remove the sidebar confidence marker");
+  assert(!("deniaSidebarToggleState" in harness.root.dataset), "fallback cleanup must remove the sidebar toggle state marker");
+  assert(!harness.root.style.getPropertyValue("--denia-native-sidebar-width"), "fallback cleanup must remove the native sidebar width snapshot");
+  assert(!harness.root.style.getPropertyValue("--denia-thread-content-width"), "fallback cleanup must remove the thread content width snapshot");
   for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
     assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
   }
@@ -2338,6 +2733,98 @@ function assertFallbackCleanupBehavior(loaderSource) {
   for (const property of ["background-image", "background-position", "background-size", "background-repeat", "background-color"]) {
     assert(!hero.style.getPropertyValue(property), `fallback cleanup must remove legacy hero ${property}`);
   }
+}
+
+function assertHomeLayoutPreservation(payload) {
+  const harness = createRuntimeHarness((index) => `blob:home-layout-${index + 1}`);
+  const main = harness.document.createElement("main");
+  main.setAttribute("role", "main");
+  main.classList.add("dream-skin-home");
+  main.scrollHeight = 1129;
+  main.clientHeight = 767;
+  main.scrollTop = 0;
+
+  const nativePrompt = harness.document.createElement("div");
+  nativePrompt.textContent = "Native project prompt";
+  const nativeSuggestions = harness.document.createElement("div");
+  for (const label of ["Explore code", "Build feature", "Review changes", "Fix bug"]) {
+    const button = harness.document.createElement("button");
+    button.textContent = label;
+    nativeSuggestions.append(button);
+  }
+  const composer = harness.document.createElement("form");
+  composer.classList.add("composer-surface-chrome");
+  const input = harness.document.createElement("textarea");
+  composer.append(input);
+  main.append(nativePrompt, nativeSuggestions, composer);
+  harness.document.body.append(main);
+
+  const nativeChildren = [...main.children];
+  vm.runInContext(payload, harness.context, { timeout: 1000 });
+  const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const visuals = harness.document.getElementById("denia-old-days-ds-home-visuals");
+  const hero = harness.document.getElementById("denia-old-days-ds-hero-copy");
+  const slot = harness.document.getElementById("denia-old-days-ds-suggestion-slot");
+  const deck = harness.document.getElementById("denia-old-days-ds-card-deck");
+
+  assert(
+    main.children.length === nativeChildren.length
+      && nativeChildren.every((node, index) => main.children[index] === node),
+    "fixed home visual layer must not add or reorder Codex native main-flow children",
+  );
+  assert(visuals?.parentElement === harness.document.body, "home visual layer must mount outside the native scrolling main");
+  assert(
+    hero?.parentElement === visuals
+      && slot?.parentElement === visuals
+      && deck?.parentElement === slot,
+    "home hero and themed suggestion deck must stay contained by the out-of-flow visual layer",
+  );
+  assert(
+    deck?.querySelectorAll("button[data-denia-old-days-card]").length === 4,
+    "home visual layer must retain all four themed suggestion cards",
+  );
+  assert(
+    !nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "home theme must keep the Codex native prompt visible",
+  );
+  assert(
+    nativeSuggestions.classList.contains("denia-old-days-ds-native-suggestions")
+      && [...nativeSuggestions.children].every((node) => node.classList.contains("denia-old-days-ds-native-card")),
+    "the out-of-flow themed deck must proxy the native actions without touching the prompt or composer",
+  );
+  assert(composer.classList.contains("denia-old-days-ds-composer"), "home composer may retain paint-only theme chrome");
+  for (let frame = 0; frame < 60; frame += 1) harness.flushAnimationFrames();
+  assert(main.scrollTop === 362, "home visual mount must restore the native bottom composer anchor");
+
+  input.value = "typing must not create layout replacements";
+  main.scrollHeight = 1200;
+  state.refresh();
+  for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
+  assert(
+    main.children.length === nativeChildren.length
+      && nativeChildren.every((node, index) => main.children[index] === node),
+    "typing-state refresh must preserve Codex native home geometry",
+  );
+  assert(main.scrollTop === 433, "a pinned home composer must remain bottom-aligned when its content height changes");
+
+  const replacementComposer = harness.document.createElement("form");
+  replacementComposer.classList.add("composer-surface-chrome");
+  replacementComposer.append(harness.document.createElement("textarea"));
+  composer.remove();
+  main.append(replacementComposer);
+  main.scrollTop = 0;
+  state.refresh();
+  for (let frame = 0; frame < 60; frame += 1) harness.flushAnimationFrames();
+  assert(
+    main.scrollTop === 433,
+    "a remounted home composer must be treated as a fresh surface and return to the shared card/composer viewport",
+  );
+
+  main.scrollTop = 0;
+  for (const handler of main.listeners.get("scroll") || []) handler();
+  state.refresh();
+  for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
+  assert(main.scrollTop === 0, "manual upward browsing after initial settling must disable automatic bottom pinning");
 }
 
 function assertSuggestionDeckLifecycle(payload) {
@@ -2557,6 +3044,57 @@ function assertObserverStability(payload) {
   assert(harness.flushMutations() === 1, "an owned descendant child-list change must reach the observer callback");
   assert(harness.flushAnimationFrames() === 0, "child-list changes inside an owned node must not schedule refresh");
 
+  const terminal = harness.document.createElement("div");
+  terminal.classList.add("xterm");
+  main.append(terminal);
+  harness.clearMutationRecords();
+  terminal.classList.add("xterm-focus");
+  assert(harness.flushMutations() === 1, "terminal class churn must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 0, "terminal class churn must not refresh the theme");
+  harness.clearMutationRecords();
+  terminal.append(harness.document.createElement("span"));
+  assert(harness.flushMutations() === 1, "terminal row churn must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 0, "terminal row churn must not refresh the theme");
+
+  const terminalPanel = harness.document.createElement("div");
+  terminalPanel.id = "terminal-panel-observer-test";
+  main.append(terminalPanel);
+  harness.clearMutationRecords();
+  terminalPanel.style.setProperty("height", "240px");
+  assert(harness.flushMutations() === 1, "terminal panel animation churn must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 0, "terminal panel animation churn must not refresh the theme");
+  assert(harness.pendingTimerCount() === 0, "terminal panel animation churn must not leave a delayed refresh");
+
+  const editorColorProbe = harness.document.createElement("div");
+  editorColorProbe.style.setProperty("display", "none");
+  editorColorProbe.style.setProperty("background-color", "var(--color-token-editor-background)");
+  harness.clearMutationRecords();
+  harness.document.body.append(editorColorProbe);
+  editorColorProbe.remove();
+  assert(harness.flushMutations() === 2, "the native editor color probe mount cycle must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 0, "the native editor color probe mount cycle must not refresh the theme");
+  assert(harness.pendingTimerCount() === 0, "the native editor color probe must not leave a delayed refresh");
+
+  const ordinaryHiddenNode = harness.document.createElement("div");
+  ordinaryHiddenNode.style.setProperty("display", "none");
+  ordinaryHiddenNode.style.setProperty("background-color", "var(--other-native-color)");
+  harness.clearMutationRecords();
+  harness.document.body.append(ordinaryHiddenNode);
+  ordinaryHiddenNode.remove();
+  assert(harness.flushMutations() === 2, "an ordinary hidden body node mount cycle must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 1, "the color-probe filter must not swallow ordinary hidden body nodes");
+
+  const nestedProbeHost = harness.document.createElement("section");
+  main.append(nestedProbeHost);
+  const nestedProbeLookalike = harness.document.createElement("div");
+  nestedProbeLookalike.style.setProperty("display", "none");
+  nestedProbeLookalike.style.setProperty("background-color", "var(--color-token-editor-background)");
+  harness.clearMutationRecords();
+  nestedProbeHost.append(nestedProbeLookalike);
+  nestedProbeLookalike.remove();
+  assert(harness.flushMutations() === 2, "a nested color-probe lookalike mount cycle must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 1, "the color-probe filter must be limited to direct body mutations");
+
   harness.clearMutationRecords();
   assert(
     harness.deliverMutationRecords([{ type: "childList", target: main, addedNodes: [chrome], removedNodes: [] }]) === 1,
@@ -2589,6 +3127,45 @@ function assertObserverStability(payload) {
   assert(harness.flushMutations() === 2, "a mixed theme and native class batch must deliver both records");
   assert(harness.flushAnimationFrames() === 1, "any native application mutation in a mixed batch must schedule exactly one refresh");
 
+  harness.clearMutationRecords();
+  main.style.setProperty("height", "100px");
+  assert(harness.flushMutations() === 1, "a native style mutation must reach the observer callback");
+  assert(harness.flushAnimationFrames() === 0, "a style-only mutation must not schedule a per-frame refresh");
+  assert(harness.pendingTimerCount() === 1, "a style-only mutation must schedule one trailing refresh");
+  assert(harness.pendingTimerDelays().join(",") === "80", "the trailing style refresh must wait 80 milliseconds");
+  assert(harness.flushTimers() === 1, "the trailing style refresh timer must be flushable");
+  assert(harness.flushAnimationFrames() === 1, "the trailing style timer must schedule one ordinary refresh frame");
+
+  harness.clearMutationRecords();
+  main.style.setProperty("height", "101px");
+  assert(harness.flushMutations() === 1, "the first repeated style mutation must reach the observer");
+  const [firstRepeatedStyleTimerId] = harness.pendingTimerIds();
+  main.style.setProperty("height", "102px");
+  assert(harness.flushMutations() === 1, "the second repeated style mutation must reach the observer");
+  assert(harness.pendingTimerCount() === 1, "repeated style-only batches must collapse into one trailing timer");
+  assert(harness.pendingTimerIds()[0] !== firstRepeatedStyleTimerId, "the latest style mutation must restart the trailing delay");
+  assert(harness.flushTimers() === 1, "the collapsed style timer must fire exactly once");
+  assert(harness.flushAnimationFrames() === 1, "collapsed style-only batches must produce one refresh frame");
+
+  harness.clearMutationRecords();
+  main.style.setProperty("height", "103px");
+  assert(harness.flushMutations() === 1, "a pending style refresh must be observable before a semantic mutation");
+  assert(harness.pendingTimerCount() === 1, "the style refresh must remain pending until semantic work arrives");
+  const [styleTimerId] = harness.pendingTimerIds();
+  main.classList.add("native-semantic-after-style");
+  assert(harness.flushMutations() === 1, "the semantic mutation must reach the observer callback");
+  assert(harness.pendingTimerCount() === 1, "a semantic mutation during style animation must remain in the trailing refresh");
+  assert(harness.pendingTimerIds()[0] === styleTimerId, "a semantic mutation must not postpone the trailing refresh beyond the last style change");
+  assert(harness.flushAnimationFrames() === 0, "a semantic mutation during style animation must not interrupt the animation with a refresh");
+  assert(harness.flushTimers() === 1, "the combined animation refresh must fire once");
+  assert(harness.flushAnimationFrames() === 1, "the combined animation refresh must produce one ordinary refresh frame");
+
+  harness.clearMutationRecords();
+  main.classList.add("native-semantic-without-animation");
+  assert(harness.flushMutations() === 1, "a semantic mutation outside animation must reach the observer callback");
+  assert(harness.pendingTimerCount() === 0, "a semantic mutation outside animation must not schedule a trailing timer");
+  assert(harness.flushAnimationFrames() === 1, "a semantic mutation outside animation must refresh on the next frame");
+
   const assertStableRefreshBudget = (stableHarness, stableState, view) => {
     stableHarness.clearMutationRecords();
     const refreshStart = stableState.metrics.refreshes;
@@ -2602,7 +3179,13 @@ function assertObserverStability(payload) {
   };
 
   assertStableRefreshBudget(harness, state, "task view");
+  harness.clearMutationRecords();
+  main.style.setProperty("height", "104px");
+  assert(harness.flushMutations() === 1, "cleanup coverage requires one pending style refresh");
+  assert(harness.pendingTimerCount() === 1, "cleanup coverage must begin with one pending style timer");
   state.cleanup();
+  assert(harness.pendingTimerCount() === 0, "cleanup must cancel the pending style refresh");
+  assert(harness.flushTimers() === 0, "cleanup must prevent delayed style work from running");
 
   const homeHarness = createRuntimeHarness((index) => `blob:observer-home-${index + 1}`);
   const homeMain = homeHarness.document.createElement("main");
@@ -2737,6 +3320,38 @@ function assertFormStateRecognition(payload) {
     return unit;
   };
 
+  const appendNativeTurn = ({ document, main }, {
+    status = "completed",
+    error = null,
+    items = [],
+    paragraphs = ["任务已结束。"],
+  } = {}) => {
+    const turn = document.createElement("section");
+    turn.setAttribute("data-turn-key", "native-turn");
+    const unit = document.createElement("section");
+    unit.setAttribute("data-content-search-unit-key", "native-turn:assistant");
+    for (const text of paragraphs) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      unit.append(paragraph);
+    }
+    turn.append(unit);
+    turn.__reactFiber$test = {
+      memoizedProps: { "data-turn-key": "native-turn" },
+      return: {
+        memoizedProps: {
+          entry: {
+            isMostRecentTurn: true,
+            turn: { status, error, items },
+          },
+        },
+        return: null,
+      },
+    };
+    main.append(turn);
+    return turn;
+  };
+
   assert(
     runCase((fixture) => appendMarker(fixture, { "data-state": "error" }, "Something needs attention")) === "error",
     "visible data-state=error must be authoritative without error wording",
@@ -2754,8 +3369,38 @@ function assertFormStateRecognition(payload) {
       fixture,
       "assistant",
       ["测试错误已触发： command not found，退出码为 127。"],
-    )) === "error",
-    "the latest assistant explicit command-failure paragraph must select error",
+    )) === "complete",
+    "assistant failure wording alone must not select error",
+  );
+  assert(
+    runCase((fixture) => appendContentUnit(
+      fixture,
+      "assistant",
+      ["已触发测试错误：进程退出码为 1，没有修改任何文件。"],
+    )) === "complete",
+    "assistant nonzero-exit wording alone must not select error",
+  );
+  assert(
+    runCase((fixture) => appendNativeTurn(fixture, {
+      status: "completed",
+      items: [{ executionStatus: "failed" }],
+      paragraphs: ["任务已结束。"],
+    })) === "complete",
+    "a completed native turn must select complete even when an intermediate tool item failed",
+  );
+  assert(
+    runCase((fixture) => appendNativeTurn(fixture, {
+      status: "inProgress",
+      items: [{ executionStatus: "failed" }],
+    })) === "working",
+    "an in-progress native turn must remain working even after an intermediate tool failure",
+  );
+  assert(
+    runCase((fixture) => appendNativeTurn(fixture, {
+      status: "interrupted",
+      items: [],
+    })) === "error",
+    "an interrupted native turn must select error",
   );
   assert(
     runCase((fixture) => {
@@ -2822,10 +3467,13 @@ function assertFormStateRecognition(payload) {
     vm.runInContext(payload, harness.context, { timeout: 1000 });
     const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
     harness.clearMutationRecords();
-    appendContentUnit({ ...harness, main }, "assistant", ["command failed: command not found, exited with status 127."]);
-    assert(harness.flushMutations() === 1, "inserting a matching assistant must produce one child-list mutation");
-    assert(harness.flushAnimationFrames() === 1, "inserting a matching assistant must schedule exactly one animation-frame refresh");
-    assert(state.formState === "error", "the child-list refresh must recognize the inserted command failure");
+    appendNativeTurn({ ...harness, main }, {
+      status: "completed",
+      items: [{ status: "failed" }],
+    });
+    assert(harness.flushMutations() === 1, "inserting a completed native turn must produce one child-list mutation");
+    assert(harness.flushAnimationFrames() === 1, "inserting a completed native turn must schedule exactly one animation-frame refresh");
+    assert(state.formState === "complete", "the child-list refresh must keep completed turns complete after intermediate tool failures");
     state.cleanup();
   }
 

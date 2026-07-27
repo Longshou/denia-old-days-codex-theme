@@ -14,10 +14,20 @@
   const ownedNodes = new Set();
   const ownedNodeHistory = new WeakSet();
   const listeners = [];
+  let nativeLeftSidebarPanel = null;
   let nativeSidebarPanel = null;
+  let nativeHomePrompt = null;
   const nativeSidebarGroups = new Set();
   const nativeSidebarRows = new Set();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const nativeSidebarTogglePattern = /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu;
+  const nativeSummaryTogglePattern = /(?:切换(?:置顶)?摘要|toggle (?:pinned )?summary)/iu;
+  const nativeBottomPanelTogglePattern = /(?:切换底部面板显示|toggle bottom panel)/iu;
+  const nativeWorkSurfaceTogglePatterns = [
+    nativeSidebarTogglePattern,
+    nativeSummaryTogglePattern,
+    nativeBottomPanelTogglePattern,
+  ];
   const stateArtSpecs = Object.freeze({
     staged: Object.freeze({ family: "taskWarm", opacity: ".11" }),
     working: Object.freeze({ family: "taskWarm", opacity: ".20" }),
@@ -28,11 +38,13 @@
   const removableClasses = [
     "denia-old-days-ds-native-card",
     "denia-old-days-ds-native-suggestions",
+    "denia-old-days-ds-native-home-prompt",
     "denia-old-days-ds-composer",
     "denia-old-days-ds-send",
     "denia-old-days-ds-attachment",
     "denia-old-days-ds-observation",
     "denia-old-days-ds-final-card",
+    "denia-old-days-ds-native-left-sidebar",
     "denia-old-days-ds-native-right-sidebar",
     "denia-old-days-ds-native-sidebar-group",
     "denia-old-days-ds-native-sidebar-row",
@@ -74,6 +86,14 @@
     metrics: { refreshes: 0, createdNodes: 0 },
     observer: null,
     frame: 0,
+    styleRefreshTimer: 0,
+    homeActive: false,
+    homeAutoPin: false,
+    homeScrollAdjusting: false,
+    homeScrollFrame: 0,
+    homeScrollMain: null,
+    homeScrollHandler: null,
+    homeComposer: null,
     ownedNodes,
     refresh,
     cleanup,
@@ -161,6 +181,18 @@
     return true;
   }
 
+  function layoutVisible(node) {
+    if (!(node instanceof HTMLElement)) return false;
+    const box = node.getBoundingClientRect();
+    if (box.width <= 0 || box.height <= 0) return false;
+    for (let current = node; current instanceof HTMLElement; current = current.parentElement) {
+      if (current.getAttribute("aria-hidden") === "true") return false;
+      const computed = getComputedStyle(current);
+      if (computed.display === "none" || computed.visibility === "hidden") return false;
+    }
+    return true;
+  }
+
   function normalizedNodeLabel(node) {
     return (node?.getAttribute?.("aria-label")
       || node?.getAttribute?.("title")
@@ -168,6 +200,25 @@
       || "")
       .replace(/\s+/gu, " ")
       .trim();
+  }
+
+  function findNativeToggle(pattern) {
+    return [...document.querySelectorAll("button")]
+      .filter((button) => pattern.test(normalizedNodeLabel(button)) && visible(button))
+      .sort((first, second) => measuredRect(second).right - measuredRect(first).right)[0]
+      || null;
+  }
+
+  function nativeToggleState(toggle) {
+    if (!toggle) return "closed";
+    const values = [
+      toggle.getAttribute("aria-pressed"),
+      toggle.getAttribute("aria-expanded"),
+      toggle.getAttribute("data-state"),
+    ].filter(Boolean).map((value) => value.toLowerCase());
+    if (values.some((value) => ["true", "open", "opened", "on", "checked"].includes(value))) return "open";
+    if (values.some((value) => ["false", "closed", "off", "unchecked"].includes(value))) return "closed";
+    return "unknown";
   }
 
   function measuredRect(node) {
@@ -187,8 +238,6 @@
 
   function isExcludedSidebarCandidate(node) {
     const excludedAncestor = node?.closest?.([
-      "main",
-      '[role="main"]',
       "dialog",
       '[role="dialog"]',
       '[role="alertdialog"]',
@@ -218,7 +267,8 @@
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
     const rightEdgePass = Math.abs(rect.right - viewportWidth) <= 12;
     const heightPass = rect.height >= Math.max(240, viewportHeight * 0.35);
-    const sidePass = !mainRect || rect.left >= mainRect.right - 12;
+    const sidePass = !mainRect
+      || rect.left >= mainRect.left + mainRect.width * 0.62;
     return rightEdgePass && heightPass && sidePass;
   }
 
@@ -259,13 +309,12 @@
   }
 
   function detectNativeRightSidebar() {
-    const toggle = [...document.querySelectorAll("button")].find((button) =>
-      visible(button) && /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu.test(normalizedNodeLabel(button))
-    ) || null;
+    const toggle = findNativeToggle(nativeSidebarTogglePattern);
     if (!toggle) return sidebarDetectionResult("unknown", "none", "none", null, null);
 
     const mainRect = measuredRect(findMain());
-    const expanded = toggle.getAttribute("aria-expanded");
+    const toggleState = nativeToggleState(toggle);
+    const expanded = toggleState === "open" ? "true" : toggleState === "closed" ? "false" : null;
     const controlledIds = (toggle.getAttribute("aria-controls") || "").trim().split(/\s+/u).filter(Boolean);
     const controlledPanels = controlledIds.map((id) => document.getElementById(id)).filter(Boolean);
     if (controlledPanels.length) {
@@ -348,6 +397,27 @@
     return null;
   }
 
+  function detectNativeLeftSidebar() {
+    const mainRect = measuredRect(findMain());
+    return [...document.querySelectorAll('[data-testid="sidebar"], [data-slot="sidebar"], aside, nav')]
+      .find((candidate) => leftDockedSidebar(candidate, mainRect))
+      || null;
+  }
+
+  function syncNativeLeftSidebar() {
+    const nextPanel = detectNativeLeftSidebar();
+    if (nativeLeftSidebarPanel !== nextPanel) {
+      syncClass(nativeLeftSidebarPanel, "denia-old-days-ds-native-left-sidebar", false);
+      nativeLeftSidebarPanel = nextPanel
+        ? touch(nextPanel, "denia-old-days-ds-native-left-sidebar")
+        : null;
+      return;
+    }
+    if (nextPanel && !nextPanel.classList.contains("denia-old-days-ds-native-left-sidebar")) {
+      touch(nextPanel, "denia-old-days-ds-native-left-sidebar");
+    }
+  }
+
   function clearNativeRightSidebarClasses() {
     syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
     for (const group of nativeSidebarGroups) syncClass(group, "denia-old-days-ds-native-sidebar-group", false);
@@ -381,13 +451,33 @@
     for (const node of nextNodes) currentNodes.add(node);
   }
 
+  function syncTaskLayoutMetrics() {
+    const main = findMain();
+    const threadScroll = main?.querySelector?.(".thread-scroll-container");
+    const mainRect = measuredRect(main);
+    const threadScrollRect = measuredRect(threadScroll);
+    const threadClientWidth = Number(threadScroll?.clientWidth);
+    if (!mainRect
+      || !threadScrollRect
+      || !Number.isFinite(threadClientWidth)
+      || threadClientWidth <= 0) return;
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const scrollbarGutter = Math.max(0, threadScrollRect.width - threadClientWidth);
+    const fullContentWidth = Math.max(0, viewportWidth - mainRect.left - scrollbarGutter);
+    const roundedWidth = Math.round(fullContentWidth * 1000) / 1000;
+    root.style.setProperty("--denia-thread-content-width", `${roundedWidth}px`);
+  }
+
   function syncNativeRightSidebar(home) {
+    syncTaskLayoutMetrics();
     const result = detectNativeRightSidebar();
+    const toggleState = result.toggle ? nativeToggleState(result.toggle) : "unknown";
     let nextPanel = null;
     const nextGroups = new Set();
     const nextRows = new Set();
     if (result.state === "open" && result.confidence === "high" && result.panel && result.panelRect) {
       const { panel, panelRect } = result;
+      root.style.setProperty("--denia-native-sidebar-width", `${panelRect.width}px`);
       nextPanel = panel;
       const rowCandidates = [...panel.querySelectorAll('button, a, [role="button"]')].filter((node) => {
         if (!visible(node) || ownedNodes.has(node)) return false;
@@ -432,10 +522,36 @@
       skinApplied: result.state === "open" && Boolean(result.panel),
       groupCount: nativeSidebarGroups.size,
       rowCount: nativeSidebarRows.size,
+      togglePresent: Boolean(result.toggle),
+      toggleState,
     };
     setDatasetValue(root, "deniaSidebarState", result.state);
     setDatasetValue(root, "deniaSidebarConfidence", result.confidence);
+    setDatasetValue(root, "deniaSidebarToggleState", toggleState);
     void home;
+  }
+
+  function syncNativeWorkSurfaces() {
+    const summaryToggle = findNativeToggle(nativeSummaryTogglePattern);
+    const bottomPanelToggle = findNativeToggle(nativeBottomPanelTogglePattern);
+    const summary = nativeToggleState(summaryToggle);
+    const bottomPanel = nativeToggleState(bottomPanelToggle);
+    const sidebarObscures = Boolean(state.sidebar?.togglePresent)
+      && state.sidebar.state !== "closed";
+    const workSurface = summary === "open"
+      || bottomPanel === "open"
+      || sidebarObscures
+      ? "open"
+      : "closed";
+    state.workSurfaces = {
+      summary,
+      bottomPanel,
+      rightSidebar: state.sidebar?.state || "closed",
+      open: workSurface === "open",
+    };
+    setDatasetValue(root, "deniaSummaryState", summary);
+    setDatasetValue(root, "deniaBottomPanelState", bottomPanel);
+    setDatasetValue(root, "deniaWorkSurfaceState", workSurface);
   }
 
   function findMain() {
@@ -443,9 +559,14 @@
   }
 
   function findComposer() {
-    const input = document.querySelector("textarea") || document.querySelector('[contenteditable="true"]');
-    if (!input) return null;
-    return input.closest(".composer-surface-chrome") || input.closest("form") || input.parentElement?.parentElement || input.parentElement;
+    const nativeComposer = [...document.querySelectorAll(".composer-surface-chrome")]
+      .find(layoutVisible);
+    if (nativeComposer) return nativeComposer;
+    const input = [...document.querySelectorAll('textarea, [contenteditable="true"]')]
+      .find((candidate) =>
+        !candidate.closest('.xterm, [id^="terminal-panel-"], [role="tabpanel"], dialog, [role="dialog"], aside, nav')
+        && Boolean(candidate.closest("form")));
+    return input?.closest("form") || null;
   }
 
   function nativeSuggestionButtons() {
@@ -456,11 +577,11 @@
       /fix|debug|修复|失败|问题/iu,
     ];
     const candidates = [...document.querySelectorAll("button")].filter((button) => {
-      if (!visible(button) || button.closest("#denia-old-days-ds-card-deck")) return false;
+      if (!layoutVisible(button) || button.closest("#denia-old-days-ds-card-deck")) return false;
       if (button.closest("aside, nav, .composer-surface-chrome")) return false;
       const text = (button.innerText || button.textContent || "").trim();
       return text.length > 2 && text.length < 180 && approved.some((pattern) => pattern.test(text));
-    });
+    }).sort((first, second) => Number(visible(second)) - Number(visible(first)));
     const semanticButtons = [];
     for (const pattern of approved) {
       const button = candidates.find((candidate) => {
@@ -472,6 +593,38 @@
       semanticButtons.push(button);
     }
     return semanticButtons;
+  }
+
+  function clearNativeHomePrompt() {
+    syncClass(nativeHomePrompt, "denia-old-days-ds-native-home-prompt", false);
+    nativeHomePrompt = null;
+  }
+
+  function syncNativeHomePrompt(nativeButtons) {
+    clearNativeHomePrompt();
+    const promptPattern = /(?:what should we build in|what would you like to build|想在.+中构建什么|要在.+中构建什么)/iu;
+    const title = [...document.querySelectorAll("span, h1, h2, h3, [role='heading']")]
+      .find((node) => {
+        if (isOwnedSubtree(node)) return false;
+        const directText = [...node.childNodes]
+          .filter((child) => child.nodeType === Node.TEXT_NODE)
+          .map((child) => child.textContent || "")
+          .join(" ")
+          .replace(/\s+/gu, " ")
+          .trim();
+        return promptPattern.test(directText);
+      });
+    if (!title) return null;
+
+    const titleText = normalizedNodeLabel(title);
+    let prompt = title;
+    while (prompt.parentElement
+      && normalizedNodeLabel(prompt.parentElement) === titleText
+      && !nativeButtons.some((button) => prompt.parentElement.contains(button))) {
+      prompt = prompt.parentElement;
+    }
+    nativeHomePrompt = touch(prompt, "denia-old-days-ds-native-home-prompt");
+    return nativeHomePrompt;
   }
 
   function nativeActionDisabled(button) {
@@ -492,6 +645,46 @@
     return assistants.length === 0 && nativeSuggestionButtons().length >= 3;
   }
 
+  function clearHomeViewportBinding() {
+    if (state.homeScrollFrame) cancelAnimationFrame(state.homeScrollFrame);
+    state.homeScrollFrame = 0;
+    if (state.homeScrollMain && state.homeScrollHandler) {
+      state.homeScrollMain.removeEventListener("scroll", state.homeScrollHandler);
+    }
+    state.homeScrollMain = null;
+    state.homeScrollHandler = null;
+    state.homeScrollAdjusting = false;
+  }
+
+  function bindHomeViewport(main) {
+    if (state.homeScrollMain === main && state.homeScrollHandler) return;
+    clearHomeViewportBinding();
+    state.homeScrollMain = main;
+    state.homeScrollHandler = () => {
+      if (state.homeScrollAdjusting || state.homeScrollFrame) return;
+      const maximum = Math.max(0, main.scrollHeight - main.clientHeight);
+      state.homeAutoPin = maximum - main.scrollTop <= 32;
+    };
+    main.addEventListener("scroll", state.homeScrollHandler, { passive: true });
+  }
+
+  function syncHomeViewport(main, settleFrames = 2) {
+    if (!main || !state.homeActive || !state.homeAutoPin) return;
+    bindHomeViewport(main);
+    if (state.homeScrollFrame) return;
+    let remaining = settleFrames;
+    const align = () => {
+      state.homeScrollFrame = 0;
+      if (!state.homeActive || !state.homeAutoPin || main.isConnected === false) return;
+      state.homeScrollAdjusting = true;
+      main.scrollTop = Math.max(0, main.scrollHeight - main.clientHeight);
+      state.homeScrollAdjusting = false;
+      remaining -= 1;
+      if (remaining > 0) state.homeScrollFrame = requestAnimationFrame(align);
+    };
+    state.homeScrollFrame = requestAnimationFrame(align);
+  }
+
   function ensureChrome() {
     let chrome = document.getElementById("denia-old-days-ds-chrome");
     if (!chrome) {
@@ -500,12 +693,6 @@
       chrome.className = "denia-old-days-ds-chrome";
       chrome.setAttribute("aria-hidden", "true");
       document.body.append(chrome);
-    }
-    if (!chrome.querySelector(".denia-old-days-ds-state-bubble")) {
-      const bubble = document.createElement("span");
-      bubble.className = "denia-old-days-ds-state-bubble";
-      bubble.setAttribute("aria-hidden", "true");
-      chrome.append(bubble);
     }
     ensureStateArt(chrome);
     return chrome;
@@ -618,6 +805,8 @@
       brand = null;
     }
     if (!sidebar) return null;
+    const brandHost = sidebar.matches("nav") ? sidebar : sidebar.querySelector("nav");
+    if (!brandHost) return null;
     brand = own(document.createElement("div"));
     brand.id = "denia-old-days-ds-sidebar-brand";
     brand.className = "denia-old-days-ds-sidebar-brand";
@@ -632,7 +821,7 @@
     subtitle.textContent = manifest.ui.sidebarSubtitle;
     copy.append(title, subtitle);
     brand.append(mark, copy);
-    sidebar.prepend(brand);
+    brandHost.insertBefore(brand, brandHost.children[1] || null);
     return brand;
   }
 
@@ -643,11 +832,38 @@
     brand.remove();
   }
 
+  function ensureHomeVisuals() {
+    let visuals = document.getElementById("denia-old-days-ds-home-visuals");
+    if (visuals?.isConnected && visuals.parentElement === document.body) return visuals;
+    if (visuals) {
+      visuals.remove();
+      ownedNodes.delete(visuals);
+    }
+    visuals = own(document.createElement("div"));
+    visuals.id = "denia-old-days-ds-home-visuals";
+    visuals.className = "denia-old-days-ds-home-visuals";
+    document.body.append(visuals);
+    return visuals;
+  }
+
+  function syncHomeVisualFrame(main) {
+    const visuals = document.getElementById("denia-old-days-ds-home-visuals");
+    const rect = measuredRect(main);
+    if (!visuals || !rect) return;
+    setStyleProperty(visuals, "--denia-home-visual-top", `${rect.top}px`);
+    setStyleProperty(visuals, "--denia-home-visual-left", `${rect.left}px`);
+    setStyleProperty(visuals, "--denia-home-visual-width", `${rect.width}px`);
+    setStyleProperty(visuals, "--denia-home-visual-height", `${rect.height}px`);
+  }
+
   function ensureHomeHero() {
     let hero = document.getElementById("denia-old-days-ds-hero-copy");
-    if (hero?.isConnected) return hero;
-    const main = findMain();
-    if (!main) return null;
+    const visuals = ensureHomeVisuals();
+    if (!visuals) return null;
+    if (hero?.isConnected) {
+      if (hero.parentElement !== visuals) visuals.append(hero);
+      return hero;
+    }
     hero = own(document.createElement("section"));
     hero.id = "denia-old-days-ds-hero-copy";
     hero.className = "denia-old-days-ds-hero denia-old-days-ds-intro";
@@ -678,8 +894,7 @@
     bubbles.innerHTML = "<i></i><i></i><i></i>";
     hero.append(copy, photo, bubbles);
 
-    const firstContent = [...main.children].find((node) => !node.classList?.contains("denia-old-days-ds-hero"));
-    main.insertBefore(hero, firstContent || null);
+    visuals.append(hero);
     return hero;
   }
 
@@ -688,8 +903,6 @@
     const hero = ensureHomeHero();
     if (!hero) return null;
     if (slot?.isConnected && slot.parentElement === hero.parentElement) {
-      const siblings = [...hero.parentElement.children];
-      if (siblings[siblings.indexOf(hero) + 1] !== slot) hero.insertAdjacentElement("afterend", slot);
       return slot;
     }
     if (slot) {
@@ -702,7 +915,7 @@
     if (state.suggestionSlotHeight > 0) {
       setStyleProperty(slot, "--denia-old-days-suggestion-slot-height", `${state.suggestionSlotHeight}px`);
     }
-    hero.insertAdjacentElement("afterend", slot);
+    hero.parentElement.append(slot);
     return slot;
   }
 
@@ -714,6 +927,7 @@
   }
 
   function restoreNativeSuggestionClasses() {
+    clearNativeHomePrompt();
     for (const node of touchedNodes) {
       syncClass(node, "denia-old-days-ds-native-card", false);
       syncClass(node, "denia-old-days-ds-native-suggestions", false);
@@ -781,28 +995,38 @@
     return composer;
   }
 
-  function errorVisible() {
+  function nativeTurnState() {
+    const latestAssistant = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')].at(-1);
+    const turnNode = latestAssistant?.closest("[data-turn-key]")
+      || [...document.querySelectorAll("[data-turn-key]")].at(-1);
+    const fiberKey = turnNode && Object.keys(turnNode).find((key) => key.startsWith("__reactFiber$"));
+    let fiber = fiberKey ? turnNode[fiberKey] : null;
+    let turn = null;
+    for (let depth = 0; fiber && depth < 8 && !turn; depth += 1, fiber = fiber.return) {
+      const props = fiber.memoizedProps;
+      turn = [props?.entry?.turn, props?.turn, props?.mcpTurn]
+        .find((candidate) => candidate && typeof candidate === "object" && candidate.status != null) || null;
+    }
+    if (!turn) return null;
+    const normalizeStatus = (value) => String(value || "").replace(/[\s_-]+/gu, "").toLowerCase();
+    const status = normalizeStatus(turn.status);
+    const running = ["inprogress", "pending", "running"].includes(status);
+    return {
+      running,
+      terminal: !running && ["completed", "failed", "error", "interrupted", "cancelled", "canceled"].includes(status),
+      failed: !running && (
+        ["failed", "error", "interrupted", "cancelled", "canceled"].includes(status)
+        || Boolean(turn.error)
+      ),
+    };
+  }
+
+  function errorVisible(turnState) {
     const stableMarkers = document.querySelectorAll('[data-state="error"], [data-status="error"], [data-testid*="error"]');
     if ([...stableMarkers].some(visible)) return true;
     if ([...document.querySelectorAll('[role="alert"]')]
       .some((node) => visible(node) && /error|failed|failure|错误|失败/iu.test(node.textContent || node.getAttribute("aria-label") || ""))) return true;
-    return explicitCommandFailureVisible();
-  }
-
-  function explicitCommandFailureVisible() {
-    const latestAssistant = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')].at(-1);
-    if (!latestAssistant) return false;
-    return [...latestAssistant.querySelectorAll("p")].some((paragraph) => {
-      if (!visible(paragraph)
-        || paragraph.closest('pre, code, [data-content-search-unit-key$=":user"]')
-        || paragraph.querySelector("pre, code")) return false;
-      const text = (paragraph.textContent || "").replace(/\s+/gu, " ").trim();
-      if (!text || text.length > 240) return false;
-      if (!/^(?:测试错误已触发[:：]|命令执行失败[:：]|command failed:)/iu.test(text)) return false;
-      if (!/(?:command not found|命令未找到)/iu.test(text)) return false;
-      const status = /(?:退出码为|exit code|exited with status)\s*(\d+)(?![\p{L}\p{N}_])/iu.exec(text)?.[1];
-      return status != null && Number.parseInt(status, 10) !== 0;
-    });
+    return turnState?.failed === true;
   }
 
   function approvalVisible() {
@@ -827,7 +1051,8 @@
       .some((node) => visible(node) && /approve|allow|confirm|review changes|批准|允许|确认|审阅更改/iu.test(node.textContent || node.getAttribute("aria-label") || ""));
   }
 
-  function workingVisible() {
+  function workingVisible(turnState) {
+    if (turnState?.running) return true;
     const statusNode = document.querySelector('[aria-busy="true"], [data-state="loading"], [data-status="running"], [role="progressbar"]');
     if (statusNode && visible(statusNode)) return true;
     return [...document.querySelectorAll("button")]
@@ -835,9 +1060,11 @@
   }
 
   function deriveFormState() {
-    if (errorVisible()) return "error";
+    const turnState = nativeTurnState();
+    if (errorVisible(turnState)) return "error";
     if (approvalVisible()) return "approval";
-    if (workingVisible()) return "working";
+    if (workingVisible(turnState)) return "working";
+    if (turnState?.terminal) return "complete";
     if (document.querySelector('[data-content-search-unit-key$=":assistant"]')) return "complete";
     return "staged";
   }
@@ -864,7 +1091,12 @@
 
   function removeHomeNodes() {
     restoreNativeSuggestionClasses();
-    for (const id of ["denia-old-days-ds-card-deck", "denia-old-days-ds-suggestion-slot", "denia-old-days-ds-hero-copy"]) {
+    for (const id of [
+      "denia-old-days-ds-card-deck",
+      "denia-old-days-ds-suggestion-slot",
+      "denia-old-days-ds-hero-copy",
+      "denia-old-days-ds-home-visuals",
+    ]) {
       const node = document.getElementById(id);
       if (!node) continue;
       node.remove();
@@ -876,17 +1108,32 @@
   function refresh() {
     state.metrics.refreshes += 1;
     ensureChrome();
-    decorateComposer();
+    const composer = decorateComposer();
     const home = isHomeView();
+    const enteringHome = home && !state.homeActive;
+    const homeSurfaceChanged = home && (
+      state.homeScrollMain !== findMain()
+      || state.homeComposer !== composer
+    );
+    state.homeActive = home;
     syncClass(root, "denia-old-days-ds-home", home);
     syncClass(root, "denia-old-days-ds-task", !home);
+    syncNativeLeftSidebar();
     syncNativeRightSidebar(home);
+    syncNativeWorkSurfaces();
     if (home) {
       ensureSidebarBrand();
       state.formState = "staged";
       ensureHomeHero();
       ensureSuggestionDeck();
+      syncHomeVisualFrame(findMain());
+      if (enteringHome || homeSurfaceChanged) state.homeAutoPin = true;
+      state.homeComposer = composer;
+      syncHomeViewport(findMain(), enteringHome || homeSurfaceChanged ? 60 : 2);
     } else {
+      state.homeAutoPin = false;
+      state.homeComposer = null;
+      clearHomeViewportBinding();
       removeSidebarBrand();
       removeHomeNodes();
       state.formState = deriveFormState();
@@ -897,11 +1144,26 @@
   }
 
   function scheduleRefresh() {
+    cancelStyleRefresh();
     if (state.frame) return;
     state.frame = requestAnimationFrame(() => {
       state.frame = 0;
       refresh();
     });
+  }
+
+  function cancelStyleRefresh() {
+    if (!state.styleRefreshTimer) return;
+    clearTimeout(state.styleRefreshTimer);
+    state.styleRefreshTimer = 0;
+  }
+
+  function scheduleStyleRefresh() {
+    cancelStyleRefresh();
+    state.styleRefreshTimer = setTimeout(() => {
+      state.styleRefreshTimer = 0;
+      scheduleRefresh();
+    }, 80);
   }
 
   function extensionClassDeltaOnly(record) {
@@ -926,6 +1188,38 @@
     return false;
   }
 
+  function mutationIsTerminalChurn(record) {
+    return Boolean(record.target?.closest?.('.xterm, [id^="terminal-panel-"]'));
+  }
+
+  function mutationIsEditorColorProbe(record) {
+    if (record.type !== "childList" || record.target !== document.body) return false;
+    const nodes = [...record.addedNodes, ...record.removedNodes];
+    return nodes.length > 0 && nodes.every((node) =>
+      node?.tagName === "DIV"
+      && !node.id
+      && !String(node.className || "").trim()
+      && !String(node.textContent || "").trim()
+      && node.children?.length === 0
+      && node.style?.getPropertyValue("display") === "none"
+      && node.style?.getPropertyValue("background-color") === "var(--color-token-editor-background)");
+  }
+
+  function mutationIsNativeSidebarToggleState(record) {
+    return record.type === "attributes"
+      && ["aria-expanded", "aria-pressed", "data-state"].includes(record.attributeName)
+      && record.target?.matches?.("button")
+      && nativeSidebarTogglePattern.test(normalizedNodeLabel(record.target));
+  }
+
+  function mutationIsNativeWorkSurfaceToggleState(record) {
+    return record.type === "attributes"
+      && ["aria-expanded", "aria-pressed", "data-state"].includes(record.attributeName)
+      && record.target?.matches?.("button")
+      && nativeWorkSurfaceTogglePatterns.some((pattern) =>
+        pattern.test(normalizedNodeLabel(record.target)));
+  }
+
   function on(target, name, handler) {
     target.addEventListener(name, handler);
     listeners.push([target, name, handler]);
@@ -934,7 +1228,11 @@
   function cleanup() {
     state.observer?.disconnect();
     if (state.frame) cancelAnimationFrame(state.frame);
+    cancelStyleRefresh();
+    clearHomeViewportBinding();
     for (const [target, name, handler] of listeners) target.removeEventListener(name, handler);
+    syncClass(nativeLeftSidebarPanel, "denia-old-days-ds-native-left-sidebar", false);
+    nativeLeftSidebarPanel = null;
     clearNativeRightSidebarClasses();
     removeHomeNodes();
     for (const node of [...ownedNodes]) {
@@ -955,6 +1253,12 @@
     delete root.dataset.deniaFormState;
     delete root.dataset.deniaSidebarState;
     delete root.dataset.deniaSidebarConfidence;
+    delete root.dataset.deniaSidebarToggleState;
+    delete root.dataset.deniaSummaryState;
+    delete root.dataset.deniaBottomPanelState;
+    delete root.dataset.deniaWorkSurfaceState;
+    root.style.removeProperty("--denia-native-sidebar-width");
+    root.style.removeProperty("--denia-thread-content-width");
     for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
       root.style.removeProperty(`--denia-old-days-art-${name}`);
     }
@@ -980,7 +1284,27 @@
     });
   }
   state.observer = new MutationObserver((records) => {
-    if (records.some((record) => !mutationIsThemeOnly(record))) scheduleRefresh();
+    const relevantRecords = records.filter((record) =>
+      !mutationIsThemeOnly(record)
+      && !mutationIsTerminalChurn(record)
+      && !mutationIsEditorColorProbe(record));
+    const toggleRecords = relevantRecords.filter(mutationIsNativeWorkSurfaceToggleState);
+    if (toggleRecords.length) {
+      if (toggleRecords.some(mutationIsNativeSidebarToggleState)) {
+        syncNativeRightSidebar(state.homeActive);
+      }
+      syncNativeWorkSurfaces();
+    }
+    const refreshRecords = relevantRecords.filter((record) =>
+      !mutationIsNativeWorkSurfaceToggleState(record));
+    const hasSemanticRefresh = refreshRecords.some((record) =>
+      record.type !== "attributes" || record.attributeName !== "style");
+    if (hasSemanticRefresh) {
+      if (toggleRecords.length) scheduleStyleRefresh();
+      else if (!state.styleRefreshTimer) scheduleRefresh();
+    } else if (refreshRecords.length) {
+      scheduleStyleRefresh();
+    }
   });
   state.observer.observe(document.body || root, {
     childList: true,
@@ -993,6 +1317,7 @@
       "aria-disabled",
       "aria-expanded",
       "aria-hidden",
+      "aria-pressed",
       "hidden",
       "data-state",
       "data-status",

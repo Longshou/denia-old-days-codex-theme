@@ -169,6 +169,7 @@ const cleanupExpression = `(() => {
     'denia-old-days-dream-skin-extension-style',
     'denia-old-days-ds-chrome',
     'denia-old-days-ds-sidebar-brand',
+    'denia-old-days-ds-home-visuals',
     'denia-old-days-ds-hero-copy',
     'denia-old-days-ds-hero-badge',
     'denia-old-days-ds-stage-pass',
@@ -182,6 +183,9 @@ const cleanupExpression = `(() => {
   delete root.dataset.deniaFormState;
   delete root.dataset.deniaSidebarState;
   delete root.dataset.deniaSidebarConfidence;
+  delete root.dataset.deniaSidebarToggleState;
+  root.style.removeProperty('--denia-native-sidebar-width');
+  root.style.removeProperty('--denia-thread-content-width');
   root.style.removeProperty('--denia-old-days-art-bright');
   root.style.removeProperty('--denia-old-days-art-task-warm');
   root.style.removeProperty('--denia-old-days-art-task-approval');
@@ -224,6 +228,8 @@ const verifyExpression = `(() => {
   const root = document.documentElement;
   const home = root.classList.contains('denia-old-days-ds-home');
   const chrome = document.getElementById('denia-old-days-ds-chrome');
+  const homeVisuals = document.getElementById('denia-old-days-ds-home-visuals');
+  const homeVisualsStyle = homeVisuals ? getComputedStyle(homeVisuals) : null;
   const hero = document.querySelector('.denia-old-days-ds-hero');
   const photoFront = document.querySelector('.denia-old-days-ds-photo-front');
   const runtimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-bright').trim();
@@ -423,6 +429,13 @@ const verifyExpression = `(() => {
     home,
     taskMode: root.classList.contains('denia-old-days-ds-task'),
     formState,
+    homeVisuals: homeVisualsStyle ? {
+      ...box(homeVisuals),
+      position: homeVisualsStyle.position,
+      overflow: homeVisualsStyle.overflow,
+      contain: homeVisualsStyle.contain,
+      parentIsBody: homeVisuals.parentElement === document.body,
+    } : null,
     heroCopy: box(document.getElementById('denia-old-days-ds-hero-copy')),
     suggestionSlot: suggestionSlot ? {
       ...box(suggestionSlot),
@@ -468,13 +481,35 @@ const verifyExpression = `(() => {
     || result.composerBefore.display === 'none'
     || result.composerBefore.content === 'none'
     || result.composerBefore.content === 'normal';
+  result.homeLayoutPreserved = !home || Boolean(
+    homeVisuals
+      && homeVisualsStyle?.position === 'fixed'
+      && homeVisualsStyle?.overflow === 'hidden'
+      && homeVisuals.parentElement === document.body
+      && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === homeVisuals
+      && suggestionSlot?.parentElement === homeVisuals
+      && suggestions?.parentElement === suggestionSlot
+      && document.querySelectorAll('.denia-old-days-ds-native-home-prompt').length === 0
+  );
+  const composerRect = composer?.getBoundingClientRect?.() || null;
+  result.composerViewportPass = !home || Boolean(
+    composerRect
+      && composerRect.top >= 0
+      && composerRect.bottom <= innerHeight - 8
+  );
   const sidebarBrandPass = home
     ? safeLeftSidebarHost
       ? sidebarBrandVisible && sidebarBrandContainedBySafeHost && !sidebarBrandInNativeRightPanel
       : !sidebarBrandNode
     : !sidebarBrandNode;
   const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && sidebarBrandPass && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
-  const homePass = !home || (result.heroUsesRuntimeArt && Boolean(result.heroCopy?.visible) && result.visibleCardCount === 4 && result.clickableCardCount === 4);
+  const homePass = !home || (
+    result.homeLayoutPreserved
+      && result.heroUsesRuntimeArt
+      && Boolean(result.heroCopy?.visible)
+      && result.visibleCardCount === 4
+      && result.clickableCardCount === 4
+  );
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
   const railMustBeHidden = innerWidth <= 919 || sidebarOpen || sidebarState === 'unknown';
   const railMatchesState = home || (railMustBeHidden
@@ -630,24 +665,34 @@ async function openHomeRoute(session) {
     candidate.click();
     return true;
   })()`);
-  if (clicked) {
-    let stableSamples = 0;
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await delay(100);
-      const ready = await session.evaluate(`(() => {
-        const home = document.querySelector('[role="main"].dream-skin-home');
-        const deck = document.getElementById('denia-old-days-ds-card-deck');
-        const cards = deck ? [...deck.querySelectorAll('button[data-denia-old-days-card]')] : [];
-        return Boolean(home && cards.length === 4 && cards.every((button) => {
-          const box = button.getBoundingClientRect();
-          const style = getComputedStyle(button);
-          return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0;
-        }));
-      })()`);
-      stableSamples = ready ? stableSamples + 1 : 0;
-      if (stableSamples >= 2) break;
-    }
+  let stableSamples = 0;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await delay(100);
+    const ready = await session.evaluate(`(() => {
+      const home = document.querySelector('[role="main"].dream-skin-home');
+      if (home) home.scrollTop = home.scrollHeight;
+      const composer = document.querySelector('.composer-surface-chrome');
+      const box = composer?.getBoundingClientRect();
+      const visuals = document.getElementById('denia-old-days-ds-home-visuals');
+      const deck = document.getElementById('denia-old-days-ds-card-deck');
+      const cards = deck ? [...deck.querySelectorAll('button[data-denia-old-days-card]')] : [];
+      return Boolean(home
+        && box?.width > 0
+        && box?.height > 0
+        && box.bottom <= innerHeight - 8
+        && visuals?.parentElement === document.body
+        && getComputedStyle(visuals).position === 'fixed'
+        && document.getElementById('denia-old-days-ds-hero-copy')?.parentElement === visuals
+        && cards.length === 4);
+    })()`);
+    stableSamples = ready ? stableSamples + 1 : 0;
+    if (stableSamples >= 3) break;
   }
+  await session.evaluate(`(() => {
+    const home = document.querySelector('[role="main"].dream-skin-home');
+    if (home) home.scrollTop = home.scrollHeight;
+  })()`);
+  await delay(150);
 }
 
 async function captureScreenshot(session, outputPath) {
@@ -680,6 +725,9 @@ async function runOnce(operation) {
       } else if (operation === "verify") {
         if (openHome) await openHomeRoute(session);
         const result = await session.evaluate(verifyExpression);
+        if (openHome && (!result?.home || !result?.homeLayoutPreserved || !result?.composerViewportPass)) {
+          throw new Error("Home verification requires preserved native layout and an in-viewport composer");
+        }
         if (screenshotPath) await captureScreenshot(session, path.resolve(screenshotPath));
         results.push({ targetId: target.id, result });
       }
