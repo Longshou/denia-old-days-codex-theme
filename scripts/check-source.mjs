@@ -58,6 +58,15 @@ for (const retiredFragment of [
     throw new Error(`background still contains retired decoration: ${retiredFragment}`);
   }
 }
+for (const spineFragment of [
+  "M948 145V960",
+  "M965 154V953",
+  "M923 234c-42-32-42 64 0 32h49c42 32 42-64 0-32z",
+]) {
+  if (backgroundSource.includes(spineFragment)) {
+    throw new Error(`background must not contain a center spine: ${spineFragment}`);
+  }
+}
 for (const marker of [
   "renderHomePreview",
   "renderTaskPreview",

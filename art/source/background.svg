@@ -42,16 +42,6 @@
     <path d="M206 122Q185 122 185 148V939Q185 964 211 964H948V142Q721 96 512 127Z" fill="url(#paper)" stroke="#9ccfd8" stroke-opacity=".45"/>
     <path d="M948 142V964H1697Q1724 964 1724 937V153Q1724 126 1697 128L1367 105Q1142 100 948 142Z" fill="url(#paper)" stroke="#9ccfd8" stroke-opacity=".45"/>
   </g>
-  <path d="M948 145V960" stroke="#88bdc8" stroke-width="2" opacity=".45"/>
-  <path d="M965 154V953" stroke="#fffdf9" stroke-width="8" opacity=".75"/>
-  <g fill="none" stroke="#6e9aa8" stroke-width="8" opacity=".6">
-    <path d="M923 234c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
-    <path d="M923 358c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
-    <path d="M923 482c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
-    <path d="M923 606c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
-    <path d="M923 730c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
-    <path d="M923 854c-42-32-42 64 0 32h49c42 32 42-64 0-32z"/>
-  </g>
   <g opacity=".46" fill="none" stroke="#8fd2dd">
     <path d="M272 286H826M272 356H826M272 426H826M272 496H826M272 566H826M272 636H826M272 706H826M272 776H826"/>
     <path d="M1087 286H1614M1087 356H1614M1087 426H1614M1087 496H1614M1087 566H1614M1087 636H1614M1087 706H1614M1087 776H1614" opacity=".55"/>

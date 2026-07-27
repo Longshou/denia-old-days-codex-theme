@@ -55,19 +55,6 @@
   contain: strict;
 }
 
-.denia-old-days-ds-chrome::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 36px;
-  opacity: 0.2;
-  transform: translateX(-50%);
-  background:
-    radial-gradient(ellipse at center, transparent 0 36%, rgba(89, 132, 145, 0.24) 38% 48%, transparent 50%) center 70px / 36px 124px repeat-y;
-}
-
 .denia-old-days-ds-state-art {
   position: absolute;
   inset: 46px 0 0 auto;
@@ -305,18 +292,6 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
     linear-gradient(90deg, rgba(255, 250, 246, 0.97) 0 50%, rgba(238, 249, 248, 0.9) 50%),
     repeating-linear-gradient(0deg, transparent 0 39px, rgba(111, 184, 231, 0.09) 39px 40px);
   box-shadow: var(--denia-shadow);
-}
-
-.denia-old-days-ds-hero::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 24px;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse, transparent 0 35%, rgba(91, 136, 149, 0.24) 38% 48%, transparent 51%) center 42px / 24px 92px repeat-y;
-  pointer-events: none;
 }
 
 .denia-old-days-ds-hero-text {
@@ -944,10 +919,6 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 }
 
 @media (max-width: 919px) {
-  .denia-old-days-ds-chrome::before {
-    display: none;
-  }
-
   .denia-old-days-ds-state-art {
     display: none;
   }
@@ -973,10 +944,6 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
     margin-top: 16px;
     padding: 26px 24px;
     border-radius: 22px;
-  }
-
-  .denia-old-days-ds-hero::before {
-    display: none;
   }
 
   .denia-old-days-ds-hero h1 {

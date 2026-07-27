@@ -270,6 +270,15 @@ for (const token of [
 ]) assert(activeStyles.includes(token), `stylesheet missing ${token}`);
 
 const stylesheetRules = parseCssRules(cssSyntax);
+for (const selector of [
+  ".denia-old-days-ds-chrome::before",
+  ".denia-old-days-ds-hero::before",
+]) {
+  assert(
+    !stylesheetRules.some((rule) => rule.selectors.includes(selector)),
+    `stylesheet must not define center-spine selector ${selector}`,
+  );
+}
 assert(
   !stylesheetRules.some((rule) =>
     rule.selectors.includes(".denia-old-days-ds-extension ::selection")),
