@@ -3523,6 +3523,13 @@ function assertIncrementalTaskDecoration(payload) {
     "incremental decoration must not retouch historical observations",
   );
 
+  const removedBeforeRefresh = harness.document.createElement("details");
+  main.append(removedBeforeRefresh);
+  removedBeforeRefresh.remove();
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(!removedBeforeRefresh.classList.contains("denia-old-days-ds-observation"), "a root removed before its pending refresh must not receive observation decoration");
+
   const firstAssistant = harness.document.createElement("div");
   firstAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
   const latestAssistant = harness.document.createElement("div");
@@ -3544,6 +3551,25 @@ function assertIncrementalTaskDecoration(payload) {
   harness.flushAnimationFrames();
   assert(state.formState !== "complete", "removing the final assistant must leave the complete state");
   assert(!firstAssistant.classList.contains("denia-old-days-ds-final-card"), "non-complete state must remove final-card decoration");
+
+  const oldAssistant = harness.document.createElement("div");
+  oldAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  main.append(oldAssistant);
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(oldAssistant.classList.contains("denia-old-days-ds-final-card"), "the old main must have a final card before replacement");
+
+  const replacementMain = harness.document.createElement("main");
+  replacementMain.setAttribute("role", "main");
+  const replacementAssistant = harness.document.createElement("div");
+  replacementAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  replacementMain.append(replacementAssistant);
+  main.remove();
+  harness.document.body.append(replacementMain);
+  harness.flushMutations();
+  harness.flushAnimationFrames();
+  assert(!oldAssistant.classList.contains("denia-old-days-ds-final-card"), "replacing the task main must clear the disconnected final card");
+  assert(replacementAssistant.classList.contains("denia-old-days-ds-final-card"), "replacing the task main must decorate its latest assistant");
   state.cleanup();
 }
 
@@ -3629,6 +3655,14 @@ function assertFormStateRecognition(payload) {
       ["测试错误已触发： command not found，退出码为 127。"],
     )) === "complete",
     "assistant failure wording alone must not select error",
+  );
+  assert(
+    runCase(({ document }) => {
+      const outsideAssistant = document.createElement("div");
+      outsideAssistant.setAttribute("data-content-search-unit-key", "outside:assistant");
+      document.body.append(outsideAssistant);
+    }) === "staged",
+    "an assistant outside the current main must not change task state",
   );
   assert(
     runCase((fixture) => appendContentUnit(

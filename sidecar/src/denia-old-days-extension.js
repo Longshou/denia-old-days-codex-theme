@@ -725,7 +725,7 @@
     const main = findMain();
     if (!main) return false;
     if (main.matches(".dream-skin-home") || main.querySelector(".dream-skin-home")) return true;
-    const assistants = document.querySelectorAll('[data-content-search-unit-key$=":assistant"]');
+    const assistants = main.querySelectorAll(assistantSelector);
     return assistants.length === 0 && Boolean(findNativeHomeTitle());
   }
 
@@ -964,9 +964,10 @@
   }
 
   function nativeTurnState() {
-    const latestAssistant = [...document.querySelectorAll('[data-content-search-unit-key$=":assistant"]')].at(-1);
+    const main = findMain();
+    const latestAssistant = main ? [...main.querySelectorAll(assistantSelector)].at(-1) : null;
     const turnNode = latestAssistant?.closest("[data-turn-key]")
-      || [...document.querySelectorAll("[data-turn-key]")].at(-1);
+      || (main ? [...main.querySelectorAll("[data-turn-key]")].at(-1) : null);
     const fiberKey = turnNode && Object.keys(turnNode).find((key) => key.startsWith("__reactFiber$"));
     let fiber = fiberKey ? turnNode[fiberKey] : null;
     let turn = null;
@@ -1033,12 +1034,13 @@
     if (approvalVisible()) return "approval";
     if (workingVisible(turnState)) return "working";
     if (turnState?.terminal) return "complete";
-    if (document.querySelector('[data-content-search-unit-key$=":assistant"]')) return "complete";
+    if (findMain()?.querySelector(assistantSelector)) return "complete";
     return "staged";
   }
 
   function decorateTaskRoots(roots) {
     for (const decorationRoot of roots) {
+      if (!decorationRoot?.isConnected) continue;
       if (decorationRoot?.matches?.(observationSelector)) {
         touch(decorationRoot, "denia-old-days-ds-observation");
         setDatasetValue(decorationRoot, "deniaObservationLabel", "观察记录");
@@ -1321,6 +1323,15 @@
         .some((candidate) => controlledIds.has(candidate.id)));
   }
 
+  function childListReplacesMain(record, main) {
+    if (record.type !== "childList") return false;
+    return [...record.addedNodes, ...record.removedNodes].some((node) =>
+      node === main
+      || node?.contains?.(main)
+      || node?.matches?.('main, [role="main"]')
+      || node?.querySelector?.('main, [role="main"]'));
+  }
+
   function classifySemanticRecord(record, main, decorationRoots) {
     let mask = 0;
     const insideTaskMain = !state.homeActive
@@ -1349,6 +1360,7 @@
       } else {
         if (childListContainsComposer(record)) invalidateComposerCache();
         mask |= STRUCTURE_DIRTY;
+        if (childListReplacesMain(record, main)) mask |= DIRTY.TASK_STATE | DIRTY.ART;
       }
       return mask;
     }
