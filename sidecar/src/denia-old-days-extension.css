@@ -150,6 +150,12 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
   contain: strict;
 }
 
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main.main-surface:not(.dream-skin-home-shell) > .denia-old-days-ds-chrome {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
 .denia-old-days-ds-state-art {
   position: absolute;
   inset: 46px 0 0 auto;

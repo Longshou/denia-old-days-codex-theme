@@ -263,6 +263,7 @@ const verifyExpression = `(() => {
   const sidebarOpen = sidebarState === "open";
   const sidebarArtVisible = box(stateArtRail)?.visible === true;
   const nativeMain = document.querySelector('[role="main"]') || document.querySelector("main");
+  const chromeHostedByMain = Boolean(!home && chrome?.parentElement === nativeMain);
   const panelRect = nativeSidebar?.getBoundingClientRect?.() || null;
   const mainRect = nativeMain?.getBoundingClientRect?.() || null;
   const panelRight = panelRect && (Number.isFinite(panelRect.right) ? panelRect.right : panelRect.x + panelRect.width);
@@ -303,7 +304,7 @@ const verifyExpression = `(() => {
     groupCount: nativeSidebarGroups.length,
     rowCount: nativeSidebarRows.length,
     artVisible: sidebarArtVisible,
-    homeNoCharacterPass: !home || sidebarState === "closed" || !sidebarArtVisible,
+    homeNoCharacterPass: !home || !sidebarArtVisible,
     taskReadabilityPass: home || !sidebarOpen || Boolean(
       uniqueVisiblePanelPass && nativeGeometryPass && sidebarSkinsContained
     ),
@@ -448,6 +449,7 @@ const verifyExpression = `(() => {
     } : null,
     task: !home ? {
       stateArtPresent: Boolean(stateArtUrl),
+      chromeHostedByMain,
       rail: taskRailStyle ? {
         ...box(stateArtRail),
         display: taskRailStyle.display,
@@ -501,7 +503,7 @@ const verifyExpression = `(() => {
       && result.nativeHomeSuggestions.hidden
   );
   const validTaskState = ['staged', 'working', 'approval', 'error', 'complete'].includes(result.formState);
-  const railMustBeHidden = innerWidth <= 919 || sidebarOpen || sidebarState === 'unknown';
+  const railMustBeHidden = innerWidth <= 919;
   const railMatchesState = home || (railMustBeHidden
     ? result.task?.rail?.display === 'none' || result.task?.rail?.visible === false
     : result.task?.rail?.visible === true
@@ -517,18 +519,18 @@ const verifyExpression = `(() => {
       && sidebarSkinsContained
       && result.sidebar.nativeGeometryPass
       && result.sidebar.toggleHitTargetPass
-      && !result.sidebar.artVisible
       && result.sidebar.homeNoCharacterPass
       && result.sidebar.taskReadabilityPass
     : sidebarState === 'closed'
       ? noSidebarSkin && (home || railMatchesState)
-      : noSidebarSkin && !result.sidebar.artVisible && result.sidebar.homeNoCharacterPass);
+      : noSidebarSkin && result.sidebar.homeNoCharacterPass && (home || railMatchesState));
   const observationsPass = home || result.task?.nativeObservationCount === 0
     || result.task?.decoratedObservationCount >= result.task?.nativeObservationCount;
   const finalCardPass = home || (result.formState === 'complete'
     ? Boolean(result.task?.finalCard?.visible) && result.task?.finalCardIsLatestAssistant === true
     : !result.task?.finalCard);
   const taskPass = home || (result.taskMode && validTaskState && result.task?.stateArtPresent === true
+    && result.task?.chromeHostedByMain === true
     && railMatchesState && sidebarPass && observationsPass && finalCardPass);
   result.taskPass = Boolean(taskPass);
   result.pass = Boolean(basePass && homePass && sidebarPass && result.taskPass);

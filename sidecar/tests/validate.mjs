@@ -478,6 +478,13 @@ assertCssDeclarations(stylesheetRules, taskRailSelector, {
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-chrome", {
   "z-index": "-1",
 });
+const taskChromeCascadeSelector =
+  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main.main-surface:not(.dream-skin-home-shell) > .denia-old-days-ds-chrome";
+assertCssDeclarations(stylesheetRules, taskChromeCascadeSelector, {
+  position: "fixed",
+  inset: "0",
+  "z-index": "-1",
+});
 assert(!activeStyles.includes(".denia-old-days-ds-task .denia-old-days-ds-chrome::after"), "retired pseudo-element task rail must be removed");
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer", {
   position: "absolute",
@@ -2558,6 +2565,7 @@ function assertLiveTaskVerification(loaderSource) {
     toggleHitTarget = true,
     toggleRect = { x: 1140, y: 8, width: 40, height: 32 },
     home = false,
+    chromeHostedByMain = true,
     includeSafeLeftHost = home,
     safeLeftHostRect = { x: 0, y: 46, width: 280, height: 754 },
     decorateObservation = true,
@@ -2624,6 +2632,7 @@ function assertLiveTaskVerification(loaderSource) {
     main.scrollHeight = mainRect.height;
     main.clientHeight = mainRect.height;
     main.scrollTop = 0;
+    chrome.parentElement = chromeHostedByMain ? main : body;
     if (homeVisuals) homeVisuals.parentElement = body;
     if (heroCopy) heroCopy.parentElement = homeVisuals;
     const toggle = togglePresent ? makeNode([], {}, toggleRect) : null;
@@ -2797,20 +2806,24 @@ function assertLiveTaskVerification(loaderSource) {
     "live task verification must reject complete state without a final response card",
   );
   assert(
-    runCase({ formState: "working", sidebarState: "open", railDisplay: "none" }).taskPass === true,
-    "live task verification must accept an open skinned sidebar with hidden state artwork",
+    runCase({ formState: "working", sidebarState: "open" }).taskPass === true,
+    "live task verification must accept persistent artwork behind a valid open sidebar",
   );
   assert(
-    runCase({ formState: "working", sidebarState: "open" }).taskPass === false,
-    "live task verification must reject visible state artwork while the sidebar is open",
+    runCase({ formState: "working", sidebarState: "open", railDisplay: "none" }).taskPass === false,
+    "live task verification must reject hidden task artwork while the sidebar is open",
   );
   assert(
-    runCase({ formState: "working", sidebarState: "unknown", railDisplay: "none" }).taskPass === true,
-    "live task verification must accept unknown sidebar detection only when state artwork is hidden",
+    runCase({ formState: "working", sidebarState: "unknown" }).taskPass === true,
+    "live task verification must retain task artwork during uncertain sidebar transitions",
   );
   assert(
-    runCase({ formState: "working", sidebarState: "unknown" }).taskPass === false,
-    "live task verification must reject visible state artwork while sidebar detection is unknown",
+    runCase({ formState: "working", sidebarState: "unknown", railDisplay: "none" }).taskPass === false,
+    "live task verification must reject hidden artwork during uncertain sidebar transitions",
+  );
+  assert(
+    runCase({ formState: "working", chromeHostedByMain: false }).taskPass === false,
+    "live task verification must reject task chrome outside the native main",
   );
   assert(
     runCase({ formState: "working", sidebarState: "unknown", railDisplay: "none", nativeSidebarGroupCount: 1 }).taskPass === false,
