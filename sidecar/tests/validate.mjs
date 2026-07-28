@@ -206,9 +206,12 @@ assert(loader.includes("--denia-old-days-art-bright"), "live verification must r
 assert(loader.includes("denia-old-days-ds-home-visuals"), "loader cleanup and verification must recognize the out-of-flow home visual layer");
 assert(loader.includes("homeLayoutPreserved"), "live verification must enforce native home layout preservation");
 assert(loader.includes("composerViewportPass"), "live verification must keep the home composer inside the viewport");
+assert(!runtime.includes("ensureSidebarBrand"), "the theme must not inject a Denia brand marker into the native sidebar");
+assert(!runtime.includes("removeSidebarBrand"), "the runtime must not retain obsolete sidebar brand lifecycle code");
+assert(!styles.includes(".denia-old-days-ds-sidebar-brand"), "the stylesheet must not retain the removed sidebar brand");
+assert(!manifest.capabilities.includes("sidebar.brand-overlay"), "the manifest must not advertise the removed sidebar brand");
 
 for (const token of [
-  "ensureSidebarBrand",
   "ensureHomeVisuals",
   "ensureHomeHero",
   "findNativeHomeTitle",
@@ -772,16 +775,10 @@ assert(
   "task layout must not retain sidebar close compensation animation",
 );
 assert(
-  runtime.includes("if (home) {\n      ensureSidebarBrand();")
+  runtime.includes("if (home) {\n      state.formState = \"staged\";")
     && runtime.includes("syncHomeViewport(findMain());")
-    && runtime.includes("clearHomeViewportBinding();\n      removeSidebarBrand();"),
-  "sidebar brand must be created only on home and removed on task routes",
-);
-assert(!runtime.includes("sidebar.prepend(brand)"), "home branding must not become a horizontal sibling of the native sidebar column");
-assert(
-  runtime.includes('const brandHost = sidebar.matches("nav") ? sidebar : sidebar.querySelector("nav");')
-    && runtime.includes("brandHost.insertBefore(brand, brandHost.children[1] || null);"),
-  "home branding must mount inside the native vertical navigation column",
+    && runtime.includes("clearHomeViewportBinding();\n      removeHomeNodes();"),
+  "home and task route synchronization must not depend on a sidebar brand",
 );
 for (const [state, family, opacity] of [
   ["staged", "taskWarm", ".11"],
@@ -1389,7 +1386,7 @@ function assertNativeRightSidebarLifecycle(payload) {
   leftHome.document.body.append(leftHomeSidebar);
   vm.runInContext(payload, leftHome.context, { timeout: 1000 });
   const leftHomeBrand = leftHome.document.getElementById("denia-old-days-ds-sidebar-brand");
-  assert(leftHomeBrand && leftHomeSidebar.contains(leftHomeBrand), "a high-confidence left sidebar must retain the home brand");
+  assert(!leftHomeBrand, "a high-confidence left sidebar must remain free of the removed home brand");
   assert(leftHomeSidebar.classList.contains("denia-old-days-ds-native-left-sidebar"), "home left navigation must receive its dedicated skin class");
   assert(
     leftHome.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.toggleState === "unknown",
@@ -2551,12 +2548,9 @@ function assertLiveTaskVerification(loaderSource) {
     toggleRect = { x: 1140, y: 8, width: 40, height: 32 },
     home = false,
     chromeHostedByMain = true,
-    includeSafeLeftHost = home,
-    safeLeftHostRect = { x: 0, y: 46, width: 280, height: 754 },
     decorateObservation = true,
     includeFinalCard = false,
-    includeSidebarBrand = home,
-    sidebarBrandHost = includeSafeLeftHost ? "left" : "none",
+    includeSidebarBrand = false,
     composerRect = { x: 100, y: 100, width: 320, height: 80 },
     hideNativeSuggestions = home,
   }) => {
@@ -2581,10 +2575,6 @@ function assertLiveTaskVerification(loaderSource) {
     stateArtRail.querySelector = (selector) =>
       selector === ".denia-old-days-ds-state-art-layer.is-active" ? stateArtLayer : null;
     const sidebar = makeNode();
-    const safeLeftHost = includeSafeLeftHost ? makeNode([], {}, safeLeftHostRect) : null;
-    if (safeLeftHost) {
-      safeLeftHost.contains = (node) => includeSidebarBrand && sidebarBrandHost === "left" && node === sidebar;
-    }
     const homeVisuals = home ? makeNode(["denia-old-days-ds-home-visuals"], {}, { x: 0, y: 0, width: 1200, height: 800 }) : null;
     const hero = home ? makeNode(["denia-old-days-ds-hero"]) : null;
     const heroCopy = hero;
@@ -2609,8 +2599,8 @@ function assertLiveTaskVerification(loaderSource) {
       () => makeNode(["denia-old-days-ds-native-sidebar-row"]),
     );
     for (const panel of nativeSidebarPanels) {
-      panel.contains = (node) => (skinsContained && (nativeSidebarGroups.includes(node) || nativeSidebarRows.includes(node)))
-        || (includeSidebarBrand && sidebarBrandHost === "right" && node === sidebar);
+      panel.contains = (node) => skinsContained
+        && (nativeSidebarGroups.includes(node) || nativeSidebarRows.includes(node));
     }
     const body = makeNode();
     const main = makeNode(home ? ["dream-skin-home"] : [], {}, mainRect);
@@ -2667,7 +2657,7 @@ function assertLiveTaskVerification(loaderSource) {
       querySelectorAll(selector) {
         if (selector === "button") return toggle ? [toggle] : [];
         if (selector === '[data-testid="sidebar"], [data-slot="sidebar"], aside, nav') {
-          return [...(safeLeftHost ? [safeLeftHost] : []), ...nativeSidebarPanels];
+          return nativeSidebarPanels;
         }
         if (selector.includes('[data-content-search-unit-key*="tool"]')) return [nativeObservation];
         if (selector === ".denia-old-days-ds-observation") return observation ? [observation] : [];
@@ -2982,10 +2972,9 @@ function assertLiveTaskVerification(loaderSource) {
       home: true,
       sidebarState: "open",
       railDisplay: "none",
-      includeSafeLeftHost: false,
       includeSidebarBrand: false,
     }).pass === true,
-    "live verification must accept a right-only home without a left host or sidebar brand",
+    "live verification must accept a home without the removed sidebar brand",
   );
   assert(
     runCase({
@@ -2993,34 +2982,9 @@ function assertLiveTaskVerification(loaderSource) {
       home: true,
       sidebarState: "open",
       railDisplay: "none",
-      includeSafeLeftHost: true,
-      includeSidebarBrand: false,
-    }).pass === false,
-    "live verification must require a visible brand when a safe left host exists",
-  );
-  assert(
-    runCase({
-      formState: "staged",
-      home: true,
-      sidebarState: "open",
-      railDisplay: "none",
-      includeSafeLeftHost: false,
       includeSidebarBrand: true,
-      sidebarBrandHost: "right",
     }).pass === false,
-    "live verification must reject a home brand inside the native right panel",
-  );
-  assert(
-    runCase({
-      formState: "staged",
-      home: true,
-      sidebarState: "open",
-      railDisplay: "none",
-      includeSafeLeftHost: true,
-      includeSidebarBrand: true,
-      sidebarBrandHost: "left",
-    }).pass === true,
-    "live verification must accept a visible home brand contained by its safe left host",
+    "live verification must reject a stale sidebar brand marker",
   );
 }
 
@@ -3957,7 +3921,7 @@ function assertFinalReviewRegressions(payload) {
     .setRect({ x: 196, y: 121, width: 1120, height: 455 });
   assert(initialPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
   assert(initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
-  assert(initialNav.contains(homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand")));
+  assert(!homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand"));
 
   homeHarness.clearMutationRecords();
   const replacementPrompt = appendHomePrompt(homeHarness, homeMain);
@@ -3976,10 +3940,7 @@ function assertFinalReviewRegressions(payload) {
       && replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px",
     "home title and composer remounts must restore prompt decoration and positioning",
   );
-  assert(
-    replacementNav.contains(homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand")),
-    "home left-sidebar remounts must restore the brand",
-  );
+  assert(!homeHarness.document.getElementById("denia-old-days-ds-sidebar-brand"), "home left-sidebar remounts must not restore the removed brand");
 
   homeHarness.clearMutationRecords();
   homeMain.classList.remove("dream-skin-home");

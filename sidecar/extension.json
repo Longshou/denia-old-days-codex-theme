@@ -23,20 +23,15 @@
     "taskCompleteArtwork": "assets/denia-task-complete.webp"
   },
   "ui": {
-    "brandName": "DENIA CODEX",
-    "brandSubtitle": "旧日斑斓 · MEMORY ALBUM",
-    "sidebarSubtitle": "达妮娅 · 旧日斑斓",
     "statusText": "布景之形 · 记录中",
     "darkStatusText": "幻灭之形 · 观察中",
     "eyebrow": "DENIA · OLD DAYS IN COLOR",
     "headline": "今天要把什么写进手账？",
     "description": "让思绪显影，也让每一步留下记录。",
     "projectPrefix": "翻到项目 · ",
-    "projectFallback": "选择项目",
-    "brandMark": ""
+    "projectFallback": "选择项目"
   },
   "capabilities": [
-    "sidebar.brand-overlay",
     "sidebar.visual-states",
     "home.brand-status",
     "home.hero-copy",

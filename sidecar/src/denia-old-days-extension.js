@@ -922,46 +922,6 @@
     state.artFamily = spec.family;
   }
 
-  function ensureSidebarBrand() {
-    let brand = document.getElementById("denia-old-days-ds-sidebar-brand");
-    const mainRect = measuredRect(findMain());
-    const sidebar = [
-      ...document.querySelectorAll('[data-testid="sidebar"], [data-slot="sidebar"], aside, nav'),
-    ].find((candidate) => leftDockedSidebar(candidate, mainRect)) || null;
-    if (brand?.isConnected && sidebar?.contains(brand)) return brand;
-    if (brand) {
-      ownedNodes.delete(brand);
-      brand.remove();
-      brand = null;
-    }
-    if (!sidebar) return null;
-    const brandHost = sidebar.matches("nav") ? sidebar : sidebar.querySelector("nav");
-    if (!brandHost) return null;
-    brand = own(document.createElement("div"));
-    brand.id = "denia-old-days-ds-sidebar-brand";
-    brand.className = "denia-old-days-ds-sidebar-brand";
-    const mark = document.createElement("span");
-    mark.className = "denia-old-days-ds-brand-mark";
-    mark.setAttribute("aria-hidden", "true");
-    const copy = document.createElement("span");
-    copy.className = "denia-old-days-ds-brand-copy";
-    const title = document.createElement("strong");
-    title.textContent = manifest.ui.brandName;
-    const subtitle = document.createElement("small");
-    subtitle.textContent = manifest.ui.sidebarSubtitle;
-    copy.append(title, subtitle);
-    brand.append(mark, copy);
-    brandHost.insertBefore(brand, brandHost.children[1] || null);
-    return brand;
-  }
-
-  function removeSidebarBrand() {
-    const brand = document.getElementById("denia-old-days-ds-sidebar-brand");
-    if (!brand) return;
-    ownedNodes.delete(brand);
-    brand.remove();
-  }
-
   function ensureHomeVisuals() {
     let visuals = document.getElementById("denia-old-days-ds-home-visuals");
     if (visuals?.isConnected && visuals.parentElement === document.body) return visuals;
@@ -1161,7 +1121,6 @@
 
   function syncPageDomain(home) {
     if (home) {
-      ensureSidebarBrand();
       state.formState = "staged";
       ensureHomeHero();
       syncNativeHomeSuggestions();
@@ -1170,7 +1129,6 @@
       syncHomeViewport(findMain());
     } else {
       clearHomeViewportBinding();
-      removeSidebarBrand();
       removeHomeNodes();
       state.formState = deriveFormState();
     }

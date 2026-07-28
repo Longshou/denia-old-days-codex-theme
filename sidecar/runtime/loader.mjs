@@ -349,51 +349,6 @@ const verifyExpression = `(() => {
   const composer = document.querySelector('.composer-surface-chrome');
   const composerBeforeStyle = composer ? getComputedStyle(composer, '::before') : null;
   const sidebarBrandNode = document.getElementById('denia-old-days-ds-sidebar-brand');
-  const safeLeftSidebarHost = [...document.querySelectorAll(
-    '[data-testid="sidebar"], [data-slot="sidebar"], aside, nav'
-  )].find((candidate) => {
-    if (!candidate
-      || candidate.isConnected === false
-      || candidate === document.body
-      || candidate === root
-      || candidate === nativeMain
-      || candidate === composer
-      || candidate === chrome
-      || box(candidate)?.visible !== true
-      || nativeSidebarPanels.includes(candidate)
-      || nativeMain?.contains(candidate)
-      || composer?.contains(candidate)
-      || chrome?.contains(candidate)
-      || candidate.closest?.([
-        'main',
-        '[role="main"]',
-        'dialog',
-        '[role="dialog"]',
-        '[role="alertdialog"]',
-        '[role="menu"]',
-        '[role="listbox"]',
-        '[role="tooltip"]',
-        '[popover]',
-        '[role="status"]',
-        '[data-testid*="toast"]',
-        '#denia-old-days-ds-chrome',
-        '.composer-surface-chrome',
-      ].join(','))) return false;
-    const rect = candidate.getBoundingClientRect();
-    const right = Number.isFinite(rect.right) ? rect.right : rect.x + rect.width;
-    const left = Number.isFinite(rect.left) ? rect.left : rect.x;
-    const heightPass = rect.height >= Math.max(240, innerHeight * .35);
-    const rightDocked = Math.abs(right - innerWidth) <= 12
-      && heightPass
-      && (!mainMeasurable || left >= mainRight - 12);
-    return left <= 12 && right > 0 && heightPass && !rightDocked;
-  }) || null;
-  const sidebarBrandVisible = box(sidebarBrandNode)?.visible === true;
-  const sidebarBrandInNativeRightPanel = Boolean(sidebarBrandNode
-    && nativeSidebarPanels.some((panel) => panel.contains(sidebarBrandNode)));
-  const sidebarBrandContainedBySafeHost = Boolean(
-    sidebarBrandNode && safeLeftSidebarHost?.contains(sidebarBrandNode)
-  );
   const nativeObservations = [...document.querySelectorAll([
     '[data-content-search-unit-key*="tool"]',
     '[data-content-search-unit-key*="reasoning"]',
@@ -495,12 +450,8 @@ const verifyExpression = `(() => {
       && composerRect.top >= 0
       && composerRect.bottom <= innerHeight - 8
   );
-  const sidebarBrandPass = home
-    ? safeLeftSidebarHost
-      ? sidebarBrandVisible && sidebarBrandContainedBySafeHost && !sidebarBrandInNativeRightPanel
-      : !sidebarBrandNode
-    : !sidebarBrandNode;
-  const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && sidebarBrandPass && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
+  const brandMarkerAbsent = !sidebarBrandNode;
+  const basePass = result.id === 'denia-old-days' && result.installed && result.stylePresent && result.chromePresent && result.artReady && result.fastArtPresent && brandMarkerAbsent && Boolean(result.composer?.visible) && composerDecorationDisabled && !result.overflowX;
   const homePass = !home || (
     result.homeLayoutPreserved
       && result.heroUsesRuntimeArt
