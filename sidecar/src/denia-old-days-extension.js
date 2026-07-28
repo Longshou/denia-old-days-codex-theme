@@ -850,9 +850,17 @@
   function isHomeView() {
     const main = findMain();
     if (!main) return false;
-    if (main.matches(".dream-skin-home") || main.querySelector(".dream-skin-home")) return true;
+    if (main.matches(".dream-skin-home, .dream-skin-home-shell")
+      || main.querySelector(".dream-skin-home")) return true;
     const assistants = main.querySelectorAll(assistantSelector);
     return assistants.length === 0 && Boolean(findNativeHomeTitle());
+  }
+
+  function isHomePaintReady() {
+    const main = findMain();
+    return Boolean(main
+      && (main.matches(".dream-skin-home, .dream-skin-home-shell")
+        || main.querySelector(".dream-skin-home")));
   }
 
   function clearHomeViewportBinding() {
@@ -1717,6 +1725,13 @@
       }
     });
   }
+  const childListAddsButton = (record, main) => record.type === "childList"
+    && Boolean(main)
+    && (record.target === main
+      || main.contains?.(record.target)
+      || [...record.addedNodes].some((node) => node === main || node?.contains?.(main)))
+    && [...record.addedNodes].some((node) =>
+      node?.matches?.("button") || node?.querySelector?.("button"));
   state.observer = new MutationObserver((records) => {
     if (records.some(mutationTouchesHostTheme)) syncNativeTheme();
     const relevantRecords = records.filter((record) =>
@@ -1724,6 +1739,21 @@
       && !mutationIsThemeOnly(record)
       && !mutationIsTerminalChurn(record)
       && !mutationIsEditorColorProbe(record));
+    const darkHomePaintReady = relevantRecords.length
+      && root.dataset.deniaTheme === "dark"
+      && isHomePaintReady()
+      && isHomeView();
+    if (darkHomePaintReady) {
+      const homeMain = findMain();
+      if (!state.homeActive) {
+        syncClass(root, "denia-old-days-ds-home", true);
+        syncClass(root, "denia-old-days-ds-task", false);
+      }
+      if (!state.homeActive
+        || relevantRecords.some((record) => childListAddsButton(record, homeMain))) {
+        syncNativeHomeSuggestions();
+      }
+    }
     if (relevantRecords.length && state.homeActive && !isHomeView()) {
       syncClass(root, "denia-old-days-ds-home", false);
       syncClass(root, "denia-old-days-ds-task", true);

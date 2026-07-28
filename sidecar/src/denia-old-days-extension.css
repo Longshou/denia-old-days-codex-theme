@@ -1078,6 +1078,11 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-de
   background: none;
 }
 
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] main.main-surface {
+  background-color: var(--denia-dark-canvas) !important;
+  background-image: none !important;
+}
+
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] main.main-surface.dream-skin-home-shell {
   color: var(--denia-dark-text);
   background-color: var(--denia-dark-canvas) !important;
@@ -1186,6 +1191,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-de
   background-color: rgba(141, 197, 234, .12) !important;
 }
 
+html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-dream-shell="dark"][data-dream-art-wide="true"]
+  .composer-surface-chrome,
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
   .denia-old-days-ds-composer,
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]:has(main.main-surface:not(.dream-skin-home-shell))
@@ -1462,6 +1469,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
     background: transparent !important;
   }
 
+  html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-dream-shell="dark"][data-dream-art-wide="true"]
+    .composer-surface-chrome,
   html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
     .denia-old-days-ds-composer,
   html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]:has(main.main-surface:not(.dream-skin-home-shell))

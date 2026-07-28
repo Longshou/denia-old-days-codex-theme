@@ -496,6 +496,8 @@ const darkHomeComposerSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] .denia-old-days-ds-composer';
 const darkTaskComposerSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]:has(main.main-surface:not(.dream-skin-home-shell)) .denia-old-days-ds-composer';
+const darkNativeComposerSelector =
+  'html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-dream-shell="dark"][data-dream-art-wide="true"] .composer-surface-chrome';
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-composer"))) continue;
   assert(
@@ -519,7 +521,7 @@ assert(
     rule.selectors.includes('.denia-old-days-ds-extension[data-denia-theme="dark"] textarea::placeholder')),
   "dark placeholder paint must stay scoped to the composer",
 );
-for (const selector of [darkHomeComposerSelector, darkTaskComposerSelector]) {
+for (const selector of [darkHomeComposerSelector, darkTaskComposerSelector, darkNativeComposerSelector]) {
   assertCssDeclarations(stylesheetRules, selector, {
     color: "var(--denia-dark-text) !important",
     "border-color": "rgba(141, 197, 234, .66) !important",
@@ -569,6 +571,7 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
 ]));
 const deepHomeSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]';
+const deepHomeTransitionMainSelector = `${deepHomeSelector} main.main-surface`;
 const deepHomeMainSelector = `${deepHomeSelector} main.main-surface.dream-skin-home-shell`;
 const deepHomePromptCopySelector =
   `${deepHomeSelector} .denia-old-days-ds-native-home-prompt :is([class*="heading"], h1, h2, h3, p)`;
@@ -643,6 +646,10 @@ for (const rule of stylesheetRules) {
     }
   }
 }
+assertCssDeclarations(stylesheetRules, deepHomeTransitionMainSelector, {
+  "background-color": "var(--denia-dark-canvas) !important",
+  "background-image": "none !important",
+});
 const deepHomeMainRule = stylesheetRules.find((rule) => rule.selectors.includes(deepHomeMainSelector));
 assert(
   deepHomeMainRule?.declarations.get("background-image")?.includes("var(--denia-old-days-art-dark)")
@@ -4471,6 +4478,7 @@ function assertFinalReviewRegressions(payload) {
   };
 
   const homeHarness = createRuntimeHarness((index) => `blob:final-home-${index + 1}`);
+  homeHarness.root.classList.add("electron-dark");
   const homeMain = homeHarness.document.createElement("main");
   homeMain.setAttribute("role", "main");
   homeMain.classList.add("dream-skin-home");
@@ -4534,10 +4542,30 @@ function assertFinalReviewRegressions(payload) {
   assert(!initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
 
   homeHarness.clearMutationRecords();
-  homeMain.classList.add("dream-skin-home");
   assistant.remove();
-  homeHarness.flushMutations();
-  homeHarness.flushAnimationFrames();
+  assert(homeHarness.flushMutations() > 0, "task-to-home prompt mutations must reach the observer");
+  assert(
+    !homeHarness.root.classList.contains("denia-old-days-ds-home")
+      && homeHarness.root.classList.contains("denia-old-days-ds-task"),
+    "a home prompt must not activate home paint before the native home shell is ready",
+  );
+  assert(homeState.homeActive === false, "a prompt-only transition must retain task route state until refresh");
+
+  homeHarness.clearMutationRecords();
+  homeMain.classList.add("dream-skin-home");
+  assert(homeHarness.flushMutations() > 0, "task-to-home shell mutations must reach the observer");
+  assert(
+    homeHarness.root.classList.contains("denia-old-days-ds-home")
+      && !homeHarness.root.classList.contains("denia-old-days-ds-task"),
+    "task-to-home transitions must activate the home paint before the scheduled route refresh",
+  );
+  assert(
+    initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"),
+    "dark task-to-home transitions must hide native suggestion cards before the scheduled route refresh",
+  );
+  assert(homeState.homeActive === false, "early task-to-home paint must not bypass the scheduled route-state refresh");
+  assert(homeHarness.flushAnimationFrames() === 1, "task-to-home transitions must retain one route refresh frame");
+  assert(homeState.homeActive === true);
   assert(replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
   assert(replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px");
   assert(initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
@@ -4546,6 +4574,79 @@ function assertFinalReviewRegressions(payload) {
   assert(!replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"));
   assert(!initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
   void replacementComposerBoundary;
+
+  const shellFirstHarness = createRuntimeHarness((index) => `blob:final-shell-first-${index + 1}`);
+  shellFirstHarness.root.classList.add("electron-dark");
+  const shellFirstMain = shellFirstHarness.document.createElement("main");
+  shellFirstMain.setAttribute("role", "main");
+  const shellFirstAssistant = shellFirstHarness.document.createElement("article");
+  shellFirstAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  shellFirstMain.append(shellFirstAssistant);
+  shellFirstHarness.document.body.append(shellFirstMain);
+  vm.runInContext(payload, shellFirstHarness.context, { timeout: 1000 });
+  const shellFirstState = shellFirstHarness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(shellFirstState.homeActive === false);
+  shellFirstHarness.clearMutationRecords();
+  shellFirstMain.classList.add("dream-skin-home-shell");
+  shellFirstAssistant.remove();
+  assert(shellFirstHarness.flushMutations() > 0, "shell-first task-to-home mutations must reach the observer");
+  assert(
+    shellFirstHarness.root.classList.contains("denia-old-days-ds-home")
+      && !shellFirstHarness.root.classList.contains("denia-old-days-ds-task"),
+    "a dark native home shell must activate home paint before its prompt mounts",
+  );
+  assert(shellFirstState.homeActive === false, "shell-first paint must preserve the scheduled route refresh");
+  assert(shellFirstHarness.flushAnimationFrames() === 1, "shell-first transitions must retain one route refresh frame");
+  assert(shellFirstState.homeActive === true);
+  shellFirstHarness.clearMutationRecords();
+  const lateDarkSuggestions = appendHomeSuggestions(shellFirstHarness, shellFirstMain);
+  assert(shellFirstHarness.flushMutations() > 0, "late dark suggestion cards must reach the observer");
+  assert(
+    lateDarkSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"),
+    "late dark suggestion cards must be hidden in their mount callback instead of the next frame",
+  );
+  shellFirstState.cleanup();
+
+  const lightTransitionHarness = createRuntimeHarness((index) => `blob:final-light-transition-${index + 1}`);
+  lightTransitionHarness.root.classList.add("electron-light");
+  const lightTransitionMain = lightTransitionHarness.document.createElement("main");
+  lightTransitionMain.setAttribute("role", "main");
+  const lightTransitionAssistant = lightTransitionHarness.document.createElement("article");
+  lightTransitionAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  const lightTransitionSuggestions = appendHomeSuggestions(lightTransitionHarness, lightTransitionMain);
+  lightTransitionMain.append(lightTransitionAssistant);
+  lightTransitionHarness.document.body.append(lightTransitionMain);
+  vm.runInContext(payload, lightTransitionHarness.context, { timeout: 1000 });
+  const lightTransitionState =
+    lightTransitionHarness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  lightTransitionHarness.clearMutationRecords();
+  lightTransitionMain.classList.add("dream-skin-home-shell");
+  lightTransitionAssistant.remove();
+  assert(lightTransitionHarness.flushMutations() > 0, "light task-to-home mutations must reach the observer");
+  assert(
+    !lightTransitionHarness.root.classList.contains("denia-old-days-ds-home")
+      && lightTransitionHarness.root.classList.contains("denia-old-days-ds-task"),
+    "light transitions must wait for the scheduled route refresh instead of using the dark paint bridge",
+  );
+  assert(
+    !lightTransitionSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"),
+    "light transitions must not receive the dark suggestion-card paint bridge",
+  );
+  assert(lightTransitionState.homeActive === false);
+  assert(lightTransitionHarness.flushAnimationFrames() === 1, "light transitions must retain one route refresh frame");
+  assert(lightTransitionState.homeActive === true);
+  assert(lightTransitionSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
+  lightTransitionHarness.clearMutationRecords();
+  lightTransitionSuggestions.remove();
+  const lateLightSuggestions = appendHomeSuggestions(lightTransitionHarness, lightTransitionMain);
+  assert(lightTransitionHarness.flushMutations() > 0, "late light suggestion cards must reach the observer");
+  assert(
+    !lateLightSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"),
+    "late light suggestion cards must retain the existing scheduled home refresh",
+  );
+  assert(lightTransitionHarness.flushAnimationFrames() === 1);
+  assert(lateLightSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"));
+  lightTransitionState.cleanup();
 
   const portalHarness = createRuntimeHarness((index) => `blob:final-portal-${index + 1}`);
   const portalMain = portalHarness.document.createElement("main");
