@@ -1713,27 +1713,58 @@ function assertNativeWorkSurfaceLifecycle(payload) {
   };
   const summaryToggle = appendToggle("切换置顶摘要", true);
   const bottomToggle = appendToggle("切换底部面板显示", false);
-  appendToggle("显示/隐藏侧边栏", false);
+  const sidebarToggle = appendToggle("显示/隐藏侧边栏", false);
 
   vm.runInContext(payload, harness.context, { timeout: 1000 });
   const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const chrome = harness.document.getElementById("denia-old-days-ds-chrome");
+  const rail = harness.document.getElementById("denia-old-days-ds-state-art");
+  const initialArtGeneration = state.artGeneration;
+  const initialCreatedNodes = state.metrics.createdNodes;
+
   assert(harness.root.dataset.deniaSummaryState === "open", "pressed summary toggle must expose an open summary state");
   assert(harness.root.dataset.deniaBottomPanelState === "closed", "unpressed bottom toggle must expose a closed bottom panel state");
-  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "any open native work surface must hide foreground artwork");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "open summary must expose horizontal work-surface occupancy");
 
   harness.clearMutationRecords();
   summaryToggle.setAttribute("aria-pressed", "false");
   assert(harness.flushMutations() === 1, "summary aria-pressed mutation must reach the observer");
   assert(harness.root.dataset.deniaSummaryState === "closed", "summary toggle state must synchronize before the next animation frame");
-  assert(harness.root.dataset.deniaWorkSurfaceState === "closed", "closing the final native work surface must restore artwork");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "closed", "closing the final right-side surface must restore task alignment");
   assert(harness.flushAnimationFrames() === 0, "summary toggle state must not schedule a full refresh");
 
   harness.clearMutationRecords();
   bottomToggle.setAttribute("aria-pressed", "true");
   assert(harness.flushMutations() === 1, "bottom panel aria-pressed mutation must reach the observer");
   assert(harness.root.dataset.deniaBottomPanelState === "open", "pressed bottom toggle must expose an open bottom panel state");
-  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "open bottom panel must hide foreground artwork");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "closed", "bottom panel must not claim horizontal task space");
   assert(harness.flushAnimationFrames() === 0, "bottom panel toggle state must not schedule a full refresh");
+
+  harness.clearMutationRecords();
+  summaryToggle.setAttribute("aria-pressed", "true");
+  assert(harness.flushMutations() === 1, "summary may open while the bottom panel remains open");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "summary must claim horizontal task space while bottom panel stays open");
+
+  harness.clearMutationRecords();
+  summaryToggle.setAttribute("aria-pressed", "false");
+  assert(harness.flushMutations() === 1, "summary may close while the bottom panel remains open");
+  assert(harness.root.dataset.deniaBottomPanelState === "open", "summary close must preserve the bottom marker");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "closed", "bottom-only state must restore task alignment");
+
+  harness.clearMutationRecords();
+  sidebarToggle.setAttribute("aria-pressed", "true");
+  assert(harness.flushMutations() === 1, "sidebar may open while the bottom panel remains open");
+  assert(harness.root.dataset.deniaBottomPanelState === "open", "sidebar open must preserve the bottom marker");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "open", "obscuring sidebar must claim horizontal task space");
+
+  harness.clearMutationRecords();
+  sidebarToggle.setAttribute("aria-pressed", "false");
+  assert(harness.flushMutations() === 1, "sidebar may close while the bottom panel remains open");
+  assert(harness.root.dataset.deniaWorkSurfaceState === "closed", "bottom-only state must return after sidebar close");
+  assert(state.artGeneration === initialArtGeneration, "panel toggles must not advance artwork generation");
+  assert(state.metrics.createdNodes === initialCreatedNodes, "panel toggles must not create artwork nodes");
+  assert(harness.document.getElementById("denia-old-days-ds-chrome") === chrome, "panel toggles must retain the same chrome node");
+  assert(harness.document.getElementById("denia-old-days-ds-state-art") === rail, "panel toggles must retain the same artwork rail");
 
   harness.clearMutationRecords();
   bottomToggle.setAttribute("aria-pressed", "false");

@@ -602,7 +602,6 @@
     const sidebarObscures = Boolean(state.sidebar?.togglePresent)
       && state.sidebar.state !== "closed";
     const workSurface = summary === "open"
-      || bottomPanel === "open"
       || sidebarObscures
       ? "open"
       : "closed";
