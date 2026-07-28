@@ -812,7 +812,7 @@
   }
 
   function ensureChrome() {
-    const host = state.homeActive ? document.body : findMain() || document.body;
+    const host = state.homeActive ? document.body : findMain();
     let chrome = taskChrome || document.getElementById("denia-old-days-ds-chrome");
     if (!chrome) {
       chrome = own(document.createElement("div"));
@@ -821,13 +821,15 @@
       chrome.setAttribute("aria-hidden", "true");
     }
     taskChrome = chrome;
-    if (chrome.parentElement !== host) host.append(chrome);
+    if (host && chrome.parentElement !== host) host.append(chrome);
+    if (!host && document.body.contains(chrome)) chrome.remove();
     ensureStateArt(chrome);
     return chrome;
   }
 
   function ensureStateArt(chrome) {
-    let rail = document.getElementById("denia-old-days-ds-state-art");
+    let rail = chrome.querySelector("#denia-old-days-ds-state-art")
+      || document.getElementById("denia-old-days-ds-state-art");
     if (rail && !chrome.contains(rail)) rail.remove();
     if (!rail || !chrome.contains(rail)) {
       rail = document.createElement("div");

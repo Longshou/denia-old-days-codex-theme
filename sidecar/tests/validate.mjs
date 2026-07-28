@@ -3628,6 +3628,12 @@ function assertStateArtRailLifecycle(payload) {
 }
 
 function assertTaskChromeHostLifecycle(payload) {
+  const artPropertyForFamily = (family) => ({
+    taskWarm: "--denia-old-days-art-task-warm",
+    taskApproval: "--denia-old-days-art-task-approval",
+    taskError: "--denia-old-days-art-task-error",
+    taskComplete: "--denia-old-days-art-task-complete",
+  })[family];
   const harness = createRuntimeHarness((index) => `blob:chrome-host-${index + 1}`);
   const firstMain = harness.document.createElement("main");
   firstMain.setAttribute("role", "main");
@@ -3648,7 +3654,11 @@ function assertTaskChromeHostLifecycle(payload) {
   const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const chrome = harness.document.getElementById("denia-old-days-ds-chrome");
   const rail = harness.document.getElementById("denia-old-days-ds-state-art");
-  const activeFamily = rail.querySelector(".denia-old-days-ds-state-art-layer.is-active")?.dataset.deniaArtFamily;
+  const activeLayer = rail.querySelector(".denia-old-days-ds-state-art-layer.is-active");
+  const activeFamily = activeLayer?.dataset.deniaArtFamily;
+  const activeFamilyProperty = artPropertyForFamily(activeFamily);
+  const activeObjectUrl = harness.root.style.getPropertyValue(activeFamilyProperty);
+  const artGeneration = state.artGeneration;
   const createdNodes = state.metrics.createdNodes;
 
   assert(chrome?.parentElement === firstMain, "task chrome must mount inside the current main");
@@ -3657,6 +3667,24 @@ function assertTaskChromeHostLifecycle(payload) {
   assert(state.metrics.createdNodes === createdNodes, "repeat refresh must not create task chrome nodes");
 
   firstMain.remove();
+  state.refresh();
+
+  assert(!harness.document.body.contains(chrome), "task chrome must stay detached while no semantic main exists");
+  assert(!harness.document.getElementById("denia-old-days-ds-chrome"), "detached task chrome must not remain discoverable in the document");
+  assert(!harness.document.getElementById("denia-old-days-ds-state-art"), "detached artwork rail must not remain discoverable in the document");
+  assert(state.metrics.createdNodes === createdNodes, "main replacement gap must not create another chrome");
+  assert(state.artGeneration === artGeneration, "main replacement gap must preserve artwork generation");
+  assert(chrome.querySelector("#denia-old-days-ds-state-art") === rail, "main replacement gap must retain rail identity inside detached chrome");
+  assert(
+    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active") === activeLayer,
+    "main replacement gap must retain the active artwork layer",
+  );
+  assert(activeLayer.dataset.deniaArtFamily === activeFamily, "main replacement gap must preserve the active artwork family");
+  assert(
+    harness.root.style.getPropertyValue(activeFamilyProperty) === activeObjectUrl,
+    "main replacement gap must preserve the active family root CSS custom property/object URL",
+  );
+
   const replacementMain = harness.document.createElement("main");
   replacementMain.setAttribute("role", "main");
   harness.document.body.append(replacementMain);
@@ -3664,10 +3692,17 @@ function assertTaskChromeHostLifecycle(payload) {
 
   assert(chrome.parentElement === replacementMain, "replacement main must adopt the existing task chrome");
   assert(harness.document.getElementById("denia-old-days-ds-chrome") === chrome, "main replacement must retain chrome identity");
+  assert(harness.document.getElementById("denia-old-days-ds-state-art") === rail, "main replacement must retain rail identity");
   assert(state.metrics.createdNodes === createdNodes, "main replacement must not create another chrome");
+  assert(state.artGeneration === artGeneration, "main replacement must preserve artwork generation");
   assert(
-    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active")?.dataset.deniaArtFamily === activeFamily,
-    "main replacement must preserve the active artwork family",
+    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active") === activeLayer,
+    "main replacement must preserve the active artwork layer",
+  );
+  assert(activeLayer.dataset.deniaArtFamily === activeFamily, "main replacement must preserve the active artwork family");
+  assert(
+    harness.root.style.getPropertyValue(activeFamilyProperty) === activeObjectUrl,
+    "main replacement must preserve the active family root CSS custom property/object URL",
   );
 
   const approval = harness.document.createElement("div");
@@ -3700,16 +3735,11 @@ function assertTaskChromeHostLifecycle(payload) {
     coveredLayer?.dataset.deniaArtFamily === "taskComplete",
     "covered artwork must continue updating into the complete family",
   );
-  const activeFamilyProperty = {
-    taskWarm: "--denia-old-days-art-task-warm",
-    taskApproval: "--denia-old-days-art-task-approval",
-    taskError: "--denia-old-days-art-task-error",
-    taskComplete: "--denia-old-days-art-task-complete",
-  }[coveredLayer.dataset.deniaArtFamily];
+  const coveredFamilyProperty = artPropertyForFamily(coveredLayer.dataset.deniaArtFamily);
   const coveredArtwork = {
     generation: state.artGeneration,
     createdNodes: state.metrics.createdNodes,
-    objectUrl: harness.root.style.getPropertyValue(activeFamilyProperty),
+    objectUrl: harness.root.style.getPropertyValue(coveredFamilyProperty),
     chrome,
     rail,
     layer: coveredLayer,
@@ -3719,7 +3749,7 @@ function assertTaskChromeHostLifecycle(payload) {
   const assertPersistentArtwork = (panel) => {
     assert(state.artGeneration === coveredArtwork.generation, `${panel} toggle must not recreate the current artwork generation`);
     assert(state.metrics.createdNodes === coveredArtwork.createdNodes, `${panel} toggle must not create artwork nodes`);
-    assert(harness.root.style.getPropertyValue(activeFamilyProperty) === coveredArtwork.objectUrl, `${panel} toggle must retain the active family root CSS custom property/object URL`);
+    assert(harness.root.style.getPropertyValue(coveredFamilyProperty) === coveredArtwork.objectUrl, `${panel} toggle must retain the active family root CSS custom property/object URL`);
     assert(harness.document.getElementById("denia-old-days-ds-chrome") === coveredArtwork.chrome, `${panel} toggle must retain chrome identity`);
     assert(harness.document.getElementById("denia-old-days-ds-state-art") === coveredArtwork.rail, `${panel} toggle must retain rail identity`);
     assert(
@@ -3743,6 +3773,41 @@ function assertTaskChromeHostLifecycle(payload) {
 
   state.cleanup();
   assert(!chrome.isConnected, "cleanup must remove chrome nested in task main");
+
+  const pending = createRuntimeHarness((index) => `blob:pending-main-${index + 1}`);
+  vm.runInContext(payload, pending.context, { timeout: 1000 });
+  const pendingState = pending.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const pendingChrome = [...pendingState.ownedNodes]
+    .find((node) => node.id === "denia-old-days-ds-chrome");
+  const pendingRail = pendingChrome?.querySelector("#denia-old-days-ds-state-art");
+  const pendingLayer = pendingRail?.querySelector(".denia-old-days-ds-state-art-layer.is-active");
+  const pendingFamilyProperty = artPropertyForFamily(pendingLayer?.dataset.deniaArtFamily);
+  const pendingArtwork = {
+    generation: pendingState.artGeneration,
+    createdNodes: pendingState.metrics.createdNodes,
+    objectUrl: pending.root.style.getPropertyValue(pendingFamilyProperty),
+  };
+
+  assert(pendingChrome && pendingRail && pendingLayer, "task initialization without main must prepare one detached artwork chrome");
+  assert(!pending.document.body.contains(pendingChrome), "task initialization without main must not mount artwork on body");
+  assert(!pending.document.getElementById("denia-old-days-ds-chrome"), "task initialization without main must keep artwork out of the document");
+
+  const pendingMain = pending.document.createElement("main");
+  pendingMain.setAttribute("role", "main");
+  pending.document.body.append(pendingMain);
+  pendingState.refresh();
+
+  assert(pendingChrome.parentElement === pendingMain, "first semantic main must adopt the detached task chrome");
+  assert(pending.document.getElementById("denia-old-days-ds-chrome") === pendingChrome, "first semantic main must retain pending chrome identity");
+  assert(pending.document.getElementById("denia-old-days-ds-state-art") === pendingRail, "first semantic main must retain pending rail identity");
+  assert(pendingRail.querySelector(".denia-old-days-ds-state-art-layer.is-active") === pendingLayer, "first semantic main must retain pending layer identity");
+  assert(pendingState.metrics.createdNodes === pendingArtwork.createdNodes, "first semantic main must not create another chrome");
+  assert(pendingState.artGeneration === pendingArtwork.generation, "first semantic main must preserve pending artwork generation");
+  assert(
+    pending.root.style.getPropertyValue(pendingFamilyProperty) === pendingArtwork.objectUrl,
+    "first semantic main must preserve the pending family root CSS custom property/object URL",
+  );
+  pendingState.cleanup();
 }
 
 function assertIncrementalTaskDecoration(payload) {
