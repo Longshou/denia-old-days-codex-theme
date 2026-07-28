@@ -268,6 +268,7 @@ const verifyExpression = `(() => {
   const mainRect = nativeMain?.getBoundingClientRect?.() || null;
   const panelRight = panelRect && (Number.isFinite(panelRect.right) ? panelRect.right : panelRect.x + panelRect.width);
   const panelLeft = panelRect && (Number.isFinite(panelRect.left) ? panelRect.left : panelRect.x);
+  const mainLeft = mainRect && (Number.isFinite(mainRect.left) ? mainRect.left : mainRect.x);
   const mainRight = mainRect && (Number.isFinite(mainRect.right) ? mainRect.right : mainRect.x + mainRect.width);
   const mainMeasurable = Boolean(mainRect && mainRect.width > 0 && mainRect.height > 0);
   const uniqueVisiblePanelPass = nativeSidebarPanels.length === 1 && visibleNativeSidebarPanels.length === 1;
@@ -278,7 +279,11 @@ const verifyExpression = `(() => {
       && panelRect
       && Math.abs(panelRight - innerWidth) <= 12
       && panelRect.height >= Math.max(240, innerHeight * .35)
-      && (!mainMeasurable || panelLeft >= mainRight - 12)
+      && (!mainMeasurable || panelLeft >= mainRight - 12 || Boolean(
+        panelLeft >= mainLeft - 12
+          && panelLeft < mainRight - 12
+          && Math.abs(panelRight - mainRight) <= 12
+      ))
   );
   const sidebarToggle = [...document.querySelectorAll("button")].find((button) => {
     if (box(button)?.visible !== true) return false;

@@ -2924,6 +2924,16 @@ function assertLiveTaskVerification(loaderSource) {
     mainOverlapResult.sidebar.nativeGeometryPass === false && mainOverlapResult.taskPass === false,
     "live task verification must reject an open panel that starts inside measurable main content",
   );
+  const overlaySidebarResult = runCase({
+    formState: "working",
+    sidebarState: "open",
+    mainRect: { x: 0, y: 46, width: 1200, height: 754 },
+    nativeSidebarRect: { x: 880, y: 46, width: 320, height: 754 },
+  });
+  assert(
+    overlaySidebarResult.sidebar.nativeGeometryPass === true && overlaySidebarResult.taskPass === true,
+    "live task verification must accept a right-edge sidebar overlaying full-width native main",
+  );
   const blockedToggleResult = runCase({
     formState: "working",
     sidebarState: "open",
