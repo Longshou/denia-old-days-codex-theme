@@ -1029,6 +1029,8 @@ const darkTaskCodeBlockSelector =
   `${darkTaskMarkdownRoot} :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])`;
 const darkTaskCodeSelector =
   `${darkTaskCodeBlockSelector} code`;
+const darkTaskCodeDefaultTokenSelector =
+  `${darkTaskCodeSelector} :is([class^="hljs-"], [class*=" hljs-"])`;
 const darkTaskCodeChromeSelector =
   `${darkTaskMarkdownRoot} [data-markdown-copy="code-block"] [data-markdown-copy="exclude"]`;
 const darkTaskCodeChromeControlSelector =
@@ -1040,15 +1042,17 @@ const darkTaskCodeCommentSelector =
 const darkTaskCodeKeywordSelector =
   `${darkTaskCodeSelector} :is(.hljs-keyword, .hljs-selector-tag)`;
 const darkTaskCodeTypeSelector =
-  `${darkTaskCodeSelector} :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in)`;
+  `${darkTaskCodeSelector} :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in, .hljs-name, .hljs-section, .hljs-selector-class, .hljs-selector-id, .hljs-selector-attr, .hljs-selector-pseudo)`;
 const darkTaskCodeStringSelector =
-  `${darkTaskCodeSelector} :is(.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-variable)`;
+  `${darkTaskCodeSelector} :is(.hljs-string, .hljs-template-variable, .hljs-regexp, .hljs-addition, .hljs-bullet, .hljs-link)`;
 const darkTaskCodeConstantSelector =
   `${darkTaskCodeSelector} :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-variable.constant_, .hljs-deletion)`;
 const darkTaskCodePunctuationSelector =
   `${darkTaskCodeSelector} :is(.hljs-punctuation, .hljs-operator)`;
 const darkTaskCodeWarningSelector =
-  `${darkTaskCodeSelector} :is(.hljs-meta, .hljs-doctag)`;
+  `${darkTaskCodeSelector} :is(.hljs-meta, .hljs-doctag, .hljs-formula, .hljs-template-tag)`;
+const darkTaskMarkdownSemanticShadowSelector =
+  `${darkTaskMarkdownRoot} :is(a, strong, em, del, mark, kbd, samp)`;
 const darkTaskProgressCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body`;
 const darkTaskMetadataSelector =
@@ -1059,8 +1063,6 @@ const darkTaskActivityCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body :is(span[class~="truncate"], .loading-shimmer-pure-text, [class*="_cadencedShimmer"])`;
 const darkTaskConversationSurfaceSelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container [role="main"]`;
-const darkTaskMarkdownSurfaceSelector =
-  `${darkTaskMainReadabilityRoot} .thread-scroll-container [class*="_markdownContent_"]`;
 const darkTaskHeaderSelector =
   `${darkTaskMainReadabilityRoot} > header.app-header-tint`;
 const darkTaskHeaderNeutralControlSelector =
@@ -1110,7 +1112,16 @@ assertCssDeclarations(stylesheetRules, darkTaskMarkdownCellSelector, {
 });
 assertCssDeclarations(stylesheetRules, darkTaskMarkdownLinkSelector, {
   color: "var(--denia-dark-text-link) !important",
+  "text-shadow": "none !important",
 });
+const darkTaskMarkdownSemanticShadowRule =
+  findCssRule(stylesheetRules, darkTaskMarkdownSemanticShadowSelector);
+assert(
+  darkTaskMarkdownSemanticShadowRule.declarations.size === 1
+    && canonicalCssValue(darkTaskMarkdownSemanticShadowRule.declarations.get("text-shadow"))
+      === canonicalCssValue("none !important"),
+  `${darkTaskMarkdownSemanticShadowSelector} must set only text-shadow: none !important`,
+);
 assertCssDeclarations(stylesheetRules, darkTaskInlineMarkdownSelector, {
   color: "var(--denia-dark-text-link) !important",
   background: "var(--denia-dark-code-inline-surface) !important",
@@ -1122,6 +1133,10 @@ assertCssDeclarations(stylesheetRules, darkTaskCodeBlockSelector, {
   "text-shadow": "none !important",
 });
 assertCssDeclarations(stylesheetRules, darkTaskCodeSelector, {
+  color: "var(--denia-dark-code-text) !important",
+  "text-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskCodeDefaultTokenSelector, {
   color: "var(--denia-dark-code-text) !important",
   "text-shadow": "none !important",
 });
@@ -1147,18 +1162,19 @@ for (const [selector, variable] of [
     "text-shadow": "none !important",
   });
 }
-for (const selector of [darkTaskProgressCopySelector, darkTaskMetadataSelector]) {
-  assertCssDeclarations(stylesheetRules, selector, {
-    color: "var(--denia-dark-text-muted) !important",
-  });
-}
+assertCssDeclarations(stylesheetRules, darkTaskProgressCopySelector, {
+  color: "var(--denia-dark-text-muted) !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskMetadataSelector, {
+  color: "var(--denia-dark-text-tertiary) !important",
+});
 assertCssDeclarations(stylesheetRules, darkTaskTitleSelector, {
   color: "var(--denia-dark-text) !important",
 });
 assertCssDeclarations(stylesheetRules, darkTaskActivityCopySelector, {
   color: "inherit !important",
 });
-for (const selector of [darkTaskConversationSurfaceSelector, darkTaskMarkdownSurfaceSelector, darkTaskHeaderSelector]) {
+for (const selector of [darkTaskConversationSurfaceSelector, darkTaskHeaderSelector]) {
   assertCssDeclarations(stylesheetRules, selector, {
     "text-shadow": "none !important",
   });
@@ -1188,6 +1204,7 @@ const darkTaskMarkdownSelectors = [
   darkTaskMarkdownTableSelector,
   darkTaskMarkdownCellSelector,
   darkTaskMarkdownLinkSelector,
+  darkTaskMarkdownSemanticShadowSelector,
   darkTaskInlineMarkdownSelector,
 ];
 
@@ -1204,9 +1221,16 @@ for (const selector of darkTaskMarkdownSelectors) {
 }
 
 for (const rule of stylesheetRules) {
-  if (!rule.selectors.some((selector) =>
-    selector === darkTaskMarkdownRoot
-      || selector.startsWith(`${darkTaskMarkdownRoot} `))) continue;
+  const actualDarkTaskMarkdownSelectors = rule.selectors.filter((selector) =>
+    selector.includes(darkTaskMainReadabilityRoot)
+      && selector.includes('[class*="_markdownContent_"]'));
+  if (!actualDarkTaskMarkdownSelectors.length) continue;
+  for (const selector of rule.selectors) {
+    assert(
+      !/(?:diff|monaco|xterm|terminal|editor|ProseMirror|composer)/iu.test(selector),
+      `dark task Markdown paint must not reach forbidden surfaces: ${selector}`,
+    );
+  }
   assert(
     rule.selectors.every((selector) =>
       selector === darkTaskMarkdownRoot
@@ -1221,9 +1245,23 @@ for (const rule of stylesheetRules) {
   }
 }
 
+for (const rule of stylesheetRules) {
+  for (const selector of rule.selectors) {
+    if (!selector.includes(darkTaskMainReadabilityRoot)) continue;
+    const targetsMarkdownCode =
+      /(?:^|[\s>+~,(])(?:code|pre)(?:$|[\s>+~,.:[#])/iu.test(selector);
+    if (!targetsMarkdownCode) continue;
+    assert(
+      selector.startsWith(`${darkTaskMarkdownRoot} `),
+      `dark task code paint must stay inside the native Markdown root: ${selector}`,
+    );
+  }
+}
+
 const darkTaskMarkdownCodeSelectors = [
   darkTaskCodeBlockSelector,
   darkTaskCodeSelector,
+  darkTaskCodeDefaultTokenSelector,
   darkTaskCodeChromeSelector,
   darkTaskCodeChromeControlSelector,
   darkTaskCodeChromeInteractiveSelector,
@@ -1272,7 +1310,6 @@ for (const selector of [
   darkTaskTitleSelector,
   darkTaskActivityCopySelector,
   darkTaskConversationSurfaceSelector,
-  darkTaskMarkdownSurfaceSelector,
   darkTaskHeaderSelector,
   darkTaskHeaderNeutralControlSelector,
   darkTaskNeutralActionSelector,
@@ -1727,6 +1764,47 @@ async function assertRejectsStylesheetMutations() {
       name: "reduced-motion ::after selector",
       expected: ".denia-old-days-ds-extension *::after",
       failure: "validator must require the global ::after reduced-motion selector",
+    },
+    {
+      prefix: "denia-validator-css-dark-markdown-xterm-",
+      mutate: (source) => `${source}
+${darkTaskMarkdownRoot} .xterm pre {
+  color: var(--denia-dark-code-text) !important;
+}
+`,
+      expected: "dark task Markdown paint must not reach forbidden surfaces",
+      failure: "validator must reject xterm paint nested under the dark task Markdown root",
+    },
+    {
+      prefix: "denia-validator-css-dark-pre-outside-markdown-",
+      mutate: (source) => `${source}
+${darkTaskMainReadabilityRoot} pre {
+  color: var(--denia-dark-code-text) !important;
+}
+`,
+      expected: "dark task code paint must stay inside the native Markdown root",
+      failure: "validator must reject dark task pre paint outside the approved Markdown root",
+    },
+    {
+      prefix: "denia-validator-css-dark-markdown-monaco-group-",
+      mutate: (source) => `${source}
+${darkTaskMarkdownRoot} .denia-validator-group-probe,
+${darkTaskMainReadabilityRoot} .monaco-editor {
+  color: var(--denia-dark-code-text) !important;
+}
+`,
+      expected: "dark task Markdown paint must not reach forbidden surfaces",
+      failure: "validator must reject a grouped Markdown and Monaco paint rule",
+    },
+    {
+      prefix: "denia-validator-css-dark-markdown-padding-",
+      mutate: (source) => `${source}
+${darkTaskMarkdownRoot} .denia-validator-padding-probe {
+  padding: 1px;
+}
+`,
+      expected: "dark task Markdown paint must not change native geometry or behavior: padding",
+      failure: "validator must reject layout declarations under the approved Markdown root",
     },
   ];
   for (const fixture of cases) {

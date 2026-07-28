@@ -1077,6 +1077,18 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
+  :is([class^="hljs-"], [class*=" hljs-"]) {
+  color: var(--denia-dark-code-text) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
   :is(.hljs-comment, .hljs-quote) {
   color: var(--denia-dark-code-comment) !important;
   text-shadow: none !important;
@@ -1101,7 +1113,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
-  :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in) {
+  :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in, .hljs-name, .hljs-section, .hljs-selector-class, .hljs-selector-id, .hljs-selector-attr, .hljs-selector-pseudo) {
   color: var(--denia-dark-code-type) !important;
   text-shadow: none !important;
 }
@@ -1113,7 +1125,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
-  :is(.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-variable) {
+  :is(.hljs-string, .hljs-template-variable, .hljs-regexp, .hljs-addition, .hljs-bullet, .hljs-link) {
   color: var(--denia-dark-code-string) !important;
   text-shadow: none !important;
 }
@@ -1149,7 +1161,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
-  :is(.hljs-meta, .hljs-doctag) {
+  :is(.hljs-meta, .hljs-doctag, .hljs-formula, .hljs-template-tag) {
   color: var(--denia-dark-code-warning) !important;
   text-shadow: none !important;
 }
@@ -1199,8 +1211,18 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   .thread-scroll-container
   :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
+  :is(a, strong, em, del, mark, kbd, samp) {
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
   a {
   color: var(--denia-dark-text-link) !important;
+  text-shadow: none !important;
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
@@ -1217,13 +1239,16 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
   .thread-scroll-container
-  .text-token-conversation-body,
+  .text-token-conversation-body {
+  color: var(--denia-dark-text-muted) !important;
+}
+
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
   .thread-scroll-container
   [data-content-search-unit-key]
   .text-xs.text-token-text-tertiary {
-  color: var(--denia-dark-text-muted) !important;
+  color: var(--denia-dark-text-tertiary) !important;
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
@@ -1238,10 +1263,6 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   main.main-surface:not(.dream-skin-home-shell)
   .thread-scroll-container
   [role="main"],
-html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
-  main.main-surface:not(.dream-skin-home-shell)
-  .thread-scroll-container
-  [class*="_markdownContent_"],
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
   > header.app-header-tint {
