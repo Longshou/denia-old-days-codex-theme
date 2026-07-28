@@ -54,6 +54,7 @@ if (manifest.schemaVersion !== 1 || manifest.id !== "denia-old-days") {
 const stylePath = path.resolve(extensionDir, manifest.entrypoints.style);
 const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
+const darkHomePath = path.resolve(extensionDir, manifest.assets.darkHomeArtwork);
 const taskWarmPath = path.resolve(extensionDir, manifest.assets.taskWarmArtwork);
 const taskApprovalPath = path.resolve(extensionDir, manifest.assets.taskApprovalArtwork);
 const taskErrorPath = path.resolve(extensionDir, manifest.assets.taskErrorArtwork);
@@ -62,6 +63,7 @@ const [
   styleRealPath,
   runtimeRealPath,
   brightRealPath,
+  darkHomeRealPath,
   taskWarmRealPath,
   taskApprovalRealPath,
   taskErrorRealPath,
@@ -70,15 +72,17 @@ const [
   resolveExtensionFile(stylePath, manifest.entrypoints.style),
   resolveExtensionFile(runtimePath, manifest.entrypoints.runtime),
   resolveExtensionFile(brightPath, manifest.assets.runtimeWallpaper),
+  resolveExtensionFile(darkHomePath, manifest.assets.darkHomeArtwork),
   resolveExtensionFile(taskWarmPath, manifest.assets.taskWarmArtwork),
   resolveExtensionFile(taskApprovalPath, manifest.assets.taskApprovalArtwork),
   resolveExtensionFile(taskErrorPath, manifest.assets.taskErrorArtwork),
   resolveExtensionFile(taskCompletePath, manifest.assets.taskCompleteArtwork),
 ]);
-const [cssText, runtimeTemplate, bright, taskWarm, taskApproval, taskError, taskComplete] = await Promise.all([
+const [cssText, runtimeTemplate, bright, darkHome, taskWarm, taskApproval, taskError, taskComplete] = await Promise.all([
   fs.readFile(styleRealPath, "utf8"),
   fs.readFile(runtimeRealPath, "utf8"),
   fs.readFile(brightRealPath),
+  fs.readFile(darkHomeRealPath),
   fs.readFile(taskWarmRealPath),
   fs.readFile(taskApprovalRealPath),
   fs.readFile(taskErrorRealPath),
@@ -96,6 +100,7 @@ const templatePlaceholders = Object.freeze({
   manifest: "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",
   css: "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   bright: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
+  dark: "__DENIA_OLD_DAYS_EXTENSION_DARK_HOME_ART_JSON__",
   taskWarm: "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
   taskApproval: "__DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__",
   taskError: "__DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__",
@@ -105,6 +110,7 @@ const templateSentinels = Object.freeze({
   manifest: "@@DENIA_RUNTIME_MANIFEST_7F3A@@",
   css: "@@DENIA_RUNTIME_CSS_7F3A@@",
   bright: "@@DENIA_RUNTIME_BRIGHT_ART_7F3A@@",
+  dark: "@@DENIA_RUNTIME_DARK_HOME_ART_7F3A@@",
   taskWarm: "@@DENIA_RUNTIME_TASK_WARM_ART_7F3A@@",
   taskApproval: "@@DENIA_RUNTIME_TASK_APPROVAL_ART_7F3A@@",
   taskError: "@@DENIA_RUNTIME_TASK_ERROR_ART_7F3A@@",
@@ -132,6 +138,7 @@ const stagedRuntimeTemplate = runtimeTemplate
   .replace(templatePlaceholders.manifest, templateSentinels.manifest)
   .replace(templatePlaceholders.css, templateSentinels.css)
   .replace(templatePlaceholders.bright, templateSentinels.bright)
+  .replace(templatePlaceholders.dark, templateSentinels.dark)
   .replace(templatePlaceholders.taskWarm, templateSentinels.taskWarm)
   .replace(templatePlaceholders.taskApproval, templateSentinels.taskApproval)
   .replace(templatePlaceholders.taskError, templateSentinels.taskError)
@@ -149,6 +156,7 @@ const sentinelPayloads = new Map([
   [templateSentinels.manifest, JSON.stringify(manifest)],
   [templateSentinels.css, JSON.stringify(cssText)],
   [templateSentinels.bright, JSON.stringify(imageDataUrl(brightPath, bright))],
+  [templateSentinels.dark, JSON.stringify(imageDataUrl(darkHomePath, darkHome))],
   [templateSentinels.taskWarm, JSON.stringify(imageDataUrl(taskWarmPath, taskWarm))],
   [templateSentinels.taskApproval, JSON.stringify(imageDataUrl(taskApprovalPath, taskApproval))],
   [templateSentinels.taskError, JSON.stringify(imageDataUrl(taskErrorPath, taskError))],
@@ -178,6 +186,7 @@ const cleanupExpression = `(() => {
   ]) document.getElementById(id)?.remove();
   root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home', 'denia-old-days-ds-task');
   delete root.dataset.deniaOldDaysExtensionVersion;
+  delete root.dataset.deniaTheme;
   delete root.dataset.deniaFormState;
   delete root.dataset.deniaSidebarState;
   delete root.dataset.deniaSidebarConfidence;
@@ -188,6 +197,7 @@ const cleanupExpression = `(() => {
   root.style.removeProperty('--denia-native-sidebar-width');
   root.style.removeProperty('--denia-thread-content-width');
   root.style.removeProperty('--denia-old-days-art-bright');
+  root.style.removeProperty('--denia-old-days-art-dark');
   root.style.removeProperty('--denia-old-days-art-task-warm');
   root.style.removeProperty('--denia-old-days-art-task-approval');
   root.style.removeProperty('--denia-old-days-art-task-error');
@@ -238,10 +248,15 @@ const verifyExpression = `(() => {
   const homeVisualsStyle = homeVisuals ? getComputedStyle(homeVisuals) : null;
   const hero = document.querySelector('.denia-old-days-ds-hero');
   const photoFront = document.querySelector('.denia-old-days-ds-photo-front');
-  const runtimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-bright').trim();
-  const runtimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(runtimeArt)?.[1] || '';
+  const mainSurface = document.querySelector('main.main-surface.dream-skin-home-shell');
+  const brightRuntimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-bright').trim();
+  const darkRuntimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-dark').trim();
+  const brightRuntimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(brightRuntimeArt)?.[1] || '';
+  const darkRuntimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(darkRuntimeArt)?.[1] || '';
+  const darkHome = root.dataset.deniaTheme === 'dark';
   const heroBackgroundImage = hero ? getComputedStyle(hero).backgroundImage : '';
   const photoFrontBackgroundImage = photoFront ? getComputedStyle(photoFront).backgroundImage : '';
+  const mainSurfaceBackgroundImage = mainSurface ? getComputedStyle(mainSurface).backgroundImage : '';
   const stateArtRail = document.getElementById('denia-old-days-ds-state-art');
   const activeStateArtLayer = stateArtRail?.querySelector('.denia-old-days-ds-state-art-layer.is-active') || null;
   const nativeSidebarPanels = [...document.querySelectorAll(".denia-old-days-ds-native-right-sidebar")];
@@ -364,10 +379,14 @@ const verifyExpression = `(() => {
     id: state?.id || null,
     version: state?.version || null,
     artReady: Boolean(state?.artReady),
-    fastArtPresent: Boolean(runtimeArt),
-    heroUsesRuntimeArt: Boolean(!home || (runtimeArtUrl && photoFrontBackgroundImage.includes(runtimeArtUrl))),
+    fastArtPresent: Boolean(brightRuntimeArt),
+    darkHomeArtPresent: Boolean(darkRuntimeArt),
+    heroUsesRuntimeArt: Boolean(!home || (darkHome
+      ? darkRuntimeArtUrl && mainSurfaceBackgroundImage.includes(darkRuntimeArtUrl)
+      : brightRuntimeArtUrl && photoFrontBackgroundImage.includes(brightRuntimeArtUrl))),
     heroBackgroundImage,
     photoFrontBackgroundImage,
+    mainSurfaceBackgroundImage,
     metrics: state?.metrics || null,
     installed: root.classList.contains('denia-old-days-ds-extension'),
     stylePresent: Boolean(document.getElementById('denia-old-days-dream-skin-extension-style')),
