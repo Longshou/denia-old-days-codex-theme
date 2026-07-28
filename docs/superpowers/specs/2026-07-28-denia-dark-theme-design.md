@@ -31,10 +31,14 @@
 深色首页采用“全景沉浸”方案，使用仓库内的官方素材：
 
 ```text
-art/reference/visual-library/source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg
+art/source/official/denia-home-dark-hjz.jpg
 ```
 
-素材尺寸为 `4096 × 2304`，画面主体为达妮娅、中央记忆泡泡和深色虚质空间。深色首页不再使用相框结构，人物图铺满首页内容区，导航、标题和输入区悬浮在同一画面上。
+该文件由已确认的视觉资料
+`art/reference/visual-library/source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg`
+原样归档到发布源目录，素材尺寸为 `4096 × 2304`，SHA-256 为
+`b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce`。
+画面主体为达妮娅、中央记忆泡泡和深色虚质空间。深色首页不再使用相框结构，人物图铺满首页内容区，导航、标题和输入区悬浮在同一画面上。
 
 视觉规则：
 
@@ -131,7 +135,10 @@ flowchart LR
 ### Hero
 
 - Hero 使用首页内容区的可用高度，人物图作为完整背景，不再创建矩形图片框。
-- 标题位于主内容区左上方的深色安全区，保持现有文案和字号层级。
+- 标题位于主内容区左上方的深色安全区，保持现有字号层级。
+- 浅色文案逐字保持现状：`DENIA · OLD DAYS IN COLOR`、`今天要把什么写进手账？`、`布景之形 · 记录中`。
+- 深色文案与浅色的“今天 / 手账 / 显影”意象相照应：`DENIA · OLD DAYS AFTERGLOW`、`今晚，要让哪段思绪显影？`、`幻灭之形 · 观察中`。
+- 深色文案是主题 UI 原创文案，不标注为游戏台词或角色引语。
 - 状态标签紧跟标题，不新增角色档案、生日或技术数据文案。
 - 取消纸张背板、拍立得边框、暖色阴影和额外泡泡装饰。
 - 原图中的泡泡和星点承担装饰，不再叠加独立粒子层。
