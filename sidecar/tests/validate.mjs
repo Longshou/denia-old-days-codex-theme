@@ -744,24 +744,17 @@ assert(
   "native sidebar group surface must be at least .98 opaque",
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
-const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"][data-denia-work-surface-state="closed"] main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
-const taskClosedWorkSurfaceMotionSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"][data-denia-work-surface-state="closed"] main .thread-scroll-container > [class*="min-h-full"][class*="shrink-0"]';
-const taskSidebarClosingAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="unknown"][data-denia-sidebar-toggle-state="closed"][data-denia-summary-state="closed"][data-denia-bottom-panel-state="closed"] main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
+const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
+const taskContentMotionSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container > [class*="min-h-full"][class*="shrink-0"]';
 const taskContentAlignmentRule = findCssRule(stylesheetRules, taskContentAlignmentSelector);
-const taskSidebarClosingAlignmentRule = findCssRule(stylesheetRules, taskSidebarClosingAlignmentSelector);
 assert(
   taskContentAlignmentRule?.selectors.length === 1,
-  "task content alignment must use one closed-work-surface selector without grouped open-state fallbacks",
-);
-assert(
-  taskSidebarClosingAlignmentRule?.selectors.length === 1,
-  "task sidebar closing alignment must use one exact transition-state selector",
+  "task content alignment must use one route-stable selector",
 );
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-task"))) continue;
   for (const property of rule.declarations.keys()) {
-    if ((rule.selectors.includes(taskContentAlignmentSelector)
-        || rule.selectors.includes(taskSidebarClosingAlignmentSelector))
+    if (rule.selectors.includes(taskContentAlignmentSelector)
       && ["margin-inline-start", "margin-inline-end"].includes(property)) continue;
     assert(!taskLayoutProperties.test(property), `task stylesheet must not override native layout property ${property}`);
   }
@@ -770,22 +763,14 @@ assertCssDeclarations(stylesheetRules, taskContentAlignmentSelector, {
   "margin-inline-start": "max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important",
   "margin-inline-end": "auto !important",
 });
-assertCssDeclarations(stylesheetRules, taskClosedWorkSurfaceMotionSelector, {
+assertCssDeclarations(stylesheetRules, taskContentMotionSelector, {
   transform: "none !important",
   transition: "none !important",
 });
-assertCssDeclarations(stylesheetRules, taskSidebarClosingAlignmentSelector, {
-  "margin-inline-start": "max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important",
-  "margin-inline-end": "auto !important",
-  transition: "none !important",
-  animation: "denia-old-days-sidebar-close-align 160ms cubic-bezier(.22, 1, .36, 1) both",
-});
-assertCssDeclarations(stylesheetRules, "from", {
-  translate: "calc((var(--denia-state-rail-width) - var(--denia-native-sidebar-width, var(--denia-state-rail-width))) / 2) 0",
-}, ["@keyframes denia-old-days-sidebar-close-align"]);
-assertCssDeclarations(stylesheetRules, "to", {
-  translate: "0 0",
-}, ["@keyframes denia-old-days-sidebar-close-align"]);
+assert(
+  !styles.includes("denia-old-days-sidebar-close-align"),
+  "task layout must not retain sidebar close compensation animation",
+);
 assert(
   runtime.includes("if (home) {\n      ensureSidebarBrand();")
     && runtime.includes("syncHomeViewport(findMain());")
