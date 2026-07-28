@@ -280,7 +280,7 @@ const verifyExpression = `(() => {
       && Math.abs(panelRight - innerWidth) <= 12
       && panelRect.height >= Math.max(240, innerHeight * .35)
       && (!mainMeasurable || panelLeft >= mainRight - 12 || Boolean(
-        panelLeft >= mainLeft - 12
+        panelLeft >= mainLeft + mainRect.width * .62
           && panelLeft < mainRight - 12
           && Math.abs(panelRight - mainRight) <= 12
       ))

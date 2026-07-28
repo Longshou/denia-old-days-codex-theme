@@ -2934,6 +2934,17 @@ function assertLiveTaskVerification(loaderSource) {
     overlaySidebarResult.sidebar.nativeGeometryPass === true && overlaySidebarResult.taskPass === true,
     "live task verification must accept a right-edge sidebar overlaying full-width native main",
   );
+  const overwideOverlaySidebarResult = runCase({
+    formState: "working",
+    sidebarState: "open",
+    mainRect: { x: 0, y: 46, width: 1200, height: 754 },
+    nativeSidebarRect: { x: 400, y: 46, width: 800, height: 754 },
+  });
+  assert(
+    overwideOverlaySidebarResult.sidebar.nativeGeometryPass === false
+      && overwideOverlaySidebarResult.taskPass === false,
+    "live task verification must reject an overwide right-edge overlay covering most of native main",
+  );
   const blockedToggleResult = runCase({
     formState: "working",
     sidebarState: "open",
