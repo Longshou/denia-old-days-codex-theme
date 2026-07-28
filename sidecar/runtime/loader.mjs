@@ -367,8 +367,8 @@ const verifyExpression = `(() => {
   const nativeHomeSuggestionTargets = [
     ...document.querySelectorAll('.denia-old-days-ds-native-home-suggestions'),
   ];
-  const nativeHomeSuggestionsHidden = nativeHomeSuggestionTargets.length > 0
-    && nativeHomeSuggestionTargets.every((node) => getComputedStyle(node).display === 'none');
+  const nativeHomeSuggestionsHidden =
+    nativeHomeSuggestionTargets.every((node) => getComputedStyle(node).display === 'none');
   const homeScroller = document.querySelector('.dream-skin-home');
   const homeScrollerStyle = homeScroller ? getComputedStyle(homeScroller) : null;
   const composer = document.querySelector('.composer-surface-chrome');

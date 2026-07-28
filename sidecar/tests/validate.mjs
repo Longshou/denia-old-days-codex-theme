@@ -449,6 +449,10 @@ const composerPaintProperties = new Set([
 ]);
 const darkComposerPlaceholderSelector =
   '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer textarea::placeholder';
+const darkHomeComposerSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] .denia-old-days-ds-composer';
+const darkTaskComposerSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]:has(main.main-surface:not(.dream-skin-home-shell)) .denia-old-days-ds-composer';
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-composer"))) continue;
   assert(
@@ -472,6 +476,22 @@ assert(
     rule.selectors.includes('.denia-old-days-ds-extension[data-denia-theme="dark"] textarea::placeholder')),
   "dark placeholder paint must stay scoped to the composer",
 );
+for (const selector of [darkHomeComposerSelector, darkTaskComposerSelector]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    color: "var(--denia-dark-text) !important",
+    "border-color": "rgba(141, 197, 234, .66) !important",
+    background: "rgba(26, 28, 58, .96) !important",
+  });
+  assertCssDeclarations(stylesheetRules, selector, {
+    background: "var(--denia-dark-surface) !important",
+    "backdrop-filter": "none",
+  }, ["prefers-reduced-transparency: reduce"]);
+}
+const darkComposerMutedControlSelector =
+  '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer :is(button, [role="button"]).text-token-text-tertiary';
+assertCssDeclarations(stylesheetRules, darkComposerMutedControlSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+});
 assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-bright", {
     selector: ".denia-old-days-ds-photo-front",
@@ -507,6 +527,11 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
 const deepHomeSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]';
 const deepHomeMainSelector = `${deepHomeSelector} main.main-surface.dream-skin-home-shell`;
+const deepHomePromptCopySelector =
+  `${deepHomeSelector} .denia-old-days-ds-native-home-prompt :is([class*="heading"], h1, h2, h3, p)`;
+assertCssDeclarations(stylesheetRules, deepHomePromptCopySelector, {
+  color: "var(--denia-dark-text) !important",
+});
 const deepHomeLayoutProperties = /^(?:width|height|min-width|min-height|max-width|max-height|margin(?:-.+)?|padding(?:-.+)?|position|inset|top|right|bottom|left|display|grid(?:-.+)?|flex(?:-.+)?|transform|translate|overflow(?:-.+)?)$/u;
 const deepHomeNativeLayoutTargets = /(?:\bmain\b|denia-old-days-ds-composer|denia-old-days-ds-native-home-prompt|denia-old-days-ds-native-(?:left|right)-sidebar|denia-old-days-ds-native-sidebar-(?:group|row))/u;
 const deepHomeDecorationSelectors = new Set([
@@ -783,6 +808,34 @@ const sidebarPaintProperties = new Set([
   "transition",
   "transition-duration",
 ]);
+const darkSidebarRoot =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]';
+const darkLeftSidebarInteractiveSelector =
+  `${darkSidebarRoot} .denia-old-days-ds-native-left-sidebar :is(a, button, [role="button"], [data-app-action-sidebar-project-row], [data-app-action-sidebar-thread-row])`;
+const darkLeftSidebarInteractiveContentSelector = `${darkLeftSidebarInteractiveSelector} *`;
+const darkLeftSidebarActiveSelector =
+  `${darkSidebarRoot} .denia-old-days-ds-native-left-sidebar :is([data-app-action-sidebar-thread-active="true"], [aria-current="page"])`;
+const darkRightSidebarInteractiveSelector =
+  `${darkSidebarRoot} .denia-old-days-ds-native-right-sidebar :is(a, button, [role="button"])`;
+const darkRightSidebarInteractiveContentSelector = `${darkRightSidebarInteractiveSelector} *`;
+const darkRightSidebarRowContentSelector =
+  `${darkSidebarRoot} :is(.denia-old-days-ds-native-sidebar-group, .denia-old-days-ds-native-sidebar-row) *`;
+assertCssDeclarations(stylesheetRules, darkLeftSidebarInteractiveSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+});
+for (const selector of [
+  darkLeftSidebarInteractiveContentSelector,
+  darkRightSidebarInteractiveContentSelector,
+  darkRightSidebarRowContentSelector,
+]) {
+  assertCssDeclarations(stylesheetRules, selector, { color: "inherit !important" });
+}
+assertCssDeclarations(stylesheetRules, darkLeftSidebarActiveSelector, {
+  color: "var(--denia-dark-text) !important",
+});
+assertCssDeclarations(stylesheetRules, darkRightSidebarInteractiveSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+});
 const nativeSidebarClasses = [
   ".denia-old-days-ds-native-left-sidebar",
   ".denia-old-days-ds-native-right-sidebar",
@@ -842,6 +895,59 @@ assert(
   "native sidebar group surface must be at least .98 opaque",
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
+const darkTaskMainReadabilityRoot =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"] main.main-surface:not(.dream-skin-home-shell)';
+const darkTaskMarkdownSelector =
+  `${darkTaskMainReadabilityRoot} [class*="_markdownContent_"] :is(p, li, ol, ul, blockquote, h1, h2, h3, h4, h5, h6):is([class*="_markdownText_"], [class*="_heading_"])`;
+const darkTaskInlineMarkdownSelector =
+  `${darkTaskMainReadabilityRoot} [class*="_markdownContent_"] :is(p, li)[class*="_markdownText_"] > .inline-markdown`;
+const darkTaskProgressCopySelector =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body`;
+const darkTaskMetadataSelector =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container [data-content-search-unit-key] .text-xs.text-token-text-tertiary`;
+const darkTaskTitleSelector =
+  `${darkTaskMainReadabilityRoot} [data-testid="app-shell-header-context-menu-surface"] .text-token-foreground > .min-w-0.truncate`;
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownSelector, {
+  color: "var(--denia-dark-text) !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskInlineMarkdownSelector, {
+  color: "var(--denia-dark-focus) !important",
+  background: "rgba(141, 197, 234, .12) !important",
+});
+for (const selector of [darkTaskProgressCopySelector, darkTaskMetadataSelector]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    color: "var(--denia-dark-text-muted) !important",
+  });
+}
+assertCssDeclarations(stylesheetRules, darkTaskTitleSelector, {
+  color: "var(--denia-dark-text) !important",
+});
+for (const selector of [
+  darkTaskMarkdownSelector,
+  darkTaskInlineMarkdownSelector,
+  darkTaskProgressCopySelector,
+  darkTaskMetadataSelector,
+  darkTaskTitleSelector,
+]) {
+  assert(
+    !/(?:^|[\s>+~,(])(?:code|pre|terminal)(?:$|[\s>+~,.:[#])/iu.test(selector)
+      && !/(?:diff|monaco|xterm)/iu.test(selector),
+    `dark task readability paint must not target code, diff, editor, or terminal surfaces: ${selector}`,
+  );
+}
+assert(
+  !stylesheetRules.some((rule) => rule.selectors.some((selector) =>
+    selector.includes(darkTaskMainReadabilityRoot)
+      && /(?:thread-resource-card|end-resource)/u.test(selector))),
+  "dark task readability paint must not wash out light resource cards",
+);
+assert(
+  !stylesheetRules.some((rule) => rule.selectors.some((selector) =>
+    selector.includes(darkTaskMainReadabilityRoot)
+      && selector.includes("text-token-foreground")
+      && selector !== darkTaskTitleSelector)),
+  "dark task foreground-token paint must stay pinned to the native thread title",
+);
 const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
 const taskContentMotionSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container > [class*="min-h-full"][class*="shrink-0"]';
 const taskContentAlignmentRule = findCssRule(stylesheetRules, taskContentAlignmentSelector);
@@ -2664,6 +2770,7 @@ function assertLiveTaskVerification(loaderSource) {
     includeSidebarBrand = false,
     composerRect = { x: 100, y: 100, width: 320, height: 80 },
     hideNativeSuggestions = home,
+    nativeHomeSuggestionCount = home ? 1 : 0,
   }) => {
     const rootClasses = ["denia-old-days-ds-extension", home ? "denia-old-days-ds-home" : "denia-old-days-ds-task"];
     const root = {
@@ -2693,9 +2800,10 @@ function assertLiveTaskVerification(loaderSource) {
     const nativeHomePrompt = home
       ? makeNode(["denia-old-days-ds-native-home-prompt"], {}, { x: 220, y: 420, width: 760, height: 112 })
       : null;
-    const nativeHomeSuggestions = home
-      ? [makeNode(["denia-old-days-ds-native-home-suggestions"])]
-      : [];
+    const nativeHomeSuggestions = Array.from(
+      { length: nativeHomeSuggestionCount },
+      () => makeNode(["denia-old-days-ds-native-home-suggestions"]),
+    );
     const nativeSidebarPanels = Array.from(
       { length: nativeSidebarPanelCount },
       () => makeNode(["denia-old-days-ds-native-right-sidebar"], {}, nativeSidebarRect),
@@ -3044,6 +3152,16 @@ function assertLiveTaskVerification(loaderSource) {
   assert(
     runCase({ formState: "staged", home: true, sidebarState: "open", railDisplay: "none" }).pass === true,
     "live verification must accept a skinned home sidebar with hidden state artwork",
+  );
+  assert(
+    runCase({
+      formState: "staged",
+      home: true,
+      sidebarState: "open",
+      railDisplay: "none",
+      nativeHomeSuggestionCount: 0,
+    }).pass === true,
+    "live verification must accept a home whose host renders no native suggestion cards",
   );
   assert(
     runCase({
