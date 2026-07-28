@@ -432,7 +432,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 }
 
 .denia-old-days-ds-hero h1 {
-  max-width: 620px;
+  max-width: 6.2em;
   margin: 20px 0 14px;
   color: var(--denia-ink);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
@@ -440,6 +440,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   font-weight: 750;
   line-height: 1.12;
   letter-spacing: -0.035em;
+  text-wrap: wrap;
+  line-break: strict;
 }
 
 .denia-old-days-ds-status {

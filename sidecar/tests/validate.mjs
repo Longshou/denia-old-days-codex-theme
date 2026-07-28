@@ -324,6 +324,16 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   width: "min(1160px, calc(100% - 32px))",
   margin: "clamp(16px, 3vh, 32px) auto 16px",
 });
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero h1", {
+  "max-width": "6.2em",
+  margin: "20px 0 14px",
+  "font-size": "clamp(34px, 4vw, 54px)",
+  "font-weight": "750",
+  "line-height": "1.12",
+  "letter-spacing": "-0.035em",
+  "text-wrap": "wrap",
+  "line-break": "strict",
+});
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   position: "relative",
   isolation: "isolate",

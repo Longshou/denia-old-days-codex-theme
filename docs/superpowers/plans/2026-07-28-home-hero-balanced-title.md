@@ -4,14 +4,14 @@
 
 **Goal:** 把首页横幅标题从失衡的 9＋2 断行改为接近等长的 6＋5 两行。
 
-**Architecture:** 只在现有 `.denia-old-days-ds-hero h1` 基础规则上增加 CSS 原生平衡断行和中文严格换行属性。测试继续使用现有 CSS 语法扫描器锁定声明，不修改横幅网格、运行时、文案、素材或任务页。
+**Architecture:** 只在现有 `.denia-old-days-ds-hero h1` 基础规则上把标题宽度约束为 `6.2em`，并使用普通换行与中文严格换行属性。测试继续使用现有 CSS 语法扫描器锁定声明，不修改横幅网格、运行时、文案、素材或任务页。
 
 **Tech Stack:** 原生 CSS、Node.js ESM、现有 `sidecar/tests/validate.mjs`、Kaboo 本地构建与 Sidecar 实机验证。
 
 ## Global Constraints
 
 - 只修改 `sidecar/src/denia-old-days-extension.css`、`sidecar/tests/validate.mjs` 和本计划文档。
-- `.denia-old-days-ds-hero h1` 增加 `text-wrap: balance` 和 `line-break: strict`。
+- `.denia-old-days-ds-hero h1` 使用 `max-width: 6.2em`、`text-wrap: wrap` 和 `line-break: strict`。
 - 不修改标题文案、字号、字重、行高、字距或边距。
 - 不修改横幅网格、尺寸、内边距、图片、泡泡、背景或动画。
 - 不修改 JavaScript、运行时、素材、清单和脚本。
@@ -37,13 +37,13 @@
 
 ```js
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero h1", {
-  "max-width": "620px",
+  "max-width": "6.2em",
   margin: "20px 0 14px",
   "font-size": "clamp(34px, 4vw, 54px)",
   "font-weight": "750",
   "line-height": "1.12",
   "letter-spacing": "-0.035em",
-  "text-wrap": "balance",
+  "text-wrap": "wrap",
   "line-break": "strict",
 });
 ```
@@ -64,7 +64,7 @@ Expected: FAIL，错误指出 `.denia-old-days-ds-hero h1` 缺少 `text-wrap` �
 
 ```css
 .denia-old-days-ds-hero h1 {
-  max-width: 620px;
+  max-width: 6.2em;
   margin: 20px 0 14px;
   color: var(--denia-ink);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
@@ -72,7 +72,7 @@ Expected: FAIL，错误指出 `.denia-old-days-ds-hero h1` 缺少 `text-wrap` �
   font-weight: 750;
   line-height: 1.12;
   letter-spacing: -0.035em;
-  text-wrap: balance;
+  text-wrap: wrap;
   line-break: strict;
 }
 ```
