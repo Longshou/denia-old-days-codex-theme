@@ -1302,14 +1302,18 @@
     }, 80);
   }
 
-  function extensionClassDeltaOnly(record) {
+  function changedClassTokens(record) {
     const oldTokens = new Set((record.oldValue || "").split(/\s+/u).filter(Boolean));
     const currentClass = record.target.getAttribute?.("class") || "";
     const currentTokens = new Set(currentClass.split(/\s+/u).filter(Boolean));
-    const changedTokens = new Set([
+    return new Set([
       ...[...oldTokens].filter((token) => !currentTokens.has(token)),
       ...[...currentTokens].filter((token) => !oldTokens.has(token)),
     ]);
+  }
+
+  function extensionClassDeltaOnly(record) {
+    const changedTokens = changedClassTokens(record);
     return [...changedTokens].every((token) => token.startsWith("denia-old-days-ds-"));
   }
 
@@ -1324,10 +1328,26 @@
     return false;
   }
 
-  function mutationIsHostTheme(record) {
-    return record.type === "attributes"
-      && record.target === root
-      && record.attributeName === "class";
+  function hostThemeClassDelta(record) {
+    if (record.type !== "attributes"
+      || record.target !== root
+      || record.attributeName !== "class") return null;
+    return changedClassTokens(record);
+  }
+
+  function mutationTouchesHostTheme(record) {
+    const changedTokens = hostThemeClassDelta(record);
+    return Boolean(changedTokens
+      && [...changedTokens].some((token) =>
+        token === "electron-dark" || token === "electron-light"));
+  }
+
+  function mutationIsHostThemeOnly(record) {
+    const changedTokens = hostThemeClassDelta(record);
+    return Boolean(changedTokens
+      && changedTokens.size > 0
+      && [...changedTokens].every((token) =>
+        token === "electron-dark" || token === "electron-light"));
   }
 
   function mutationIsTerminalChurn(record) {
@@ -1698,9 +1718,9 @@
     });
   }
   state.observer = new MutationObserver((records) => {
-    if (records.some(mutationIsHostTheme)) syncNativeTheme();
+    if (records.some(mutationTouchesHostTheme)) syncNativeTheme();
     const relevantRecords = records.filter((record) =>
-      !mutationIsHostTheme(record)
+      !mutationIsHostThemeOnly(record)
       && !mutationIsThemeOnly(record)
       && !mutationIsTerminalChurn(record)
       && !mutationIsEditorColorProbe(record));

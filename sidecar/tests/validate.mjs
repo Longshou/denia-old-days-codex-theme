@@ -3342,6 +3342,46 @@ function assertHostThemeLifecycle(payload) {
   assert(dark.created.length === artUrlCount, "theme-only mutations must not recreate artwork URLs");
   assert(state.metrics.createdNodes === createdNodes, "theme-only mutations must not create owned nodes");
   assert(Object.keys(domains).every((key) => state.metrics.domainRuns[key] === domains[key]), "theme-only mutations must not enter route or task refresh domains");
+
+  dark.clearMutationRecords();
+  const nonThemeDomains = { ...state.metrics.domainRuns };
+  dark.root.classList.add("native-root-shell-state");
+  assert(dark.flushMutations() > 0, "root non-theme class changes must reach the existing observer");
+  assert(dark.root.dataset.deniaTheme === "light", "root non-theme class changes must not alter the remembered theme");
+  assert(dark.flushAnimationFrames() === 1, "root non-theme class changes must retain native semantic refresh scheduling");
+  assert(
+    state.metrics.domainRuns.route > nonThemeDomains.route,
+    "root non-theme class changes must retain the existing route refresh domain",
+  );
+
+  dark.clearMutationRecords();
+  const mixedDomains = { ...state.metrics.domainRuns };
+  const mixedOldValue = dark.root.getAttribute("class");
+  const mixedClasses = new Set(mixedOldValue.split(/\s+/u).filter(Boolean));
+  mixedClasses.delete("electron-light");
+  mixedClasses.add("electron-dark");
+  mixedClasses.add("native-root-mixed-state");
+  dark.root.className = [...mixedClasses].join(" ");
+  assert(
+    dark.deliverMutationRecords([{
+      type: "attributes",
+      target: dark.root,
+      attributeName: "class",
+      oldValue: mixedOldValue,
+    }]) === 1,
+    "the observer harness must deliver a single mixed root class record",
+  );
+  assert(dark.root.dataset.deniaTheme === "dark", "mixed root class changes must synchronize the host theme immediately");
+  assert(dark.flushAnimationFrames() === 1, "mixed root class changes must retain native semantic refresh scheduling");
+  assert(
+    state.metrics.domainRuns.route > mixedDomains.route,
+    "mixed root class changes must retain the existing route refresh domain",
+  );
+
+  dark.clearMutationRecords();
+  dark.root.classList.remove("electron-dark");
+  dark.root.classList.add("electron-light");
+  assert(dark.flushMutations() > 0 && dark.root.dataset.deniaTheme === "light", "a pure theme change must restore light after mixed root class work");
   dark.clearMutationRecords();
   dark.root.classList.remove("electron-light");
   assert(dark.flushMutations() > 0 && dark.root.dataset.deniaTheme === "light", "missing root classes must preserve the latest valid theme");
