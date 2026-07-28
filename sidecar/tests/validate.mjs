@@ -1055,6 +1055,8 @@ const darkTaskMarkdownSemanticShadowSelector =
   `${darkTaskMarkdownRoot} :is(a, strong, em, del, mark, kbd, samp)`;
 const darkTaskProgressCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body`;
+const darkTaskInlineUserEditorSelector =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container [data-content-search-unit-key$=":user"] form [contenteditable="true"]`;
 const darkTaskMetadataSelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"]) .text-xs.text-token-text-tertiary`;
 const darkTaskTitleSelector =
@@ -1164,6 +1166,9 @@ for (const [selector, variable] of [
 }
 assertCssDeclarations(stylesheetRules, darkTaskProgressCopySelector, {
   color: "var(--denia-dark-text-muted) !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskInlineUserEditorSelector, {
+  color: "var(--denia-dark-text) !important",
 });
 assertCssDeclarations(stylesheetRules, darkTaskMetadataSelector, {
   color: "var(--denia-dark-text-tertiary) !important",
