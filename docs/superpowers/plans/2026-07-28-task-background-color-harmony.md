@@ -33,7 +33,7 @@
 - Consumes: `stylesheetRules`, `runtime`, `findCssRule`, `assertCssDeclarations`, and `canonicalCssValue`.
 - Produces: static regression checks for the new palette and exact preservation of artwork rendering.
 
-- [ ] **Step 1: Update the task background palette expectations**
+- [x] **Step 1: Update the task background palette expectations**
 
 Change the two base-color expectations to:
 
@@ -68,7 +68,7 @@ for (const requiredColor of [
 }
 ```
 
-- [ ] **Step 2: Lock character-art rendering declarations**
+- [x] **Step 2: Lock character-art rendering declarations**
 
 Extend the existing rail and artwork assertions with:
 
@@ -116,7 +116,7 @@ for (const token of [
 }
 ```
 
-- [ ] **Step 3: Lock existing tint coverage geometry**
+- [x] **Step 3: Lock existing tint coverage geometry**
 
 Add exact hue-variable backgrounds while retaining the existing stops:
 
@@ -140,7 +140,7 @@ for (const [selector, background] of tintBackgrounds) {
 }
 ```
 
-- [ ] **Step 4: Run the validator and verify RED**
+- [x] **Step 4: Run the validator and verify RED**
 
 Run:
 
@@ -150,7 +150,7 @@ node sidecar/tests/validate.mjs sidecar
 
 Expected: FAIL on `--denia-task-background-color-light: #F2EFF4`; all artwork-preservation assertions that describe current behavior remain green.
 
-- [ ] **Step 5: Commit the failing contract**
+- [x] **Step 5: Commit the failing contract**
 
 ```bash
 git add sidecar/tests/validate.mjs
@@ -169,7 +169,7 @@ git commit -m "test: lock non-invasive task color harmony"
 - Consumes: the existing task route class, `data-denia-theme="dark"`, state-art selectors, and unchanged runtime state mappings.
 - Produces: light/dark task backgrounds and theme-aware rail tint color tokens.
 
-- [ ] **Step 1: Replace light and dark task palette variables**
+- [x] **Step 1: Replace light and dark task palette variables**
 
 Use:
 
@@ -201,7 +201,7 @@ Use:
     linear-gradient(145deg, rgba(30, 35, 90, .26), transparent 50%);
 ```
 
-- [ ] **Step 2: Add theme-aware rail hue tokens**
+- [x] **Step 2: Add theme-aware rail hue tokens**
 
 Add to the extension root:
 
@@ -239,7 +239,7 @@ Add the dark active-token switches to the existing dark task selector:
   --denia-task-rail-plum-rgb: var(--denia-task-rail-plum-rgb-dark);
 ```
 
-- [ ] **Step 3: Replace only rail and tint color declarations**
+- [x] **Step 3: Replace only rail and tint color declarations**
 
 Set the rail's existing border and background to:
 
@@ -250,7 +250,7 @@ Set the rail's existing border and background to:
 
 Replace the six tint `background` declarations with the exact values from Task 1. Do not edit `.denia-old-days-ds-state-art-layer`, `.is-active`, `.is-leaving`, the `taskWarm` working override, or any runtime file.
 
-- [ ] **Step 4: Run the focused validator and verify GREEN**
+- [x] **Step 4: Run the focused validator and verify GREEN**
 
 Run:
 
@@ -260,7 +260,7 @@ node sidecar/tests/validate.mjs sidecar
 
 Expected: PASS with `Sidecar validation passed.`
 
-- [ ] **Step 5: Review the source diff for scope**
+- [x] **Step 5: Review the source diff for scope**
 
 Run:
 
@@ -271,7 +271,7 @@ git diff -- sidecar/src/denia-old-days-extension.css sidecar/src/denia-old-days-
 
 Expected: CSS diff contains only task background tokens and rail/tint color declarations; JavaScript diff is empty.
 
-- [ ] **Step 6: Commit the implementation**
+- [x] **Step 6: Commit the implementation**
 
 ```bash
 git add sidecar/src/denia-old-days-extension.css
@@ -288,7 +288,7 @@ git commit -m "fix: harmonize task background without covering art"
 - Consumes: the completed CSS and unchanged runtime.
 - Produces: light/dark evidence screenshots and a checked implementation plan.
 
-- [ ] **Step 1: Run full source checks and install**
+- [x] **Step 1: Run full source checks and install**
 
 Run:
 
@@ -299,7 +299,7 @@ bash sidecar/scripts/install.sh
 
 Expected: source checks pass and the installed Sidecar matches the workspace source.
 
-- [ ] **Step 2: Capture the light task page**
+- [x] **Step 2: Capture the light task page**
 
 Run:
 
@@ -309,7 +309,7 @@ bash sidecar/scripts/verify.sh --screenshot /tmp/denia-color-harmony-light.png
 
 Expected: `pass: true`, task rail `x`, `width`, and family are unchanged; the light screenshot has no green-yellow seam.
 
-- [ ] **Step 3: Compare live artwork rendering with the locked contract**
+- [x] **Step 3: Compare live artwork rendering with the locked contract**
 
 Read computed styles through the active CDP target and assert:
 
@@ -325,7 +325,7 @@ Read computed styles through the active CDP target and assert:
 
 Expected: all values match the pre-change working-state contract; no artwork display-space value changed.
 
-- [ ] **Step 4: Capture the dark background and restore light mode**
+- [x] **Step 4: Capture the dark background and restore light mode**
 
 Temporarily set `document.documentElement.dataset.deniaTheme = "dark"` through CDP, capture:
 
@@ -337,7 +337,7 @@ Then delete `document.documentElement.dataset.deniaTheme`.
 
 Expected: the dark background uses `rgb(18, 20, 47)` and muted berry/indigo gradients; the light theme is restored afterward.
 
-- [ ] **Step 5: Run build and final scope audit**
+- [x] **Step 5: Run build and final scope audit**
 
 Run:
 
@@ -350,7 +350,7 @@ git status --short --branch
 
 Expected: checks and build pass; runtime, assets, and manifest diffs are empty.
 
-- [ ] **Step 6: Complete the plan and commit**
+- [x] **Step 6: Complete the plan and commit**
 
 Mark every checkbox complete, then run:
 
