@@ -973,6 +973,15 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
   --denia-dark-text-tertiary: #9E98AE;
   --denia-dark-text-link: #8DC5EA;
   --denia-dark-code-inline-surface: #272A50;
+  --denia-dark-code-text: #D7D9E8;
+  --denia-dark-code-comment: #8F97B5;
+  --denia-dark-code-keyword: #C7A7E8;
+  --denia-dark-code-type: #91C9F2;
+  --denia-dark-code-string: #9DD8C5;
+  --denia-dark-code-constant: #F0B2CE;
+  --denia-dark-code-punctuation: #B6BCD2;
+  --denia-dark-code-warning: #F0CC8C;
+  --denia-dark-code-surface: #191C38;
   --denia-dark-text: var(--denia-dark-text-heading);
   --denia-dark-text-muted: var(--denia-dark-text-secondary);
   --denia-dark-focus: var(--denia-dark-text-link);
@@ -1007,6 +1016,141 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"] {
   color: var(--denia-dark-text-body) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"]) {
+  color: var(--denia-dark-code-text) !important;
+  background-color: var(--denia-dark-code-surface) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code {
+  color: var(--denia-dark-code-text) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  [data-markdown-copy="code-block"]
+  [data-markdown-copy="exclude"],
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  [data-markdown-copy="code-block"]
+  [data-markdown-copy="exclude"]
+  :is(button, [role="button"]) {
+  color: var(--denia-dark-text-secondary) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  [data-markdown-copy="code-block"]
+  [data-markdown-copy="exclude"]
+  :is(button, [role="button"]):is(:hover, :focus-visible) {
+  color: var(--denia-dark-text-link) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-comment, .hljs-quote) {
+  color: var(--denia-dark-code-comment) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-keyword, .hljs-selector-tag) {
+  color: var(--denia-dark-code-keyword) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in) {
+  color: var(--denia-dark-code-type) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-variable) {
+  color: var(--denia-dark-code-string) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-variable.constant_, .hljs-deletion) {
+  color: var(--denia-dark-code-constant) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-punctuation, .hljs-operator) {
+  color: var(--denia-dark-code-punctuation) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
+  code
+  :is(.hljs-meta, .hljs-doctag) {
+  color: var(--denia-dark-code-warning) !important;
   text-shadow: none !important;
 }
 

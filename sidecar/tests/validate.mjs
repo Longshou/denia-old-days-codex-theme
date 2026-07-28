@@ -1025,6 +1025,30 @@ const darkTaskMarkdownLinkSelector =
   `${darkTaskMarkdownRoot} a`;
 const darkTaskInlineMarkdownSelector =
   `${darkTaskMarkdownRoot} [data-markdown-copy="inline-code"].inline-markdown`;
+const darkTaskCodeBlockSelector =
+  `${darkTaskMarkdownRoot} :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])`;
+const darkTaskCodeSelector =
+  `${darkTaskCodeBlockSelector} code`;
+const darkTaskCodeChromeSelector =
+  `${darkTaskMarkdownRoot} [data-markdown-copy="code-block"] [data-markdown-copy="exclude"]`;
+const darkTaskCodeChromeControlSelector =
+  `${darkTaskCodeChromeSelector} :is(button, [role="button"])`;
+const darkTaskCodeChromeInteractiveSelector =
+  `${darkTaskCodeChromeControlSelector}:is(:hover, :focus-visible)`;
+const darkTaskCodeCommentSelector =
+  `${darkTaskCodeSelector} :is(.hljs-comment, .hljs-quote)`;
+const darkTaskCodeKeywordSelector =
+  `${darkTaskCodeSelector} :is(.hljs-keyword, .hljs-selector-tag)`;
+const darkTaskCodeTypeSelector =
+  `${darkTaskCodeSelector} :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in)`;
+const darkTaskCodeStringSelector =
+  `${darkTaskCodeSelector} :is(.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-variable)`;
+const darkTaskCodeConstantSelector =
+  `${darkTaskCodeSelector} :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-variable.constant_, .hljs-deletion)`;
+const darkTaskCodePunctuationSelector =
+  `${darkTaskCodeSelector} :is(.hljs-punctuation, .hljs-operator)`;
+const darkTaskCodeWarningSelector =
+  `${darkTaskCodeSelector} :is(.hljs-meta, .hljs-doctag)`;
 const darkTaskProgressCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body`;
 const darkTaskMetadataSelector =
@@ -1052,6 +1076,15 @@ assertCssDeclarations(stylesheetRules, darkThemePaletteSelector, {
   "--denia-dark-text-tertiary": "#9E98AE",
   "--denia-dark-text-link": "#8DC5EA",
   "--denia-dark-code-inline-surface": "#272A50",
+  "--denia-dark-code-text": "#D7D9E8",
+  "--denia-dark-code-comment": "#8F97B5",
+  "--denia-dark-code-keyword": "#C7A7E8",
+  "--denia-dark-code-type": "#91C9F2",
+  "--denia-dark-code-string": "#9DD8C5",
+  "--denia-dark-code-constant": "#F0B2CE",
+  "--denia-dark-code-punctuation": "#B6BCD2",
+  "--denia-dark-code-warning": "#F0CC8C",
+  "--denia-dark-code-surface": "#191C38",
   "--denia-dark-text": "var(--denia-dark-text-heading)",
   "--denia-dark-text-muted": "var(--denia-dark-text-secondary)",
   "--denia-dark-focus": "var(--denia-dark-text-link)",
@@ -1083,6 +1116,37 @@ assertCssDeclarations(stylesheetRules, darkTaskInlineMarkdownSelector, {
   background: "var(--denia-dark-code-inline-surface) !important",
   "text-shadow": "none !important",
 });
+assertCssDeclarations(stylesheetRules, darkTaskCodeBlockSelector, {
+  color: "var(--denia-dark-code-text) !important",
+  "background-color": "var(--denia-dark-code-surface) !important",
+  "text-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskCodeSelector, {
+  color: "var(--denia-dark-code-text) !important",
+  "text-shadow": "none !important",
+});
+for (const selector of [darkTaskCodeChromeSelector, darkTaskCodeChromeControlSelector]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    color: "var(--denia-dark-text-secondary) !important",
+  });
+}
+assertCssDeclarations(stylesheetRules, darkTaskCodeChromeInteractiveSelector, {
+  color: "var(--denia-dark-text-link) !important",
+});
+for (const [selector, variable] of [
+  [darkTaskCodeCommentSelector, "--denia-dark-code-comment"],
+  [darkTaskCodeKeywordSelector, "--denia-dark-code-keyword"],
+  [darkTaskCodeTypeSelector, "--denia-dark-code-type"],
+  [darkTaskCodeStringSelector, "--denia-dark-code-string"],
+  [darkTaskCodeConstantSelector, "--denia-dark-code-constant"],
+  [darkTaskCodePunctuationSelector, "--denia-dark-code-punctuation"],
+  [darkTaskCodeWarningSelector, "--denia-dark-code-warning"],
+]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    color: `var(${variable}) !important`,
+    "text-shadow": "none !important",
+  });
+}
 for (const selector of [darkTaskProgressCopySelector, darkTaskMetadataSelector]) {
   assertCssDeclarations(stylesheetRules, selector, {
     color: "var(--denia-dark-text-muted) !important",
@@ -1153,6 +1217,50 @@ for (const rule of stylesheetRules) {
     assert(
       darkTaskMarkdownPaintProperties.has(property),
       `dark task Markdown paint must not change native geometry or behavior: ${property}`,
+    );
+  }
+}
+
+const darkTaskMarkdownCodeSelectors = [
+  darkTaskCodeBlockSelector,
+  darkTaskCodeSelector,
+  darkTaskCodeChromeSelector,
+  darkTaskCodeChromeControlSelector,
+  darkTaskCodeChromeInteractiveSelector,
+  darkTaskCodeCommentSelector,
+  darkTaskCodeKeywordSelector,
+  darkTaskCodeTypeSelector,
+  darkTaskCodeStringSelector,
+  darkTaskCodeConstantSelector,
+  darkTaskCodePunctuationSelector,
+  darkTaskCodeWarningSelector,
+];
+const darkTaskMarkdownCodeSelectorSet =
+  new Set(darkTaskMarkdownCodeSelectors);
+
+for (const selector of darkTaskMarkdownCodeSelectors) {
+  assert(
+    selector.startsWith(`${darkTaskMarkdownRoot} `),
+    `dark task code paint must stay inside the native Markdown root: ${selector}`,
+  );
+  assert(
+    !/(?:diff|monaco|xterm|terminal)/iu.test(selector),
+    `dark task code paint must not reach diff, editor, or terminal surfaces: ${selector}`,
+  );
+}
+
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) =>
+    darkTaskMarkdownCodeSelectorSet.has(selector))) continue;
+  assert(
+    rule.selectors.every((selector) =>
+      darkTaskMarkdownCodeSelectorSet.has(selector)),
+    "dark task code paint must not share a rule with an out-of-scope selector",
+  );
+  for (const property of rule.declarations.keys()) {
+    assert(
+      darkTaskMarkdownPaintProperties.has(property),
+      `dark task code paint must not change native geometry or behavior: ${property}`,
     );
   }
 }
