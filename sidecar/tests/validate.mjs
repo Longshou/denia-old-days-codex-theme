@@ -3599,6 +3599,20 @@ function assertHomeLayoutPreservation(payload) {
     "the visible native prompt must preserve its inline project button in the DOM",
   );
   assert(composer.classList.contains("denia-old-days-ds-composer"), "home composer may retain paint-only theme chrome");
+
+  for (const node of [nativePrompt, nativePromptBody, nativeHeading, nativeTitle]) {
+    node.textContent = "我们该构建什么？";
+  }
+  harness.clearMutationRecords();
+  inlineProjectButton.remove();
+  assert(harness.flushMutations() > 0, "clearing the selected project must reach the observer");
+  assert(harness.flushAnimationFrames() === 1, "clearing the selected project must schedule one home refresh");
+  assert(
+    nativePrompt.classList.contains("denia-old-days-ds-native-home-prompt")
+      && nativePrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px",
+    "clearing the selected project must keep the generic Chinese home prompt aligned above the composer",
+  );
+
   for (let frame = 0; frame < 60; frame += 1) harness.flushAnimationFrames();
   assert(main.scrollTop === 0, "home visual mount must keep the native home viewport at its non-scrolling origin");
 
@@ -4495,11 +4509,25 @@ function assertFinalReviewRegressions(payload) {
 
   homeHarness.clearMutationRecords();
   homeMain.classList.remove("dream-skin-home");
+  homeMain.style.setProperty("min-height", "100%");
   const assistant = homeHarness.document.createElement("article");
   assistant.setAttribute("data-content-search-unit-key", "turn:assistant");
   homeMain.append(assistant);
   assert(homeHarness.flushMutations() > 0, "home-to-task transition mutations must reach the observer");
-  assert(homeHarness.flushAnimationFrames() === 1, "home-to-task transition must schedule one refresh");
+  assert(
+    !homeHarness.document.getElementById("denia-old-days-ds-home-visuals")
+      && !homeHarness.document.getElementById("denia-old-days-ds-hero-copy"),
+    "home-to-task transitions must remove the fixed hero before trailing native style work",
+  );
+  assert(
+    !homeHarness.root.classList.contains("denia-old-days-ds-home")
+      && homeHarness.root.classList.contains("denia-old-days-ds-task"),
+    "home-to-task transitions must activate the task skin when the fixed hero is removed",
+  );
+  assert(homeHarness.flushAnimationFrames() === 0, "mixed route and native style work must keep the full refresh trailing");
+  assert(homeHarness.pendingTimerCount() === 1, "mixed home-to-task work must retain one trailing timer");
+  assert(homeHarness.flushTimers() === 1, "the mixed home-to-task timer must fire once");
+  assert(homeHarness.flushAnimationFrames() === 1, "the trailing home-to-task refresh must schedule one frame");
   assert(homeState.homeActive === false);
   assert(!replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"));
   assert(!replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift"));

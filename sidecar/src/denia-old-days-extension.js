@@ -814,7 +814,7 @@
   }
 
   function findNativeHomeTitle() {
-    const promptPattern = /(?:what should we build in|what would you like to build|想在.+中构建什么|要在.+中构建什么)/iu;
+    const promptPattern = /(?:what should we build in|what would you like to build|我们该构建什么|想在.+中构建什么|要在.+中构建什么)/iu;
     return [...document.querySelectorAll("span, h1, h2, h3, [role='heading']")]
       .find((node) => {
         if (isOwnedSubtree(node)) return false;
@@ -1724,6 +1724,11 @@
       && !mutationIsThemeOnly(record)
       && !mutationIsTerminalChurn(record)
       && !mutationIsEditorColorProbe(record));
+    if (relevantRecords.length && state.homeActive && !isHomeView()) {
+      syncClass(root, "denia-old-days-ds-home", false);
+      syncClass(root, "denia-old-days-ds-task", true);
+      removeHomeNodes();
+    }
     const toggleRecords = relevantRecords.filter(mutationIsNativeWorkSurfaceToggleState);
     if (toggleRecords.length) {
       for (const record of toggleRecords) {
