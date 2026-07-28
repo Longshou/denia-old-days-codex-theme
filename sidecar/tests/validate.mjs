@@ -4690,9 +4690,9 @@ function assertIncrementalTaskDecoration(payload) {
   );
 
   const firstAssistant = harness.document.createElement("div");
-  firstAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  firstAssistant.setAttribute("data-content-search-unit-key", "first-turn:assistant");
   const latestAssistant = harness.document.createElement("div");
-  latestAssistant.setAttribute("data-content-search-unit-key", "turn:assistant");
+  latestAssistant.setAttribute("data-content-search-unit-key", "latest-turn:assistant");
   main.append(firstAssistant, latestAssistant);
   harness.flushMutations();
   harness.flushAnimationFrames();
@@ -4735,6 +4735,37 @@ function assertIncrementalTaskDecoration(payload) {
     "replacing one task main with another must schedule decoration for the new main root",
   );
   state.cleanup();
+
+  const virtualized = createRuntimeHarness((index) => `blob:virtualized-final-card-${index + 1}`);
+  const virtualMain = virtualized.document.createElement("main");
+  virtualMain.setAttribute("role", "main");
+  const virtualScroll = virtualized.document.createElement("div");
+  virtualScroll.classList.add("thread-scroll-container");
+  virtualScroll.scrollTop = 0;
+  const historicalAssistant = virtualized.document.createElement("div");
+  historicalAssistant.setAttribute("data-content-search-unit-key", "historical-turn:assistant");
+  const actualLatestAssistant = virtualized.document.createElement("div");
+  actualLatestAssistant.setAttribute("data-content-search-unit-key", "actual-latest-turn:assistant");
+  virtualScroll.append(historicalAssistant, actualLatestAssistant);
+  virtualMain.append(virtualScroll);
+  virtualized.document.body.append(virtualMain);
+  vm.runInContext(payload, virtualized.context, { timeout: 1000 });
+  const virtualizedState = virtualized.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(
+    actualLatestAssistant.classList.contains("denia-old-days-ds-final-card"),
+    "the latest assistant at the thread edge must start as the final card",
+  );
+
+  virtualized.clearMutationRecords();
+  virtualScroll.scrollTop = -1000;
+  actualLatestAssistant.remove();
+  assert(virtualized.flushMutations() === 1, "virtualizing the latest assistant must produce one child-list mutation");
+  assert(virtualized.flushAnimationFrames() === 1, "virtualizing the latest assistant must schedule one refresh");
+  assert(
+    !historicalAssistant.classList.contains("denia-old-days-ds-final-card"),
+    "a historical assistant must not become the final card when the virtual window leaves the latest thread edge",
+  );
+  virtualizedState.cleanup();
 }
 
 function assertFinalReviewRegressions(payload) {

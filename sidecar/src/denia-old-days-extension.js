@@ -20,6 +20,7 @@
   let nativeSidebarPanel = null;
   let nativeHomePrompt = null;
   let taskChrome = null;
+  let finalAssistantUnitKey = "";
   const nativeHomeSuggestionTargets = new Set();
   let cachedComposer = null;
   const nativeSidebarGroups = new Set();
@@ -1158,7 +1159,21 @@
   function syncFinalAssistantCard() {
     const main = findMain();
     const assistants = main ? [...main.querySelectorAll(assistantSelector)] : [];
-    const nextCard = state.formState === "complete" ? assistants.at(-1) || null : null;
+    const latestMountedAssistant = assistants.at(-1) || null;
+    const threadScroll = main?.querySelector(".thread-scroll-container");
+    const scrollTop = Number(threadScroll?.scrollTop);
+    const atLatestThreadEdge = !threadScroll
+      || !Number.isFinite(scrollTop)
+      || scrollTop >= -2;
+    if (state.formState !== "complete") {
+      finalAssistantUnitKey = "";
+    } else if (atLatestThreadEdge && latestMountedAssistant) {
+      finalAssistantUnitKey = latestMountedAssistant.getAttribute("data-content-search-unit-key") || "";
+    }
+    const nextCard = state.formState === "complete" && finalAssistantUnitKey
+      ? assistants.find((assistant) =>
+        assistant.getAttribute("data-content-search-unit-key") === finalAssistantUnitKey) || null
+      : null;
     if (state.finalAssistantCard && state.finalAssistantCard !== nextCard) {
       syncClass(state.finalAssistantCard, "denia-old-days-ds-final-card", false);
     }
@@ -1661,6 +1676,7 @@
     state.pendingStyleDirty = 0;
     state.pendingStyleDecorationRoots.clear();
     state.finalAssistantCard = null;
+    finalAssistantUnitKey = "";
     invalidateComposerCache();
     invalidateToggleCache();
     clearHomeViewportBinding();
