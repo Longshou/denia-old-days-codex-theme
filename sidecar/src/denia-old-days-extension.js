@@ -141,6 +141,7 @@
       },
     },
     observer: null,
+    nativeTheme: null,
     frame: 0,
     styleRefreshTimer: 0,
     homeActive: false,
@@ -215,6 +216,56 @@
     syncClass(node, className, true);
     touchedNodes.add(node);
     return node;
+  }
+
+  function detectNativeTheme(classList, previousTheme) {
+    const hasDark = classList.contains("electron-dark");
+    const hasLight = classList.contains("electron-light");
+    if (hasDark !== hasLight) return hasDark ? "dark" : "light";
+    return previousTheme === "dark" || previousTheme === "light"
+      ? previousTheme
+      : "light";
+  }
+
+  function nativeThemeCopy(theme) {
+    if (theme === "dark") {
+      return {
+        eyebrow: manifest.ui.darkEyebrow,
+        headline: manifest.ui.darkHeadline,
+        status: manifest.ui.darkStatusText,
+      };
+    }
+    return {
+      eyebrow: manifest.ui.eyebrow,
+      headline: manifest.ui.headline,
+      status: manifest.ui.statusText,
+    };
+  }
+
+  function setTextContent(node, value) {
+    if (!node || node.textContent === value) return false;
+    node.textContent = value;
+    return true;
+  }
+
+  function syncNativeTheme() {
+    const nextTheme = detectNativeTheme(root.classList, state.nativeTheme);
+    state.nativeTheme = nextTheme;
+    let changed = setDatasetValue(root, "deniaTheme", nextTheme);
+    const copy = nativeThemeCopy(nextTheme);
+    changed = setTextContent(
+      document.querySelector(".denia-old-days-ds-hero-eyebrow"),
+      copy.eyebrow,
+    ) || changed;
+    changed = setTextContent(
+      document.querySelector(".denia-old-days-ds-hero-headline"),
+      copy.headline,
+    ) || changed;
+    changed = setTextContent(
+      document.querySelector(".denia-old-days-ds-hero-status"),
+      copy.status,
+    ) || changed;
+    return changed;
   }
 
   function visible(node) {
@@ -961,18 +1012,20 @@
     hero.id = "denia-old-days-ds-hero-copy";
     hero.className = "denia-old-days-ds-hero denia-old-days-ds-intro";
     hero.setAttribute("aria-labelledby", "denia-old-days-ds-headline");
+    const themeCopy = nativeThemeCopy(root.dataset.deniaTheme);
 
     const copy = document.createElement("div");
     copy.className = "denia-old-days-ds-hero-text";
     const eyebrow = document.createElement("div");
-    eyebrow.className = "denia-old-days-ds-eyebrow";
-    eyebrow.textContent = manifest.ui.eyebrow;
+    eyebrow.className = "denia-old-days-ds-eyebrow denia-old-days-ds-hero-eyebrow";
+    eyebrow.textContent = themeCopy.eyebrow;
     const headline = document.createElement("h1");
     headline.id = "denia-old-days-ds-headline";
-    headline.textContent = manifest.ui.headline;
+    headline.className = "denia-old-days-ds-hero-headline";
+    headline.textContent = themeCopy.headline;
     const status = document.createElement("span");
-    status.className = "denia-old-days-ds-status";
-    status.textContent = manifest.ui.statusText;
+    status.className = "denia-old-days-ds-status denia-old-days-ds-hero-status";
+    status.textContent = themeCopy.status;
     copy.append(eyebrow, headline, status);
 
     const photo = document.createElement("div");
@@ -1269,6 +1322,12 @@
       return [...record.addedNodes, ...record.removedNodes].every(isOwnedRecordNode);
     }
     return false;
+  }
+
+  function mutationIsHostTheme(record) {
+    return record.type === "attributes"
+      && record.target === root
+      && record.attributeName === "class";
   }
 
   function mutationIsTerminalChurn(record) {
@@ -1639,8 +1698,10 @@
     });
   }
   state.observer = new MutationObserver((records) => {
+    if (records.some(mutationIsHostTheme)) syncNativeTheme();
     const relevantRecords = records.filter((record) =>
-      !mutationIsThemeOnly(record)
+      !mutationIsHostTheme(record)
+      && !mutationIsThemeOnly(record)
       && !mutationIsTerminalChurn(record)
       && !mutationIsEditorColorProbe(record));
     const toggleRecords = relevantRecords.filter(mutationIsNativeWorkSurfaceToggleState);
@@ -1679,6 +1740,12 @@
     } else if (toggleRecords.length) {
       scheduleStyleRefresh(toggleMask);
     }
+  });
+  syncNativeTheme();
+  state.observer.observe(root, {
+    attributes: true,
+    attributeOldValue: true,
+    attributeFilter: ["class"],
   });
   state.observer.observe(document.body || root, {
     childList: true,
