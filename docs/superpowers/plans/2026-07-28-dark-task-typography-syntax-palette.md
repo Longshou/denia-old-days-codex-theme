@@ -335,11 +335,11 @@ const darkTaskCodeChromeInteractiveSelector =
 const darkTaskCodeCommentSelector =
   `${darkTaskCodeSelector} :is(.hljs-comment, .hljs-quote)`;
 const darkTaskCodeKeywordSelector =
-  `${darkTaskCodeSelector} :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in)`;
+  `${darkTaskCodeSelector} :is(.hljs-keyword, .hljs-selector-tag)`;
 const darkTaskCodeTypeSelector =
-  `${darkTaskCodeSelector} :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property)`;
+  `${darkTaskCodeSelector} :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in)`;
 const darkTaskCodeStringSelector =
-  `${darkTaskCodeSelector} :is(.hljs-string, .hljs-regexp, .hljs-addition)`;
+  `${darkTaskCodeSelector} :is(.hljs-string, .hljs-template-variable, .hljs-regexp, .hljs-addition)`;
 const darkTaskCodeConstantSelector =
   `${darkTaskCodeSelector} :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-variable.constant_, .hljs-deletion)`;
 const darkTaskCodePunctuationSelector =
@@ -533,7 +533,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
-  :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in) {
+  :is(.hljs-keyword, .hljs-selector-tag) {
   color: var(--denia-dark-code-keyword) !important;
   text-shadow: none !important;
 }
@@ -545,7 +545,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
-  :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property) {
+  :is(.hljs-title, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-built_in) {
   color: var(--denia-dark-code-type) !important;
   text-shadow: none !important;
 }
@@ -557,7 +557,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
-  :is(.hljs-string, .hljs-regexp, .hljs-addition) {
+  :is(.hljs-string, .hljs-template-variable, .hljs-regexp, .hljs-addition) {
   color: var(--denia-dark-code-string) !important;
   text-shadow: none !important;
 }
