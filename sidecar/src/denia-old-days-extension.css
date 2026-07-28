@@ -1025,6 +1025,14 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  .text-token-conversation-body
+  :is(span[class~="truncate"], .loading-shimmer-pure-text, [class*="_cadencedShimmer"]) {
+  color: inherit !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
   [data-testid="app-shell-header-context-menu-surface"]
   .text-token-foreground
   > .min-w-0.truncate {
@@ -1125,6 +1133,35 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-de
   .denia-old-days-ds-native-home-prompt
   :is([class*="heading"], h1, h2, h3, p) {
   color: var(--denia-dark-text) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
+  .dream-skin-home-utility {
+  color: var(--denia-dark-text-muted) !important;
+  background: rgba(26, 28, 58, .98) !important;
+  border-color: var(--denia-dark-divider) !important;
+  box-shadow: inset 0 1px rgba(243, 239, 246, .06) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
+  .dream-skin-home-utility
+  :is(button, [role="button"]) {
+  color: var(--denia-dark-text-muted) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
+  .dream-skin-home-utility
+  :is(.text-token-foreground, .text-token-text-primary, .text-token-text-tertiary, .text-token-muted-foreground) {
+  color: inherit !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
+  .dream-skin-home-utility
+  :is(button, [role="button"]):is(:hover, :focus-visible, [aria-expanded="true"], [data-state="open"]) {
+  color: var(--denia-dark-focus) !important;
+  background-color: rgba(141, 197, 234, .12) !important;
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]
@@ -1238,8 +1275,7 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
 
 html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
   .denia-old-days-ds-native-left-sidebar
-  :is(a, button, [role="button"], [data-app-action-sidebar-project-row], [data-app-action-sidebar-thread-row])
-  * {
+  :is(.text-token-foreground, .text-token-description-foreground, .text-token-text-tertiary, .text-token-muted-foreground, [class*="text-[var(--vscode-foreground)]"]) {
   color: inherit !important;
 }
 
@@ -1294,11 +1330,10 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
 
 html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
   .denia-old-days-ds-native-right-sidebar
-  :is(a, button, [role="button"])
-  *,
+  :is(.text-token-foreground, .text-token-description-foreground, .text-token-text-tertiary, .text-token-muted-foreground, [class*="text-[var(--vscode-foreground)]"]),
 html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
   :is(.denia-old-days-ds-native-sidebar-group, .denia-old-days-ds-native-sidebar-row)
-  * {
+  :is(.text-token-foreground, .text-token-description-foreground, .text-token-text-tertiary, .text-token-muted-foreground, [class*="text-[var(--vscode-foreground)]"]) {
   color: inherit !important;
 }
 

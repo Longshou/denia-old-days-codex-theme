@@ -532,6 +532,50 @@ const deepHomePromptCopySelector =
 assertCssDeclarations(stylesheetRules, deepHomePromptCopySelector, {
   color: "var(--denia-dark-text) !important",
 });
+const deepHomeUtilitySelector = `${deepHomeSelector} .dream-skin-home-utility`;
+const deepHomeUtilityButtonSelector =
+  `${deepHomeUtilitySelector} :is(button, [role="button"])`;
+const deepHomeUtilityNeutralTextSelector =
+  `${deepHomeUtilitySelector} :is(.text-token-foreground, .text-token-text-primary, .text-token-text-tertiary, .text-token-muted-foreground)`;
+const deepHomeUtilityActiveButtonSelector =
+  `${deepHomeUtilitySelector} :is(button, [role="button"]):is(:hover, :focus-visible, [aria-expanded="true"], [data-state="open"])`;
+assertCssDeclarations(stylesheetRules, deepHomeUtilitySelector, {
+  color: "var(--denia-dark-text-muted) !important",
+  background: "rgba(26, 28, 58, .98) !important",
+  "border-color": "var(--denia-dark-divider) !important",
+});
+assertCssDeclarations(stylesheetRules, deepHomeUtilityButtonSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+  "background-color": "transparent !important",
+  "border-color": "transparent !important",
+});
+assertCssDeclarations(stylesheetRules, deepHomeUtilityNeutralTextSelector, {
+  color: "inherit !important",
+});
+assertCssDeclarations(stylesheetRules, deepHomeUtilityActiveButtonSelector, {
+  color: "var(--denia-dark-focus) !important",
+  "background-color": "rgba(141, 197, 234, .12) !important",
+});
+const deepHomeUtilityPaintProperties = new Set([
+  "background",
+  "background-color",
+  "border-color",
+  "box-shadow",
+  "color",
+]);
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) => selector.includes(".dream-skin-home-utility"))) continue;
+  assert(
+    rule.selectors.every((selector) => selector.includes(deepHomeSelector)),
+    "home utility paint must stay scoped to the deep-home dark selector",
+  );
+  for (const property of rule.declarations.keys()) {
+    assert(
+      deepHomeUtilityPaintProperties.has(property),
+      `deep-home utility paint must not change native layout property ${property}`,
+    );
+  }
+}
 const deepHomeLayoutProperties = /^(?:width|height|min-width|min-height|max-width|max-height|margin(?:-.+)?|padding(?:-.+)?|position|inset|top|right|bottom|left|display|grid(?:-.+)?|flex(?:-.+)?|transform|translate|overflow(?:-.+)?)$/u;
 const deepHomeNativeLayoutTargets = /(?:\bmain\b|denia-old-days-ds-composer|denia-old-days-ds-native-home-prompt|denia-old-days-ds-native-(?:left|right)-sidebar|denia-old-days-ds-native-sidebar-(?:group|row))/u;
 const deepHomeDecorationSelectors = new Set([
@@ -812,21 +856,25 @@ const darkSidebarRoot =
   'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]';
 const darkLeftSidebarInteractiveSelector =
   `${darkSidebarRoot} .denia-old-days-ds-native-left-sidebar :is(a, button, [role="button"], [data-app-action-sidebar-project-row], [data-app-action-sidebar-thread-row])`;
-const darkLeftSidebarInteractiveContentSelector = `${darkLeftSidebarInteractiveSelector} *`;
 const darkLeftSidebarActiveSelector =
   `${darkSidebarRoot} .denia-old-days-ds-native-left-sidebar :is([data-app-action-sidebar-thread-active="true"], [aria-current="page"])`;
 const darkRightSidebarInteractiveSelector =
   `${darkSidebarRoot} .denia-old-days-ds-native-right-sidebar :is(a, button, [role="button"])`;
-const darkRightSidebarInteractiveContentSelector = `${darkRightSidebarInteractiveSelector} *`;
-const darkRightSidebarRowContentSelector =
-  `${darkSidebarRoot} :is(.denia-old-days-ds-native-sidebar-group, .denia-old-days-ds-native-sidebar-row) *`;
+const darkSidebarNeutralTextTarget =
+  ':is(.text-token-foreground, .text-token-description-foreground, .text-token-text-tertiary, .text-token-muted-foreground, [class*="text-[var(--vscode-foreground)]"])';
+const darkLeftSidebarNeutralTextSelector =
+  `${darkSidebarRoot} .denia-old-days-ds-native-left-sidebar ${darkSidebarNeutralTextTarget}`;
+const darkRightSidebarNeutralTextSelector =
+  `${darkSidebarRoot} .denia-old-days-ds-native-right-sidebar ${darkSidebarNeutralTextTarget}`;
+const darkRightSidebarRowNeutralTextSelector =
+  `${darkSidebarRoot} :is(.denia-old-days-ds-native-sidebar-group, .denia-old-days-ds-native-sidebar-row) ${darkSidebarNeutralTextTarget}`;
 assertCssDeclarations(stylesheetRules, darkLeftSidebarInteractiveSelector, {
   color: "var(--denia-dark-text-muted) !important",
 });
 for (const selector of [
-  darkLeftSidebarInteractiveContentSelector,
-  darkRightSidebarInteractiveContentSelector,
-  darkRightSidebarRowContentSelector,
+  darkLeftSidebarNeutralTextSelector,
+  darkRightSidebarNeutralTextSelector,
+  darkRightSidebarRowNeutralTextSelector,
 ]) {
   assertCssDeclarations(stylesheetRules, selector, { color: "inherit !important" });
 }
@@ -836,6 +884,20 @@ assertCssDeclarations(stylesheetRules, darkLeftSidebarActiveSelector, {
 assertCssDeclarations(stylesheetRules, darkRightSidebarInteractiveSelector, {
   color: "var(--denia-dark-text-muted) !important",
 });
+for (const rule of stylesheetRules) {
+  if (!rule.declarations.has("color")) continue;
+  for (const selector of rule.selectors) {
+    if (!/denia-old-days-ds-native-(?:left|right)-sidebar|denia-old-days-ds-native-sidebar-(?:group|row)/u.test(selector)) continue;
+    assert(
+      !/(?:^|[\s>+~])\*$/u.test(selector),
+      `sidebar text paint must not use a blanket descendant wildcard: ${selector}`,
+    );
+    assert(
+      !/(?:svg|error|approval|success|badge|git-decoration)/iu.test(selector),
+      `sidebar neutral text paint must not target semantic icons or badges: ${selector}`,
+    );
+  }
+}
 const nativeSidebarClasses = [
   ".denia-old-days-ds-native-left-sidebar",
   ".denia-old-days-ds-native-right-sidebar",
@@ -907,6 +969,8 @@ const darkTaskMetadataSelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container [data-content-search-unit-key] .text-xs.text-token-text-tertiary`;
 const darkTaskTitleSelector =
   `${darkTaskMainReadabilityRoot} [data-testid="app-shell-header-context-menu-surface"] .text-token-foreground > .min-w-0.truncate`;
+const darkTaskActivityCopySelector =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body :is(span[class~="truncate"], .loading-shimmer-pure-text, [class*="_cadencedShimmer"])`;
 assertCssDeclarations(stylesheetRules, darkTaskMarkdownSelector, {
   color: "var(--denia-dark-text) !important",
 });
@@ -922,12 +986,16 @@ for (const selector of [darkTaskProgressCopySelector, darkTaskMetadataSelector])
 assertCssDeclarations(stylesheetRules, darkTaskTitleSelector, {
   color: "var(--denia-dark-text) !important",
 });
+assertCssDeclarations(stylesheetRules, darkTaskActivityCopySelector, {
+  color: "inherit !important",
+});
 for (const selector of [
   darkTaskMarkdownSelector,
   darkTaskInlineMarkdownSelector,
   darkTaskProgressCopySelector,
   darkTaskMetadataSelector,
   darkTaskTitleSelector,
+  darkTaskActivityCopySelector,
 ]) {
   assert(
     !/(?:^|[\s>+~,(])(?:code|pre|terminal)(?:$|[\s>+~,.:[#])/iu.test(selector)
@@ -935,6 +1003,14 @@ for (const selector of [
     `dark task readability paint must not target code, diff, editor, or terminal surfaces: ${selector}`,
   );
 }
+assert(
+  darkTaskActivityCopySelector.includes(".thread-scroll-container .text-token-conversation-body")
+    && darkTaskActivityCopySelector.includes('span[class~="truncate"]')
+    && darkTaskActivityCopySelector.includes(".loading-shimmer-pure-text")
+    && darkTaskActivityCopySelector.includes('[class*="_cadencedShimmer"]')
+    && !/(?:^|[\s>+~])\*(?:$|[\s>+~,.:[#])/u.test(darkTaskActivityCopySelector),
+  "dark task activity summaries must target only confirmed text spans and shimmer classes",
+);
 assert(
   !stylesheetRules.some((rule) => rule.selectors.some((selector) =>
     selector.includes(darkTaskMainReadabilityRoot)
