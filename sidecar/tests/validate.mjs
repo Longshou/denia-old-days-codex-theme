@@ -305,10 +305,21 @@ for (const token of [
 
 const stylesheetRules = parseCssRules(cssSyntax);
 const homeBackgroundPaintRootSelector =
-  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell)';
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home:not([data-denia-theme="dark"])[data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell)';
 const homeBackgroundBodySelector = `${homeBackgroundPaintRootSelector} body`;
 const homeBackgroundMainSelector =
   `${homeBackgroundPaintRootSelector} main.main-surface.dream-skin-home-shell`;
+const unscopedHomeBackgroundPaintRootSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell)';
+for (const selector of [
+  `${unscopedHomeBackgroundPaintRootSelector} body`,
+  `${unscopedHomeBackgroundPaintRootSelector} main.main-surface.dream-skin-home-shell`,
+]) {
+  assert(
+    !stylesheetRules.some((rule) => rule.selectors.includes(selector)),
+    `wide home paint must exclude the dark theme marker: ${selector}`,
+  );
+}
 
 assertCssDeclarations(stylesheetRules, homeBackgroundBodySelector, {
   "background-color": "#F7EEE9 !important",
@@ -436,10 +447,13 @@ const composerPaintProperties = new Set([
   "filter",
   "opacity",
 ]);
+const darkComposerPlaceholderSelector =
+  '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer textarea::placeholder';
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-composer"))) continue;
   assert(
-    rule.selectors.every((selector) => !selector.includes("::")),
+    rule.selectors.every((selector) =>
+      !selector.includes("::") || selector === darkComposerPlaceholderSelector),
     "composer skin must not replace Codex native pseudo-elements",
   );
   for (const property of rule.declarations.keys()) {
@@ -449,6 +463,15 @@ for (const rule of stylesheetRules) {
     );
   }
 }
+assertCssDeclarations(stylesheetRules, darkComposerPlaceholderSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+  opacity: "1",
+});
+assert(
+  !stylesheetRules.some((rule) =>
+    rule.selectors.includes('.denia-old-days-ds-extension[data-denia-theme="dark"] textarea::placeholder')),
+  "dark placeholder paint must stay scoped to the composer",
+);
 assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-bright", {
     selector: ".denia-old-days-ds-photo-front",
