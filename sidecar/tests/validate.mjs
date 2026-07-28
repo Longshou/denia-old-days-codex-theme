@@ -50,6 +50,7 @@ assert(manifest.entrypoints?.style === "src/denia-old-days-extension.css", "unex
 assert(manifest.entrypoints?.runtime === "src/denia-old-days-extension.js", "unexpected runtime entrypoint");
 const expectedAssets = {
   runtimeWallpaper: "assets/denia-old-days-bright.webp",
+  darkHomeArtwork: "assets/denia-home-dark.webp",
   taskWarmArtwork: "assets/denia-task-warm.webp",
   taskApprovalArtwork: "assets/denia-task-approval.webp",
   taskErrorArtwork: "assets/denia-task-error.webp",
@@ -58,6 +59,12 @@ const expectedAssets = {
 for (const [key, value] of Object.entries(expectedAssets)) {
   assert(manifest.assets?.[key] === value, `unexpected ${key}`);
 }
+assert(manifest.ui?.eyebrow === "DENIA · OLD DAYS IN COLOR", "light eyebrow must remain byte-for-byte stable");
+assert(manifest.ui?.headline === "今天要把什么写进手账？", "light headline must remain byte-for-byte stable");
+assert(manifest.ui?.statusText === "布景之形 · 记录中", "light status must remain byte-for-byte stable");
+assert(manifest.ui?.darkEyebrow === "DENIA · OLD DAYS AFTERGLOW", "unexpected dark eyebrow");
+assert(manifest.ui?.darkHeadline === "今晚，要让哪段思绪显影？", "unexpected dark headline");
+assert(manifest.ui?.darkStatusText === "幻灭之形 · 观察中", "unexpected dark status");
 assert(manifest.cleanup?.stateKey === "__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__", "unexpected cleanup stateKey");
 assert(manifest.cleanup?.styleId === "denia-old-days-dream-skin-extension-style", "unexpected cleanup styleId");
 assert(manifest.cleanup?.rootClass === "denia-old-days-ds-extension", "unexpected cleanup rootClass");
@@ -160,6 +167,7 @@ const runtimeTokens = [
   "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_DARK_HOME_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__",
@@ -186,6 +194,8 @@ assertLiveVerificationArtworkTarget(loader);
 assertLiveTaskVerification(loader);
 assertFallbackCleanupBehavior(loader);
 assertHomeLayoutPreservation(runtimePayload);
+assertHostThemeLifecycle(runtimePayload);
+assertThemeHeroCopy(runtimePayload);
 assertFormStateRecognition(runtimePayload);
 assertStateArtRailLifecycle(runtimePayload);
 assertTaskChromeHostLifecycle(runtimePayload);
@@ -203,6 +213,7 @@ for (const assetKey of Object.keys(expectedAssets)) {
   assert(loader.includes(`manifest.assets.${assetKey}`), `loader must resolve ${assetKey}`);
 }
 assert(loader.includes("--denia-old-days-art-bright"), "live verification must read bright artwork variable");
+assert(loader.includes("--denia-old-days-art-dark"), "live verification must read dark home artwork variable");
 assert(loader.includes("denia-old-days-ds-home-visuals"), "loader cleanup and verification must recognize the out-of-flow home visual layer");
 assert(loader.includes("homeLayoutPreserved"), "live verification must enforce native home layout preservation");
 assert(loader.includes("composerViewportPass"), "live verification must keep the home composer inside the viewport");
@@ -239,9 +250,12 @@ assert(runtime.includes("URL.revokeObjectURL"), "runtime cleanup must revoke obj
 assert(runtime.includes("Object.freeze({"), "runtime must freeze artwork URL map");
 assert(runtime.includes("Object.values(artUrls).every(Boolean)"), "runtime must require every artwork URL");
 assert(runtime.includes("Object.values(artUrls)"), "runtime must clean every artwork URL");
-for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
+for (const name of ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]) {
   assert(runtime.includes(`--denia-old-days-art-${name}`), `runtime missing ${name} artwork variable`);
 }
+assert(runtime.includes("syncNativeTheme"), "runtime must synchronize host electron theme classes");
+assert(runtime.includes("electron-dark"), "runtime must recognize electron-dark");
+assert(runtime.includes("electron-light"), "runtime must recognize electron-light");
 assert(!runtime.includes("denia-old-days-ds-photo-back"), "home hero must not include generic photo-back markup");
 assert(runtime.includes("denia-old-days-ds-memory-bubbles"), "home hero must own its memory bubbles");
 assert(!runtime.includes("denia-old-days-ds-state-bubble"), "decorative bubbles must stay in background artwork, not foreground chrome");
@@ -275,6 +289,7 @@ const activeStyles = cssSyntax.source;
 assert(!activeStyles.includes(".denia-old-days-ds-photo-back"), "default hero must not contain a dark reverse");
 for (const token of [
   "--denia-old-days-art-bright",
+  "--denia-old-days-art-dark",
   "--denia-old-days-art-task-warm",
   "--denia-old-days-art-task-approval",
   "--denia-old-days-art-task-error",
@@ -440,6 +455,11 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
     property: "background",
     atRuleFragments: [],
   }],
+  ["--denia-old-days-art-dark", {
+    selector: 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] main.main-surface.dream-skin-home-shell',
+    property: "background-image",
+    atRuleFragments: [],
+  }],
   ["--denia-old-days-art-task-warm", {
     selector: '.denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"]',
     property: "--denia-state-art-image",
@@ -461,6 +481,37 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
     atRuleFragments: [],
   }],
 ]));
+const deepHomeSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]';
+const deepHomeMainSelector = `${deepHomeSelector} main.main-surface.dream-skin-home-shell`;
+const deepHomeMainRule = stylesheetRules.find((rule) => rule.selectors.includes(deepHomeMainSelector));
+assert(
+  deepHomeMainRule?.declarations.get("background-image")?.includes("var(--denia-old-days-art-dark)")
+    && deepHomeMainRule.declarations.get("background-repeat") === "no-repeat !important"
+    && deepHomeMainRule.declarations.get("background-size") === "cover !important",
+  "deep home main surface must paint the approved dark artwork once at cover size",
+);
+assertCssDeclarations(stylesheetRules, `${deepHomeSelector} .denia-old-days-ds-hero`, {
+  background: "transparent !important",
+});
+for (const selector of [
+  `${deepHomeSelector} .denia-old-days-ds-photo`,
+  `${deepHomeSelector} .denia-old-days-ds-memory-bubbles`,
+]) {
+  assertCssDeclarations(stylesheetRules, selector, { display: "none !important" });
+}
+assert(
+  stylesheetRules.some((rule) => rule.atRules.some((atRule) => atRule.includes("prefers-reduced-transparency: reduce"))
+    && rule.selectors.includes(deepHomeMainSelector)
+    && rule.declarations.get("background-image") === "none !important"
+    && rule.declarations.get("background-color") === "#12142F !important"),
+  "deep home reduced-transparency fallback must use a solid dark canvas",
+);
+for (const forbidden of ["canvas", "WebGL", "PointerEvent", "dragstart", "fetch(", "new MutationObserver"]) {
+  const count = runtime.split(forbidden).length - 1;
+  if (forbidden === "new MutationObserver") assert(count === 1, "theme sync must reuse the one existing observer");
+  else assert(count === 0, `deep home must not add ${forbidden}`);
+}
 assert(
   !stylesheetRules.some((rule) => rule.selectors.some((selector) => selector.includes(":hover") && selector.includes("denia-old-days-ds-photo"))),
   "home photo must not use hover flip selectors",
@@ -1615,15 +1666,15 @@ function assertNativeRightSidebarLifecycle(payload) {
 }
 
 function assertRuntimeArtworkLifecycle(payload) {
-  const propertyNames = ["bright", "task-warm", "task-approval", "task-error", "task-complete"]
+  const propertyNames = ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]
     .map((name) => `--denia-old-days-art-${name}`);
   const successful = createRuntimeHarness((index) => `blob:denia-${index + 1}`);
 
   vm.runInContext(payload, successful.context, { timeout: 1000 });
   const firstState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const firstArtworkMaps = successful.freezeCalls.filter((value) =>
-    Object.keys(value).join(",") === "bright,taskWarm,taskApproval,taskError,taskComplete");
-  assert(successful.created.length === 5, "runtime install must create five artwork URLs");
+    Object.keys(value).join(",") === "bright,dark,taskWarm,taskApproval,taskError,taskComplete");
+  assert(successful.created.length === 6, "runtime install must create six artwork URLs");
   assert(firstArtworkMaps.length === 1 && Object.isFrozen(firstArtworkMaps[0]), "runtime must freeze the artwork URL map");
   assert(firstState?.artReady === true, "runtime artReady must be true when every artwork URL succeeds");
   assert(
@@ -1633,8 +1684,8 @@ function assertRuntimeArtworkLifecycle(payload) {
   );
   assert(!publicStateContainsUrl(firstState), "runtime public state must not expose artwork URLs");
   assert(
-    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 5,
-    "runtime install must set exactly five CSS artwork variables",
+    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 6,
+    "runtime install must set exactly six CSS artwork variables",
   );
   for (const [index, property] of propertyNames.entries()) {
     assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 1}")`, `runtime install must set ${property}`);
@@ -1644,35 +1695,35 @@ function assertRuntimeArtworkLifecycle(payload) {
   vm.runInContext(payload, successful.context, { timeout: 1000 });
   const secondState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const secondArtworkMaps = successful.freezeCalls.filter((value) =>
-    Object.keys(value).join(",") === "bright,taskWarm,taskApproval,taskError,taskComplete");
-  assert(successful.created.length === 10, "runtime reinstall must create five replacement artwork URLs");
+    Object.keys(value).join(",") === "bright,dark,taskWarm,taskApproval,taskError,taskComplete");
+  assert(successful.created.length === 12, "runtime reinstall must create six replacement artwork URLs");
   assert(secondArtworkMaps.length === 2 && secondArtworkMaps.every(Object.isFrozen), "runtime reinstall must freeze its replacement artwork URL map");
-  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3,blob:denia-4,blob:denia-5", "runtime reinstall must revoke previous artwork URLs");
-  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-6");
+  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3,blob:denia-4,blob:denia-5,blob:denia-6", "runtime reinstall must revoke previous artwork URLs");
+  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-7");
   const reinstallCleanupEvents = successful.events.slice(firstInstallEventCount, firstReplacementCreate);
   assert(propertyNames.every((property) => reinstallCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime reinstall must remove each previous CSS artwork variable before creating replacements");
   assert(
     reinstallCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",")
-      === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3,revoke:blob:denia-4,revoke:blob:denia-5",
+      === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3,revoke:blob:denia-4,revoke:blob:denia-5,revoke:blob:denia-6",
     "runtime reinstall must clean previous artwork URLs before creating replacements",
   );
   assert(
-    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 10,
-    "runtime reinstall must set exactly five replacement CSS artwork variables",
+    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 12,
+    "runtime reinstall must set exactly six replacement CSS artwork variables",
   );
   assert(secondState?.artReady === true && !publicStateContainsUrl(secondState), "runtime reinstall must retain ready state without exposing URLs");
   for (const [index, property] of propertyNames.entries()) {
-    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 6}")`, `runtime reinstall must reset ${property}`);
+    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 7}")`, `runtime reinstall must reset ${property}`);
   }
 
   const finalCleanupEventCount = successful.events.length;
   secondState.cleanup();
   const finalCleanupEvents = successful.events.slice(finalCleanupEventCount);
-  assert(successful.revoked.join(",") === [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => `blob:denia-${number}`).join(","), "runtime cleanup must revoke current artwork URLs");
+  assert(successful.revoked.join(",") === Array.from({ length: 12 }, (_value, index) => `blob:denia-${index + 1}`).join(","), "runtime cleanup must revoke current artwork URLs");
   assert(propertyNames.every((property) => finalCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime cleanup must remove each current CSS artwork variable exactly once");
   assert(
     finalCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",")
-      === "revoke:blob:denia-6,revoke:blob:denia-7,revoke:blob:denia-8,revoke:blob:denia-9,revoke:blob:denia-10",
+      === "revoke:blob:denia-7,revoke:blob:denia-8,revoke:blob:denia-9,revoke:blob:denia-10,revoke:blob:denia-11,revoke:blob:denia-12",
     "runtime cleanup must revoke each current artwork URL exactly once",
   );
   assert(propertyNames.every((property) => successful.root.style.getPropertyValue(property) === ""), "runtime cleanup must remove every CSS artwork variable");
@@ -1906,23 +1957,29 @@ function createRuntimeHarness(createObjectUrl) {
       }
     }
     for (const observer of mutationObservers) {
-      if (!observer.target || !observer.options?.attributes) continue;
-      if (target !== observer.target && !(observer.options.subtree && observer.target.contains(target))) continue;
-      if (observer.options.attributeFilter && !observer.options.attributeFilter.includes(attributeName)) continue;
-      observer.records.push({
-        type: "attributes",
-        target,
-        attributeName,
-        oldValue: observer.options.attributeOldValue ? oldValue ?? null : null,
-      });
+      for (const observation of observer.observations) {
+        if (!observation.options?.attributes) continue;
+        if (target !== observation.target && !(observation.options.subtree && observation.target.contains(target))) continue;
+        if (observation.options.attributeFilter && !observation.options.attributeFilter.includes(attributeName)) continue;
+        observer.records.push({
+          type: "attributes",
+          target,
+          attributeName,
+          oldValue: observation.options.attributeOldValue ? oldValue ?? null : null,
+        });
+        break;
+      }
     }
   }
 
   function recordChildListMutation(target, addedNodes = [], removedNodes = []) {
     for (const observer of mutationObservers) {
-      if (!observer.target || !observer.options?.childList) continue;
-      if (target !== observer.target && !(observer.options.subtree && observer.target.contains(target))) continue;
-      observer.records.push({ type: "childList", target, addedNodes, removedNodes });
+      for (const observation of observer.observations) {
+        if (!observation.options?.childList) continue;
+        if (target !== observation.target && !(observation.options.subtree && observation.target.contains(target))) continue;
+        observer.records.push({ type: "childList", target, addedNodes, removedNodes });
+        break;
+      }
     }
   }
 
@@ -2238,6 +2295,7 @@ function createRuntimeHarness(createObjectUrl) {
     MutationObserver: class {
       constructor(callback) {
         this.callback = callback;
+        this.observations = [];
         this.target = null;
         this.options = null;
         this.records = [];
@@ -2245,11 +2303,15 @@ function createRuntimeHarness(createObjectUrl) {
       }
 
       observe(target, options) {
+        const existing = this.observations.find((observation) => observation.target === target);
+        if (existing) existing.options = options;
+        else this.observations.push({ target, options });
         this.target = target;
         this.options = options;
       }
 
       disconnect() {
+        this.observations = [];
         this.target = null;
         this.options = null;
         this.records = [];
@@ -2327,6 +2389,7 @@ function createRuntimeHarness(createObjectUrl) {
     revoked,
     events,
     freezeCalls,
+    observerCount() { return mutationObservers.size; },
     classMutationCount(node, className) {
       return classMutations.get(node)?.get(className) || 0;
     },
@@ -2348,7 +2411,7 @@ function createRuntimeHarness(createObjectUrl) {
     deliverMutationRecords(records) {
       let delivered = 0;
       for (const observer of mutationObservers) {
-        if (!records.length || !observer.target) continue;
+        if (!records.length || !observer.observations.length) continue;
         delivered += records.length;
         observer.callback(records, observer);
       }
@@ -2358,7 +2421,7 @@ function createRuntimeHarness(createObjectUrl) {
       let delivered = 0;
       for (const observer of mutationObservers) {
         const records = observer.takeRecords();
-        if (!records.length || !observer.target) continue;
+        if (!records.length || !observer.observations.length) continue;
         delivered += records.length;
         observer.callback(records, observer);
       }
@@ -3208,6 +3271,89 @@ function assertHomeLayoutPreservation(payload) {
   state.refresh();
   for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
   assert(main.scrollTop === 0, "home refresh must keep the native viewport locked at the origin");
+}
+
+function assertHostThemeLifecycle(payload) {
+  const install = (classes = []) => {
+    const harness = createRuntimeHarness((index) => `blob:theme-${index + 1}`);
+    harness.root.classList.add(...classes);
+    vm.runInContext(payload, harness.context, { timeout: 1000 });
+    return harness;
+  };
+
+  const light = install(["electron-light"]);
+  assert(light.root.dataset.deniaTheme === "light", "electron-light must map to data-denia-theme=light on install");
+  light.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.cleanup();
+  assert(!light.root.dataset.deniaTheme, "cleanup must remove data-denia-theme");
+
+  const dark = install(["electron-dark"]);
+  const state = dark.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(dark.root.dataset.deniaTheme === "dark", "electron-dark must map to data-denia-theme=dark on install");
+  const observerCount = dark.observerCount();
+  const artUrlCount = dark.created.length;
+  const createdNodes = state.metrics.createdNodes;
+  const domains = { ...state.metrics.domainRuns };
+  dark.clearMutationRecords();
+  dark.root.classList.remove("electron-dark");
+  dark.root.classList.add("electron-light");
+  assert(dark.flushMutations() > 0, "root electron class changes must reach the existing observer");
+  assert(dark.root.dataset.deniaTheme === "light", "valid root class changes must synchronize before a refresh frame");
+  assert(dark.observerCount() === observerCount, "theme changes must not construct another observer");
+  assert(dark.created.length === artUrlCount, "theme-only mutations must not recreate artwork URLs");
+  assert(state.metrics.createdNodes === createdNodes, "theme-only mutations must not create owned nodes");
+  assert(Object.keys(domains).every((key) => state.metrics.domainRuns[key] === domains[key]), "theme-only mutations must not enter route or task refresh domains");
+  dark.clearMutationRecords();
+  dark.root.classList.remove("electron-light");
+  assert(dark.flushMutations() > 0 && dark.root.dataset.deniaTheme === "light", "missing root classes must preserve the latest valid theme");
+  dark.root.classList.add("electron-dark", "electron-light");
+  assert(dark.flushMutations() > 0 && dark.root.dataset.deniaTheme === "light", "conflicting root classes must preserve the latest valid theme");
+  state.cleanup();
+
+  const unknown = install();
+  assert(unknown.root.dataset.deniaTheme === "light", "an unknown initial host theme must fall back to light");
+  unknown.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.cleanup();
+}
+
+function assertThemeHeroCopy(payload) {
+  const harness = createRuntimeHarness((index) => `blob:theme-copy-${index + 1}`);
+  harness.root.classList.add("electron-light");
+  const main = harness.document.createElement("main");
+  main.setAttribute("role", "main");
+  main.classList.add("dream-skin-home");
+  const nativeHeading = harness.document.createElement("span");
+  nativeHeading.textContent = "What should we build in denia-old-days-codex-theme?";
+  const inlineProjectButton = harness.document.createElement("button");
+  inlineProjectButton.textContent = "denia-old-days-codex-theme";
+  nativeHeading.append(inlineProjectButton);
+  const prompt = harness.document.createElement("div");
+  prompt.append(nativeHeading);
+  const composer = harness.document.createElement("form");
+  composer.classList.add("composer-surface-chrome");
+  const textarea = harness.document.createElement("textarea");
+  textarea.placeholder = "Ask anything";
+  textarea.value = "preserved draft";
+  composer.append(textarea);
+  const suggestion = harness.document.createElement("button");
+  suggestion.textContent = "Explore code";
+  main.append(prompt, composer, suggestion);
+  harness.document.body.append(main);
+  vm.runInContext(payload, harness.context, { timeout: 1000 });
+  assert(harness.document.querySelector(".denia-old-days-ds-eyebrow")?.textContent === "DENIA · OLD DAYS IN COLOR", "light Hero must retain the approved eyebrow");
+  assert(harness.document.getElementById("denia-old-days-ds-headline")?.textContent === "今天要把什么写进手账？", "light Hero must retain the approved headline");
+  assert(harness.document.querySelector(".denia-old-days-ds-status")?.textContent === "布景之形 · 记录中", "light Hero must retain the approved status");
+  const hero = harness.document.getElementById("denia-old-days-ds-hero-copy");
+  harness.clearMutationRecords();
+  harness.root.classList.remove("electron-light");
+  harness.root.classList.add("electron-dark");
+  harness.flushMutations();
+  assert(harness.document.getElementById("denia-old-days-ds-hero-copy") === hero, "theme switching must update Hero copy without recreating the Hero");
+  assert(harness.document.querySelector(".denia-old-days-ds-eyebrow")?.textContent === "DENIA · OLD DAYS AFTERGLOW", "dark Hero must use the approved eyebrow");
+  assert(harness.document.getElementById("denia-old-days-ds-headline")?.textContent === "今晚，要让哪段思绪显影？", "dark Hero must use the approved headline");
+  assert(harness.document.querySelector(".denia-old-days-ds-status")?.textContent === "幻灭之形 · 观察中", "dark Hero must use the approved status");
+  assert(nativeHeading.textContent === "What should we build in denia-old-days-codex-theme?" && nativeHeading.contains(inlineProjectButton), "theme copy must preserve the native heading and inline project button");
+  assert(textarea.placeholder === "Ask anything" && textarea.value === "preserved draft", "theme copy must preserve textarea state");
+  assert(suggestion.textContent === "Explore code", "theme copy must preserve suggestion text");
+  harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.cleanup();
 }
 
 function assertObserverStability(payload) {
