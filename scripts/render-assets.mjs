@@ -26,6 +26,7 @@ await sharp(source("background.svg"))
   .toFile(output("theme/background.jpg"));
 
 const SINGLE_SOURCE_HOME = "official/old-days-bright-102s.jpg";
+const DARK_HOME_SOURCE = "official/denia-home-dark-hjz.jpg";
 const runtimeArt = [
   {
     source: SINGLE_SOURCE_HOME,
@@ -33,6 +34,13 @@ const runtimeArt = [
     resize: { width: 1440, height: 810, fit: "cover", position: "centre" },
     flatten: null,
     webp: { quality: 88, smartSubsample: true },
+  },
+  {
+    source: DARK_HOME_SOURCE,
+    target: "sidecar/assets/denia-home-dark.webp",
+    resize: { width: 2048, height: 1152, fit: "cover", position: "centre" },
+    flatten: null,
+    webp: { quality: 80, smartSubsample: true },
   },
 ];
 
@@ -506,4 +514,4 @@ for (const target of [
   if (stat.size > 1024 * 1024) throw new Error(`runtime artwork exceeds 1 MiB: ${target}`);
 }
 
-console.log("rendered 15 Denia assets");
+console.log("rendered 16 Denia assets");

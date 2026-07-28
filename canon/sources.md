@@ -16,6 +16,7 @@
 | 形态 | 文件 | 官方来源 | 尺寸 | SHA-256 |
 | --- | --- | --- | --- | --- |
 | Home | `art/source/official/old-days-bright-102s.jpg` | [库洛官方《旧日斑斓》动画](https://www.kurobbs.com/mc/post/1507356224033308672)约 `00:01:42` 帧 | 1920×1080 | `d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd` |
+| Dark home | `art/source/official/denia-home-dark-hjz.jpg` | 已确认官方发布 X 图原档，归档自视觉资料库 `source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg` | 4096×2304 | `b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce` |
 | Legacy stage | `art/source/official/denia-poster-wide.png` | [库洛官方达妮娅横版海报](https://www.kurobbs.com/mc/post/1508896679676882944) | 1840×1080 | `1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1` |
 | Warm rail | `art/source/official/denia-garden-bubbles-warm.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust) | 1920×1080 | `481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b` |
 | Dark rail | `art/source/official/denia-dark-direct-gaze.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust) | 3840×2160 | `aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292` |
@@ -62,6 +63,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | --- | --- | --- | --- |
 | `theme/background.jpg` | 1920×1080 | `75f90080bcca721a2a0a41318f159b56e0723e0c90383493c03d51f535df31fc` | `background.svg`；resize 1920×1080、cover；flatten `#f7eee9`；JPEG quality 90、4:4:4 |
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
+| `sidecar/assets/denia-home-dark.webp` | 2048×1152 | `24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c` | `denia-home-dark-hjz.jpg`；原始 16:9 画面等比缩放，保留人物与中央记忆泡泡；WebP quality 80、smartSubsample |
 | `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
 | `sidecar/assets/denia-task-approval.webp` | 640×2000 | `d8e9124ad68a04021c8911819a6e21cba51b543f480a505cb3a24b98caa347a9` | 双形态竖幅的明色正脸与暗色注视；`470,220,896×2800`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-error.webp` | 640×2000 | `55ebb464e95001b96f6a68c5a18054e80e0764450551e4e912a4c4b525f1c8c6` | 完整无笑意正脸与抬臂动势；`1140,100,282×880`；WebP quality 86、smartSubsample |

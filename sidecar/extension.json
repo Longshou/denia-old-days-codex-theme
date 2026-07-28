@@ -17,6 +17,7 @@
   "assets": {
     "wallpaper": "assets/denia-old-days-bright.webp",
     "runtimeWallpaper": "assets/denia-old-days-bright.webp",
+    "darkHomeArtwork": "assets/denia-home-dark.webp",
     "taskWarmArtwork": "assets/denia-task-warm.webp",
     "taskApprovalArtwork": "assets/denia-task-approval.webp",
     "taskErrorArtwork": "assets/denia-task-error.webp",
@@ -27,6 +28,8 @@
     "darkStatusText": "幻灭之形 · 观察中",
     "eyebrow": "DENIA · OLD DAYS IN COLOR",
     "headline": "今天要把什么写进手账？",
+    "darkEyebrow": "DENIA · OLD DAYS AFTERGLOW",
+    "darkHeadline": "今晚，要让哪段思绪显影？",
     "description": "让思绪显影，也让每一步留下记录。",
     "projectPrefix": "翻到项目 · ",
     "projectFallback": "选择项目"

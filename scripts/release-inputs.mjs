@@ -1,6 +1,7 @@
 export const RENDERER_SOURCE_INPUTS = Object.freeze([
   "art/source/background.svg",
   "art/source/official/old-days-bright-102s.jpg",
+  "art/source/official/denia-home-dark-hjz.jpg",
   "art/source/official/denia-garden-bubbles-warm.jpg",
   "art/source/official/denia-approval-dual-form.jpg",
   "art/source/official/denia-error-reaching.jpg",

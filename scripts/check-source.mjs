@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { RELEASE_COPY_SOURCES, RENDERER_SOURCE_INPUTS } from "./release-inputs.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -12,6 +13,7 @@ for (const relative of ["canon", "art/source", "theme", "sidecar", "evidence"]) 
 
 const officialSources = new Map([
   ["art/source/official/old-days-bright-102s.jpg", "d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd"],
+  ["art/source/official/denia-home-dark-hjz.jpg", "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce"],
   ["art/source/official/denia-poster-wide.png", "1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1"],
   ["art/source/official/denia-garden-bubbles-warm.jpg", "481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b"],
   ["art/source/official/denia-dark-direct-gaze.jpg", "aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292"],
@@ -331,6 +333,9 @@ if (!localReleaseBuilder.includes("RELEASE_COPY_SOURCES")) {
 }
 const sidecarRoot = path.resolve(root, "sidecar");
 const sidecarManifest = JSON.parse(fs.readFileSync(path.join(sidecarRoot, "extension.json"), "utf8"));
+if (sidecarManifest.assets?.darkHomeArtwork !== "assets/denia-home-dark.webp") {
+  throw new Error("dark home artwork manifest entry mismatch");
+}
 const manifestInputs = [
   sidecarManifest.entrypoints?.style,
   sidecarManifest.entrypoints?.runtime,
@@ -368,6 +373,7 @@ if (!mutationWasRejected) {
 const generatedFiles = [
   "theme/background.jpg",
   "sidecar/assets/denia-old-days-bright.webp",
+  "sidecar/assets/denia-home-dark.webp",
   "sidecar/assets/denia-task-warm.webp",
   "sidecar/assets/denia-task-approval.webp",
   "sidecar/assets/denia-task-error.webp",
@@ -389,6 +395,12 @@ for (const relative of generatedFiles) {
   if (relative.endsWith(".webp") && stat.size > 1024 * 1024) {
     throw new Error(`runtime artwork exceeds 1 MiB: ${relative}`);
   }
+}
+
+const darkHomeArtwork = path.join(root, "sidecar/assets/denia-home-dark.webp");
+const darkHomeMetadata = await sharp(darkHomeArtwork).metadata();
+if (darkHomeMetadata.format !== "webp" || (darkHomeMetadata.width || 0) < 2048 || (darkHomeMetadata.height || 0) < 1152) {
+  throw new Error(`dark home artwork must be a WebP of at least 2048x1152: ${darkHomeMetadata.width}x${darkHomeMetadata.height}`);
 }
 
 const expectedDimensions = new Map([
