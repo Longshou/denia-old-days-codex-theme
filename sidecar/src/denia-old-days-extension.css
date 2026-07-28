@@ -144,7 +144,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
 .denia-old-days-ds-chrome {
   position: fixed;
   inset: 0;
-  z-index: 2;
+  z-index: -1;
   overflow: hidden;
   pointer-events: none;
   contain: strict;
@@ -773,12 +773,6 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 .denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-native-right-sidebar {
   border-color: rgba(247, 216, 138, .4) !important;
   box-shadow: inset 2px 0 rgba(247, 216, 138, .52), -12px 0 34px rgba(38, 53, 72, .055);
-}
-
-.denia-old-days-ds-extension:not([data-denia-sidebar-state="closed"]) .denia-old-days-ds-state-art,
-.denia-old-days-ds-extension[data-denia-work-surface-state="open"] .denia-old-days-ds-state-art {
-  opacity: 0;
-  visibility: hidden;
 }
 
 .denia-old-days-ds-observation {

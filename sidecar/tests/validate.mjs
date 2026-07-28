@@ -188,6 +188,7 @@ assertFallbackCleanupBehavior(loader);
 assertHomeLayoutPreservation(runtimePayload);
 assertFormStateRecognition(runtimePayload);
 assertStateArtRailLifecycle(runtimePayload);
+assertTaskChromeHostLifecycle(runtimePayload);
 assertIncrementalTaskDecoration(runtimePayload);
 assertObserverStability(runtimePayload);
 assertFinalReviewRegressions(runtimePayload);
@@ -475,7 +476,7 @@ assertCssDeclarations(stylesheetRules, taskRailSelector, {
   "mask-image": "linear-gradient(90deg, transparent 0, #000 42px)",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-chrome", {
-  "z-index": "2",
+  "z-index": "-1",
 });
 assert(!activeStyles.includes(".denia-old-days-ds-task .denia-old-days-ds-chrome::after"), "retired pseudo-element task rail must be removed");
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer", {
@@ -692,14 +693,16 @@ for (const rule of stylesheetRules) {
     assert(!value.includes("--denia-old-days-art-"), "native sidebar surfaces must not use character artwork variables");
   }
 }
-assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-extension:not([data-denia-sidebar-state="closed"]) .denia-old-days-ds-state-art', {
-  opacity: "0",
-  visibility: "hidden",
-});
-assertCssDeclarations(stylesheetRules, '.denia-old-days-ds-extension[data-denia-work-surface-state="open"] .denia-old-days-ds-state-art', {
-  opacity: "0",
-  visibility: "hidden",
-});
+for (const forbiddenSelector of [
+  '.denia-old-days-ds-extension:not([data-denia-sidebar-state="closed"]) .denia-old-days-ds-state-art',
+  '.denia-old-days-ds-extension[data-denia-work-surface-state="open"] .denia-old-days-ds-state-art',
+]) {
+  const rule = stylesheetRules.find((candidate) => candidate.selectors.includes(forbiddenSelector));
+  assert(
+    !rule?.declarations.has("opacity") && !rule?.declarations.has("visibility"),
+    `panel state must not hide the persistent task artwork: ${forbiddenSelector}`,
+  );
+}
 const nativeSidebarPanelSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar";
 const nativeSidebarGroupSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group";
 const nativeLeftSidebarHostSelector = "html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-denia-sidebar-state][data-denia-sidebar-confidence] aside.app-shell-left-panel.denia-old-days-ds-native-left-sidebar";
@@ -3599,6 +3602,87 @@ function assertStateArtRailLifecycle(payload) {
   assert(reducedApproval?.dataset.deniaArtFamily === "taskApproval", "reduced motion must still switch to the correct artwork");
   assert(!reducedWarm, "reduced motion must clear the outgoing layer immediately");
   assert(!reducedRail.querySelector(".denia-old-days-ds-state-art-layer.is-leaving"), "reduced motion must not leave a fading layer");
+}
+
+function assertTaskChromeHostLifecycle(payload) {
+  const harness = createRuntimeHarness((index) => `blob:chrome-host-${index + 1}`);
+  const firstMain = harness.document.createElement("main");
+  firstMain.setAttribute("role", "main");
+  harness.document.body.append(firstMain);
+  const summaryToggle = harness.document.createElement("button");
+  summaryToggle.setAttribute("aria-label", "切换置顶摘要");
+  summaryToggle.setAttribute("aria-pressed", "true");
+  summaryToggle.setRect({ x: 1400, y: 8, width: 28, height: 28 });
+  harness.document.body.append(summaryToggle);
+  vm.runInContext(payload, harness.context, { timeout: 1000 });
+
+  const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const chrome = harness.document.getElementById("denia-old-days-ds-chrome");
+  const rail = harness.document.getElementById("denia-old-days-ds-state-art");
+  const activeFamily = rail.querySelector(".denia-old-days-ds-state-art-layer.is-active")?.dataset.deniaArtFamily;
+  const createdNodes = state.metrics.createdNodes;
+
+  assert(chrome?.parentElement === firstMain, "task chrome must mount inside the current main");
+  state.refresh();
+  assert(harness.document.getElementById("denia-old-days-ds-chrome") === chrome, "repeat refresh must reuse task chrome");
+  assert(state.metrics.createdNodes === createdNodes, "repeat refresh must not create task chrome nodes");
+
+  firstMain.remove();
+  const replacementMain = harness.document.createElement("main");
+  replacementMain.setAttribute("role", "main");
+  harness.document.body.append(replacementMain);
+  state.refresh();
+
+  assert(chrome.parentElement === replacementMain, "replacement main must adopt the existing task chrome");
+  assert(harness.document.getElementById("denia-old-days-ds-chrome") === chrome, "main replacement must retain chrome identity");
+  assert(state.metrics.createdNodes === createdNodes, "main replacement must not create another chrome");
+  assert(
+    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active")?.dataset.deniaArtFamily === activeFamily,
+    "main replacement must preserve the active artwork family",
+  );
+
+  const approval = harness.document.createElement("div");
+  approval.setAttribute("data-state", "approval");
+  replacementMain.append(approval);
+  state.refresh();
+  const approvalLayer = rail.querySelector(".denia-old-days-ds-state-art-layer.is-active");
+  assert(
+    approvalLayer?.dataset.deniaArtFamily === "taskApproval",
+    "task state must update artwork while summary covers the rail",
+  );
+
+  approval.remove();
+  const error = harness.document.createElement("div");
+  error.setAttribute("data-state", "error");
+  replacementMain.append(error);
+  state.refresh();
+  assert(
+    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active")?.dataset.deniaArtFamily === "taskError",
+    "covered artwork must continue updating into the error family",
+  );
+
+  error.remove();
+  const assistant = harness.document.createElement("article");
+  assistant.setAttribute("data-content-search-unit-key", "task:assistant");
+  replacementMain.append(assistant);
+  state.refresh();
+  const coveredLayer = rail.querySelector(".denia-old-days-ds-state-art-layer.is-active");
+  assert(
+    coveredLayer?.dataset.deniaArtFamily === "taskComplete",
+    "covered artwork must continue updating into the complete family",
+  );
+  const coveredGeneration = state.artGeneration;
+  harness.clearMutationRecords();
+  summaryToggle.setAttribute("aria-pressed", "false");
+  assert(harness.flushMutations() === 1, "summary close must synchronize after covered artwork changes");
+  assert(
+    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active") === coveredLayer,
+    "summary close must reveal the current artwork layer",
+  );
+  assert(state.artGeneration === coveredGeneration, "summary close must not recreate the current artwork");
+
+  state.cleanup();
+  assert(!chrome.isConnected, "cleanup must remove chrome nested in task main");
 }
 
 function assertIncrementalTaskDecoration(payload) {

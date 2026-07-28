@@ -18,6 +18,7 @@
   let nativeLeftSidebarPanel = null;
   let nativeSidebarPanel = null;
   let nativeHomePrompt = null;
+  let taskChrome = null;
   const nativeHomeSuggestionTargets = new Set();
   let cachedComposer = null;
   const nativeSidebarGroups = new Set();
@@ -811,14 +812,16 @@
   }
 
   function ensureChrome() {
-    let chrome = document.getElementById("denia-old-days-ds-chrome");
+    const host = state.homeActive ? document.body : findMain() || document.body;
+    let chrome = taskChrome || document.getElementById("denia-old-days-ds-chrome");
     if (!chrome) {
       chrome = own(document.createElement("div"));
       chrome.id = "denia-old-days-ds-chrome";
       chrome.className = "denia-old-days-ds-chrome";
       chrome.setAttribute("aria-hidden", "true");
-      document.body.append(chrome);
     }
+    taskChrome = chrome;
+    if (chrome.parentElement !== host) host.append(chrome);
     ensureStateArt(chrome);
     return chrome;
   }
@@ -1620,6 +1623,7 @@
       node.remove();
       ownedNodes.delete(node);
     }
+    taskChrome = null;
     for (const node of touchedNodes) {
       for (const className of removableClasses) node.classList?.remove(className);
       removeStyleProperty(node, nativeHomePromptShiftProperty);
