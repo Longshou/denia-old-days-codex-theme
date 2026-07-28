@@ -484,6 +484,30 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
 const deepHomeSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"]';
 const deepHomeMainSelector = `${deepHomeSelector} main.main-surface.dream-skin-home-shell`;
+const deepHomeLayoutProperties = /^(?:width|height|min-width|min-height|max-width|max-height|margin(?:-.+)?|padding(?:-.+)?|position|inset|top|right|bottom|left|display|grid(?:-.+)?|flex(?:-.+)?|transform|translate|overflow(?:-.+)?)$/u;
+const deepHomeNativeLayoutTargets = /(?:\bmain\b|denia-old-days-ds-composer|denia-old-days-ds-native-home-prompt|denia-old-days-ds-native-(?:left|right)-sidebar|denia-old-days-ds-native-sidebar-(?:group|row))/u;
+const deepHomeDecorationSelectors = new Set([
+  `${deepHomeSelector} .denia-old-days-ds-photo`,
+  `${deepHomeSelector} .denia-old-days-ds-memory-bubbles`,
+]);
+const deepHomeHeroLayoutSelector = /\.denia-old-days-ds-hero(?:\b|[-\s.:#[])/u;
+for (const rule of stylesheetRules) {
+  const scopedSelectors = rule.selectors.filter((selector) => selector.includes(deepHomeSelector));
+  if (!scopedSelectors.length) continue;
+  for (const property of rule.declarations.keys()) {
+    if (!deepHomeLayoutProperties.test(property)) continue;
+    for (const selector of scopedSelectors) {
+      const allowedDecoration = property === "display"
+        && rule.declarations.get(property) === "none !important"
+        && deepHomeDecorationSelectors.has(selector);
+      const allowedHeroAnchor = deepHomeHeroLayoutSelector.test(selector) && !deepHomeNativeLayoutTargets.test(selector);
+      assert(
+        allowedDecoration || allowedHeroAnchor,
+        `deep home must not alter native layout property ${property} on ${selector}`,
+      );
+    }
+  }
+}
 const deepHomeMainRule = stylesheetRules.find((rule) => rule.selectors.includes(deepHomeMainSelector));
 assert(
   deepHomeMainRule?.declarations.get("background-image")?.includes("var(--denia-old-days-art-dark)")
@@ -494,10 +518,7 @@ assert(
 assertCssDeclarations(stylesheetRules, `${deepHomeSelector} .denia-old-days-ds-hero`, {
   background: "transparent !important",
 });
-for (const selector of [
-  `${deepHomeSelector} .denia-old-days-ds-photo`,
-  `${deepHomeSelector} .denia-old-days-ds-memory-bubbles`,
-]) {
+for (const selector of deepHomeDecorationSelectors) {
   assertCssDeclarations(stylesheetRules, selector, { display: "none !important" });
 }
 assert(
@@ -1009,19 +1030,23 @@ async function assertLoaderRejectsUnresolvedRuntimeTokens() {
     );
 
     const loaderSource = await fs.readFile(loaderPath, "utf8");
-    const brightStagingReplacement = "  .replace(templatePlaceholders.bright, templateSentinels.bright)";
-    assert(loaderSource.includes(brightStagingReplacement), "loader mutation fixture missing bright artwork staging replacement");
-    await fs.writeFile(loaderPath, loaderSource.replace(brightStagingReplacement, `  // ${brightStagingReplacement.trim()}`));
-
-    const mutatedResult = spawnSync(process.execPath, loaderArgs, { encoding: "utf8", timeout: 7000 });
-    const mutatedOutput = `${mutatedResult.stdout || ""}\n${mutatedResult.stderr || ""}`;
-    assert(
-      mutatedResult.status !== 0
-        && mutatedOutput.includes("Unresolved Denia runtime template token")
-        && mutatedOutput.includes("__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__")
-        && !mutatedOutput.includes("ECONNREFUSED"),
-      "loader must reject an unresolved artwork token before entering CDP",
-    );
+    for (const artwork of [
+      { key: "bright", token: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__" },
+      { key: "dark", token: "__DENIA_OLD_DAYS_EXTENSION_DARK_HOME_ART_JSON__" },
+    ]) {
+      const stagingReplacement = `  .replace(templatePlaceholders.${artwork.key}, templateSentinels.${artwork.key})`;
+      assert(loaderSource.includes(stagingReplacement), `loader mutation fixture missing ${artwork.key} artwork staging replacement`);
+      await fs.writeFile(loaderPath, loaderSource.replace(stagingReplacement, `  // ${stagingReplacement.trim()}`));
+      const mutatedResult = spawnSync(process.execPath, loaderArgs, { encoding: "utf8", timeout: 7000 });
+      const mutatedOutput = `${mutatedResult.stdout || ""}\n${mutatedResult.stderr || ""}`;
+      assert(
+        mutatedResult.status !== 0
+          && mutatedOutput.includes("Unresolved Denia runtime template token")
+          && mutatedOutput.includes(artwork.token)
+          && !mutatedOutput.includes("ECONNREFUSED"),
+        `loader must reject an unresolved ${artwork.key} artwork token before entering CDP`,
+      );
+    }
   } finally {
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
@@ -3108,6 +3133,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
 
   harness.root.classList.add("denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task");
   harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.0";
+  harness.root.dataset.deniaTheme = "dark";
   harness.root.dataset.deniaFormState = "working";
   harness.root.dataset.deniaSidebarState = "open";
   harness.root.dataset.deniaSidebarConfidence = "high";
@@ -3117,7 +3143,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.dataset.deniaWorkSurfaceState = "open";
   harness.root.style.setProperty("--denia-native-sidebar-width", "320px");
   harness.root.style.setProperty("--denia-thread-content-width", "1242px");
-  for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
+  for (const name of ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]) {
     harness.root.style.setProperty(`--denia-old-days-art-${name}`, `url(blob:${name})`);
   }
 
@@ -3126,6 +3152,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
     assert(!harness.root.classList.contains(className), `fallback cleanup must remove root class ${className}`);
   }
   assert(!("deniaOldDaysExtensionVersion" in harness.root.dataset), "fallback cleanup must remove the extension version marker");
+  assert(!("deniaTheme" in harness.root.dataset), "fallback cleanup must remove the host theme marker");
   assert(!("deniaFormState" in harness.root.dataset), "fallback cleanup must remove the form state marker");
   assert(!("deniaSidebarState" in harness.root.dataset), "fallback cleanup must remove the sidebar state marker");
   assert(!("deniaSidebarConfidence" in harness.root.dataset), "fallback cleanup must remove the sidebar confidence marker");
@@ -3135,7 +3162,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
   assert(!("deniaWorkSurfaceState" in harness.root.dataset), "fallback cleanup must remove the work-surface state marker");
   assert(!harness.root.style.getPropertyValue("--denia-native-sidebar-width"), "fallback cleanup must remove the native sidebar width snapshot");
   assert(!harness.root.style.getPropertyValue("--denia-thread-content-width"), "fallback cleanup must remove the thread content width snapshot");
-  for (const name of ["bright", "task-warm", "task-approval", "task-error", "task-complete"]) {
+  for (const name of ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]) {
     assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
   }
   for (const id of ownedIds) assert(!harness.document.getElementById(id), `fallback cleanup must remove owned node ${id}`);
