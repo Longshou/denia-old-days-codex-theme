@@ -511,7 +511,7 @@ for (const target of [
   ...Object.values(TASK_RAIL_SOURCES).map((item) => item.target),
 ]) {
   const stat = await fs.stat(output(target));
-  if (stat.size > 1024 * 1024) throw new Error(`runtime artwork exceeds 1 MiB: ${target}`);
+  if (stat.size >= 1024 * 1024) throw new Error(`runtime artwork must remain below 1 MiB: ${target}`);
 }
 
 console.log("rendered 16 Denia assets");

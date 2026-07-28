@@ -392,8 +392,8 @@ const generatedFiles = [
 for (const relative of generatedFiles) {
   const stat = fs.statSync(path.join(root, relative));
   if (!stat.isFile() || stat.size === 0) throw new Error(`empty ${relative}`);
-  if (relative.endsWith(".webp") && stat.size > 1024 * 1024) {
-    throw new Error(`runtime artwork exceeds 1 MiB: ${relative}`);
+  if (relative.endsWith(".webp") && stat.size >= 1024 * 1024) {
+    throw new Error(`runtime artwork must remain below 1 MiB: ${relative}`);
   }
 }
 
