@@ -285,6 +285,24 @@ for (const token of [
 ]) assert(activeStyles.includes(token), `stylesheet missing ${token}`);
 
 const stylesheetRules = parseCssRules(cssSyntax);
+const homeBackgroundPaintRootSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell)';
+const homeBackgroundBodySelector = `${homeBackgroundPaintRootSelector} body`;
+const homeBackgroundMainSelector =
+  `${homeBackgroundPaintRootSelector} main.main-surface.dream-skin-home-shell`;
+
+assertCssDeclarations(stylesheetRules, homeBackgroundBodySelector, {
+  "background-color": "#F7EEE9 !important",
+  "background-image": "none !important",
+});
+assertCssDeclarations(stylesheetRules, homeBackgroundMainSelector, {
+  "background-color": "#F7EEE9 !important",
+  "background-image": "linear-gradient(90deg, var(--ds-immersive-edge), var(--ds-immersive-mid) 64%, var(--ds-immersive-far)), var(--dream-skin-art) !important",
+  "background-attachment": "scroll !important",
+  "background-position": "center, var(--ds-art-position) !important",
+  "background-repeat": "no-repeat !important",
+  "background-size": "cover !important",
+});
 for (const selector of [
   ".denia-old-days-ds-chrome::before",
   ".denia-old-days-ds-hero::before",
@@ -303,7 +321,7 @@ assertCssScannerCoverage();
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
   "grid-template-columns": "minmax(340px, .85fr) minmax(460px, 1.15fr)",
   "column-gap": "clamp(34px, 4.5vw, 64px)",
-  width: "min(1120px, calc(100% - 32px))",
+  width: "min(1160px, calc(100% - 32px))",
   margin: "clamp(16px, 3vh, 32px) auto 16px",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
@@ -826,16 +844,20 @@ assert(
 );
 const shortDesktopMedia = ["min-width: 1200px", "max-height: 919px"];
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero", {
-  "grid-template-columns": "minmax(340px, .9fr) minmax(420px, 1.1fr)",
-  "column-gap": "32px",
-  width: "min(1120px, calc(100% - 32px))",
+  "grid-template-columns": "minmax(350px, .88fr) minmax(460px, 1.12fr)",
+  "column-gap": "36px",
+  width: "min(1160px, calc(100% - 32px))",
   "min-height": "0",
   margin: "12px auto",
-  padding: "22px 32px",
+  padding: "26px 36px",
+}, shortDesktopMedia);
+assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-hero h1", {
+  margin: "12px 0 10px",
+  "font-size": "clamp(34px, 3.6vw, 48px)",
 }, shortDesktopMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-photo", {
   display: "block",
-  width: "min(100%, 440px)",
+  width: "min(100%, 500px)",
   "aspect-ratio": "16 / 9.2",
   padding: "10px 10px 42px",
 }, shortDesktopMedia);
