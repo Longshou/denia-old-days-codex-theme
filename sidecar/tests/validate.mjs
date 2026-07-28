@@ -3143,8 +3143,17 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.dataset.deniaWorkSurfaceState = "open";
   harness.root.style.setProperty("--denia-native-sidebar-width", "320px");
   harness.root.style.setProperty("--denia-thread-content-width", "1242px");
-  for (const name of ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]) {
-    harness.root.style.setProperty(`--denia-old-days-art-${name}`, `url(blob:${name})`);
+  const fallbackArtworkValues = new Map([
+    ["bright", 'url("blob:fallback-bright")'],
+    ["dark", "url(blob:fallback-dark)"],
+    ["task-warm", "url(blob:fallback-bright)"],
+    ["task-approval", "url(data:image/webp;base64,AA==)"],
+    ["task-error", "url(https://example.invalid/error.webp)"],
+    ["task-dark", "none"],
+    ["task-complete", ""],
+  ]);
+  for (const [name, value] of fallbackArtworkValues) {
+    if (value) harness.root.style.setProperty(`--denia-old-days-art-${name}`, value);
   }
 
   assert(vm.runInContext(expression, harness.context) === true, "fallback cleanup must report success");
@@ -3162,9 +3171,13 @@ function assertFallbackCleanupBehavior(loaderSource) {
   assert(!("deniaWorkSurfaceState" in harness.root.dataset), "fallback cleanup must remove the work-surface state marker");
   assert(!harness.root.style.getPropertyValue("--denia-native-sidebar-width"), "fallback cleanup must remove the native sidebar width snapshot");
   assert(!harness.root.style.getPropertyValue("--denia-thread-content-width"), "fallback cleanup must remove the thread content width snapshot");
-  for (const name of ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]) {
+  for (const name of fallbackArtworkValues.keys()) {
     assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
   }
+  assert(
+    harness.revoked.join(",") === "blob:fallback-bright,blob:fallback-dark",
+    "fallback cleanup must revoke every unique blob artwork URL exactly once without revoking data or HTTP URLs",
+  );
   for (const id of ownedIds) assert(!harness.document.getElementById(id), `fallback cleanup must remove owned node ${id}`);
   removableClasses.forEach((className, index) => {
     assert(!touched[index].classList.contains(className), `fallback cleanup must remove touched class ${className}`);

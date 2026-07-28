@@ -196,13 +196,23 @@ const cleanupExpression = `(() => {
   delete root.dataset.deniaWorkSurfaceState;
   root.style.removeProperty('--denia-native-sidebar-width');
   root.style.removeProperty('--denia-thread-content-width');
-  root.style.removeProperty('--denia-old-days-art-bright');
-  root.style.removeProperty('--denia-old-days-art-dark');
-  root.style.removeProperty('--denia-old-days-art-task-warm');
-  root.style.removeProperty('--denia-old-days-art-task-approval');
-  root.style.removeProperty('--denia-old-days-art-task-error');
-  root.style.removeProperty('--denia-old-days-art-task-dark');
-  root.style.removeProperty('--denia-old-days-art-task-complete');
+  const artworkProperties = [
+    '--denia-old-days-art-bright',
+    '--denia-old-days-art-dark',
+    '--denia-old-days-art-task-warm',
+    '--denia-old-days-art-task-approval',
+    '--denia-old-days-art-task-error',
+    '--denia-old-days-art-task-dark',
+    '--denia-old-days-art-task-complete',
+  ];
+  const fallbackBlobArtUrls = new Set();
+  for (const property of artworkProperties) {
+    const value = root.style.getPropertyValue(property);
+    const blobUrl = /^url\\(\\s*["']?(blob:[^"')\\s]+)["']?\\s*\\)$/u.exec(value)?.[1];
+    if (blobUrl) fallbackBlobArtUrls.add(blobUrl);
+  }
+  for (const property of artworkProperties) root.style.removeProperty(property);
+  for (const blobUrl of fallbackBlobArtUrls) URL.revokeObjectURL(blobUrl);
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
     for (const property of ['background-image', 'background-position', 'background-size', 'background-repeat', 'background-color']) node.style.removeProperty(property);
   });
