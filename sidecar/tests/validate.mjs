@@ -500,16 +500,41 @@ assertCssDeclarations(stylesheetRules, taskBackgroundDarkSelector, {
   "--denia-task-background-color": "var(--denia-task-background-color-dark)",
   "--denia-task-background-image": "var(--denia-task-background-image-dark)",
 });
-for (const selector of [taskBackgroundBodySelector, taskBackgroundMainSelector]) {
-  assertCssDeclarations(stylesheetRules, selector, {
-    "background-color": "var(--denia-task-background-color) !important",
-    "background-image": "var(--denia-task-background-image) !important",
-    "background-attachment": "fixed !important",
-    "background-position": "center !important",
-    "background-repeat": "no-repeat !important",
-    "background-size": "cover !important",
-  });
+const taskBackgroundRootRule = findCssRule(stylesheetRules, taskBackgroundRootSelector);
+const taskBackgroundFullImages = [
+  taskBackgroundRootRule.declarations.get("--denia-task-background-image-light"),
+  taskBackgroundRootRule.declarations.get("--denia-task-background-image-dark"),
+];
+for (const [label, value] of [
+  ["light", taskBackgroundFullImages[0]],
+  ["dark", taskBackgroundFullImages[1]],
+]) {
+  const horizontalAnchors = [...value.matchAll(/\bat\s+(\d+)%\s+\d+%/gu)]
+    .map((match) => Number(match[1]));
+  assert(horizontalAnchors.length >= 4, `${label} task background must expose its radial anchors`);
+  assert(
+    horizontalAnchors.every((anchor) => anchor <= 66),
+    `${label} task background anchors must stay left of the character rail`,
+  );
 }
+for (const requiredAnchor of ["at 62% 10%", "at 14% 90%", "at 64% 80%", "at 12% 12%"]) {
+  assert(
+    taskBackgroundFullImages.every((value) => value.includes(requiredAnchor)),
+    `both task backgrounds must include content-column anchor ${requiredAnchor}`,
+  );
+}
+assertCssDeclarations(stylesheetRules, taskBackgroundBodySelector, {
+  "background-color": "var(--denia-task-background-color) !important",
+  "background-image": "none !important",
+});
+assertCssDeclarations(stylesheetRules, taskBackgroundMainSelector, {
+  "background-color": "var(--denia-task-background-color) !important",
+  "background-image": "var(--denia-task-background-image) !important",
+  "background-attachment": "scroll !important",
+  "background-position": "center !important",
+  "background-repeat": "no-repeat !important",
+  "background-size": "cover !important",
+});
 assertCssDeclarations(stylesheetRules, taskBackgroundBeforeSelector, {
   background: "none",
 });
