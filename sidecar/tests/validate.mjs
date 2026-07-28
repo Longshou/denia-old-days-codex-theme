@@ -1014,12 +1014,21 @@ const darkTaskTitleSelector =
   `${darkTaskMainReadabilityRoot} [data-testid="app-shell-header-context-menu-surface"] .text-token-foreground > .min-w-0.truncate`;
 const darkTaskActivityCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body :is(span[class~="truncate"], .loading-shimmer-pure-text, [class*="_cadencedShimmer"])`;
+const darkTaskConversationSurfaceSelector =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container [role="main"]`;
+const darkTaskMarkdownSurfaceSelector =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container [class*="_markdownContent_"]`;
+const darkTaskHeaderSelector =
+  `${darkTaskMainReadabilityRoot} > header.app-header-tint`;
+const darkTaskHeaderNeutralControlSelector =
+  `${darkTaskHeaderSelector} :is(button, [role="button"]).text-token-button-tertiary-foreground`;
 const darkTaskNeutralActionSelector =
   `${darkTaskMainReadabilityRoot} .denia-old-days-ds-final-card button.text-token-text-tertiary:not(.end-resource-open-button)`;
 const darkTaskNeutralActionInteractiveSelector =
   `${darkTaskNeutralActionSelector}:is(:hover, :focus-visible)`;
 assertCssDeclarations(stylesheetRules, darkTaskMarkdownSelector, {
   color: "var(--denia-dark-text) !important",
+  "text-shadow": "none !important",
 });
 assertCssDeclarations(stylesheetRules, darkTaskInlineMarkdownSelector, {
   color: "var(--denia-dark-focus) !important",
@@ -1036,6 +1045,14 @@ assertCssDeclarations(stylesheetRules, darkTaskTitleSelector, {
 assertCssDeclarations(stylesheetRules, darkTaskActivityCopySelector, {
   color: "inherit !important",
 });
+for (const selector of [darkTaskConversationSurfaceSelector, darkTaskMarkdownSurfaceSelector, darkTaskHeaderSelector]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    "text-shadow": "none !important",
+  });
+}
+assertCssDeclarations(stylesheetRules, darkTaskHeaderNeutralControlSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+});
 assertCssDeclarations(stylesheetRules, darkTaskNeutralActionSelector, {
   color: "var(--denia-dark-text-muted) !important",
 });
@@ -1050,6 +1067,10 @@ for (const selector of [
   darkTaskMetadataSelector,
   darkTaskTitleSelector,
   darkTaskActivityCopySelector,
+  darkTaskConversationSurfaceSelector,
+  darkTaskMarkdownSurfaceSelector,
+  darkTaskHeaderSelector,
+  darkTaskHeaderNeutralControlSelector,
   darkTaskNeutralActionSelector,
   darkTaskNeutralActionInteractiveSelector,
 ]) {
