@@ -3609,11 +3609,17 @@ function assertTaskChromeHostLifecycle(payload) {
   const firstMain = harness.document.createElement("main");
   firstMain.setAttribute("role", "main");
   harness.document.body.append(firstMain);
-  const summaryToggle = harness.document.createElement("button");
-  summaryToggle.setAttribute("aria-label", "切换置顶摘要");
-  summaryToggle.setAttribute("aria-pressed", "true");
-  summaryToggle.setRect({ x: 1400, y: 8, width: 28, height: 28 });
-  harness.document.body.append(summaryToggle);
+  const appendToggle = (label, pressed) => {
+    const button = harness.document.createElement("button");
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+    button.setRect({ x: 1400, y: 8, width: 28, height: 28 });
+    harness.document.body.append(button);
+    return button;
+  };
+  const summaryToggle = appendToggle("切换置顶摘要", true);
+  const bottomToggle = appendToggle("切换底部面板显示", false);
+  const sidebarToggle = appendToggle("显示/隐藏侧边栏", false);
   vm.runInContext(payload, harness.context, { timeout: 1000 });
 
   const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
@@ -3671,15 +3677,46 @@ function assertTaskChromeHostLifecycle(payload) {
     coveredLayer?.dataset.deniaArtFamily === "taskComplete",
     "covered artwork must continue updating into the complete family",
   );
-  const coveredGeneration = state.artGeneration;
-  harness.clearMutationRecords();
-  summaryToggle.setAttribute("aria-pressed", "false");
-  assert(harness.flushMutations() === 1, "summary close must synchronize after covered artwork changes");
-  assert(
-    rail.querySelector(".denia-old-days-ds-state-art-layer.is-active") === coveredLayer,
-    "summary close must reveal the current artwork layer",
-  );
-  assert(state.artGeneration === coveredGeneration, "summary close must not recreate the current artwork");
+  const activeFamilyProperty = {
+    taskWarm: "--denia-old-days-art-task-warm",
+    taskApproval: "--denia-old-days-art-task-approval",
+    taskError: "--denia-old-days-art-task-error",
+    taskComplete: "--denia-old-days-art-task-complete",
+  }[coveredLayer.dataset.deniaArtFamily];
+  const coveredArtwork = {
+    generation: state.artGeneration,
+    createdNodes: state.metrics.createdNodes,
+    objectUrl: harness.root.style.getPropertyValue(activeFamilyProperty),
+    chrome,
+    rail,
+    layer: coveredLayer,
+  };
+  assert(coveredArtwork.objectUrl, "active complete artwork must retain its root CSS custom property/object URL");
+
+  const assertPersistentArtwork = (panel) => {
+    assert(state.artGeneration === coveredArtwork.generation, `${panel} toggle must not recreate the current artwork generation`);
+    assert(state.metrics.createdNodes === coveredArtwork.createdNodes, `${panel} toggle must not create artwork nodes`);
+    assert(harness.root.style.getPropertyValue(activeFamilyProperty) === coveredArtwork.objectUrl, `${panel} toggle must retain the active family root CSS custom property/object URL`);
+    assert(harness.document.getElementById("denia-old-days-ds-chrome") === coveredArtwork.chrome, `${panel} toggle must retain chrome identity`);
+    assert(harness.document.getElementById("denia-old-days-ds-state-art") === coveredArtwork.rail, `${panel} toggle must retain rail identity`);
+    assert(
+      rail.querySelector(".denia-old-days-ds-state-art-layer.is-active") === coveredArtwork.layer,
+      `${panel} toggle must retain the active complete artwork layer`,
+    );
+  };
+  const togglePanel = (toggle, pressed, panel) => {
+    harness.clearMutationRecords();
+    toggle.setAttribute("aria-pressed", pressed ? "true" : "false");
+    assert(harness.flushMutations() === 1, `${panel} ${pressed ? "open" : "close"} must synchronize after covered artwork changes`);
+    assertPersistentArtwork(`${panel} ${pressed ? "open" : "close"}`);
+  };
+
+  togglePanel(summaryToggle, false, "summary");
+  togglePanel(summaryToggle, true, "summary");
+  togglePanel(bottomToggle, true, "bottom panel");
+  togglePanel(bottomToggle, false, "bottom panel");
+  togglePanel(sidebarToggle, true, "right sidebar");
+  togglePanel(sidebarToggle, false, "right sidebar");
 
   state.cleanup();
   assert(!chrome.isConnected, "cleanup must remove chrome nested in task main");
