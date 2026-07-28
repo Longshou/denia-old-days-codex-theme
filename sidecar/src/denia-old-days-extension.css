@@ -967,9 +967,15 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
   --denia-dark-canvas: #12142F;
   --denia-dark-surface: #1A1C3A;
   --denia-dark-surface-raised: #202348;
-  --denia-dark-text: #F3EFF6;
-  --denia-dark-text-muted: #BBB5C9;
-  --denia-dark-focus: #8DC5EA;
+  --denia-dark-text-heading: #F3EFF6;
+  --denia-dark-text-body: #E7E3EC;
+  --denia-dark-text-secondary: #BBB5C9;
+  --denia-dark-text-tertiary: #9E98AE;
+  --denia-dark-text-link: #8DC5EA;
+  --denia-dark-code-inline-surface: #272A50;
+  --denia-dark-text: var(--denia-dark-text-heading);
+  --denia-dark-text-muted: var(--denia-dark-text-secondary);
+  --denia-dark-focus: var(--denia-dark-text-link);
   --denia-dark-character: #D98FB3;
   --denia-dark-divider: rgba(141, 154, 211, .30);
   --denia-crystal: var(--denia-dark-focus);
@@ -997,19 +1003,71 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
-  [class*="_markdownContent_"]
-  :is(p, li, ol, ul, blockquote, h1, h2, h3, h4, h5, h6):is([class*="_markdownText_"], [class*="_heading_"]) {
-  color: var(--denia-dark-text) !important;
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"] {
+  color: var(--denia-dark-text-body) !important;
   text-shadow: none !important;
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
-  :is(p, li)[class*="_markdownText_"]
-  > .inline-markdown {
-  color: var(--denia-dark-focus) !important;
-  background: rgba(141, 197, 234, .12) !important;
+  :is(h1, h2, h3, h4, h5, h6, th) {
+  color: var(--denia-dark-text-heading) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is(p, li, ol, ul, blockquote, td) {
+  color: var(--denia-dark-text-body) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  [data-markdown-table="true"]
+  table {
+  color: var(--denia-dark-text-body) !important;
+  text-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  :is(th, td) {
+  border-color: var(--denia-dark-divider) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  a {
+  color: var(--denia-dark-text-link) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
+  [class*="_markdownContent_"]
+  [data-markdown-copy="inline-code"].inline-markdown {
+  color: var(--denia-dark-text-link) !important;
+  background: var(--denia-dark-code-inline-surface) !important;
+  text-shadow: none !important;
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]

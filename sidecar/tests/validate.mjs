@@ -1009,10 +1009,22 @@ assert(
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 const darkTaskMainReadabilityRoot =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"] main.main-surface:not(.dream-skin-home-shell)';
-const darkTaskMarkdownSelector =
-  `${darkTaskMainReadabilityRoot} [class*="_markdownContent_"] :is(p, li, ol, ul, blockquote, h1, h2, h3, h4, h5, h6):is([class*="_markdownText_"], [class*="_heading_"])`;
+const darkThemePaletteSelector =
+  '.denia-old-days-ds-extension[data-denia-theme="dark"]';
+const darkTaskMarkdownRoot =
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"]) [class*="_markdownContent_"]`;
+const darkTaskMarkdownHeadingSelector =
+  `${darkTaskMarkdownRoot} :is(h1, h2, h3, h4, h5, h6, th)`;
+const darkTaskMarkdownBodySelector =
+  `${darkTaskMarkdownRoot} :is(p, li, ol, ul, blockquote, td)`;
+const darkTaskMarkdownTableSelector =
+  `${darkTaskMarkdownRoot} [data-markdown-table="true"] table`;
+const darkTaskMarkdownCellSelector =
+  `${darkTaskMarkdownRoot} :is(th, td)`;
+const darkTaskMarkdownLinkSelector =
+  `${darkTaskMarkdownRoot} a`;
 const darkTaskInlineMarkdownSelector =
-  `${darkTaskMainReadabilityRoot} [class*="_markdownContent_"] :is(p, li)[class*="_markdownText_"] > .inline-markdown`;
+  `${darkTaskMarkdownRoot} [data-markdown-copy="inline-code"].inline-markdown`;
 const darkTaskProgressCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body`;
 const darkTaskMetadataSelector =
@@ -1033,13 +1045,43 @@ const darkTaskNeutralActionSelector =
   `${darkTaskMainReadabilityRoot} .denia-old-days-ds-final-card button.text-token-text-tertiary:not(.end-resource-open-button)`;
 const darkTaskNeutralActionInteractiveSelector =
   `${darkTaskNeutralActionSelector}:is(:hover, :focus-visible)`;
-assertCssDeclarations(stylesheetRules, darkTaskMarkdownSelector, {
-  color: "var(--denia-dark-text) !important",
+assertCssDeclarations(stylesheetRules, darkThemePaletteSelector, {
+  "--denia-dark-text-heading": "#F3EFF6",
+  "--denia-dark-text-body": "#E7E3EC",
+  "--denia-dark-text-secondary": "#BBB5C9",
+  "--denia-dark-text-tertiary": "#9E98AE",
+  "--denia-dark-text-link": "#8DC5EA",
+  "--denia-dark-code-inline-surface": "#272A50",
+  "--denia-dark-text": "var(--denia-dark-text-heading)",
+  "--denia-dark-text-muted": "var(--denia-dark-text-secondary)",
+  "--denia-dark-focus": "var(--denia-dark-text-link)",
+});
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownRoot, {
+  color: "var(--denia-dark-text-body) !important",
   "text-shadow": "none !important",
 });
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownHeadingSelector, {
+  color: "var(--denia-dark-text-heading) !important",
+  "text-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownBodySelector, {
+  color: "var(--denia-dark-text-body) !important",
+  "text-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownTableSelector, {
+  color: "var(--denia-dark-text-body) !important",
+  "text-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownCellSelector, {
+  "border-color": "var(--denia-dark-divider) !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskMarkdownLinkSelector, {
+  color: "var(--denia-dark-text-link) !important",
+});
 assertCssDeclarations(stylesheetRules, darkTaskInlineMarkdownSelector, {
-  color: "var(--denia-dark-focus) !important",
-  background: "rgba(141, 197, 234, .12) !important",
+  color: "var(--denia-dark-text-link) !important",
+  background: "var(--denia-dark-code-inline-surface) !important",
+  "text-shadow": "none !important",
 });
 for (const selector of [darkTaskProgressCopySelector, darkTaskMetadataSelector]) {
   assertCssDeclarations(stylesheetRules, selector, {
@@ -1067,9 +1109,56 @@ assertCssDeclarations(stylesheetRules, darkTaskNeutralActionInteractiveSelector,
   color: "var(--denia-dark-focus) !important",
   "background-color": "rgba(141, 197, 234, .12) !important",
 });
-for (const selector of [
-  darkTaskMarkdownSelector,
+const darkTaskMarkdownPaintProperties = new Set([
+  "background",
+  "background-color",
+  "border-color",
+  "color",
+  "text-shadow",
+]);
+
+const darkTaskMarkdownSelectors = [
+  darkTaskMarkdownRoot,
+  darkTaskMarkdownHeadingSelector,
+  darkTaskMarkdownBodySelector,
+  darkTaskMarkdownTableSelector,
+  darkTaskMarkdownCellSelector,
+  darkTaskMarkdownLinkSelector,
   darkTaskInlineMarkdownSelector,
+];
+
+for (const selector of darkTaskMarkdownSelectors) {
+  assert(
+    selector === darkTaskMarkdownRoot
+      || selector.startsWith(`${darkTaskMarkdownRoot} `),
+    `dark task Markdown paint must stay inside the native Markdown root: ${selector}`,
+  );
+  assert(
+    !/(?:diff|monaco|xterm|terminal)/iu.test(selector),
+    `dark task Markdown paint must not reach diff, editor, or terminal surfaces: ${selector}`,
+  );
+}
+
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) =>
+    selector === darkTaskMarkdownRoot
+      || selector.startsWith(`${darkTaskMarkdownRoot} `))) continue;
+  assert(
+    rule.selectors.every((selector) =>
+      selector === darkTaskMarkdownRoot
+        || selector.startsWith(`${darkTaskMarkdownRoot} `)),
+    "dark task Markdown paint must not share a rule with an out-of-scope selector",
+  );
+  for (const property of rule.declarations.keys()) {
+    assert(
+      darkTaskMarkdownPaintProperties.has(property),
+      `dark task Markdown paint must not change native geometry or behavior: ${property}`,
+    );
+  }
+}
+
+for (const selector of [
+  ...darkTaskMarkdownSelectors,
   darkTaskProgressCopySelector,
   darkTaskMetadataSelector,
   darkTaskTitleSelector,
@@ -1082,9 +1171,17 @@ for (const selector of [
   darkTaskNeutralActionInteractiveSelector,
 ]) {
   assert(
-    !/(?:^|[\s>+~,(])(?:code|pre|terminal)(?:$|[\s>+~,.:[#])/iu.test(selector)
-      && !/(?:diff|monaco|xterm)/iu.test(selector),
-    `dark task readability paint must not target code, diff, editor, or terminal surfaces: ${selector}`,
+    !/(?:diff|monaco|xterm|terminal)/iu.test(selector),
+    `dark task readability paint must not target diff, editor, or terminal surfaces: ${selector}`,
+  );
+}
+for (const selector of darkTaskMarkdownSelectors) {
+  const targetsMarkdownCode =
+    /(?:^|[\s>+~,(])(?:code|pre)(?:$|[\s>+~,.:[#])/iu.test(selector);
+  assert(
+    !targetsMarkdownCode
+      || selector.startsWith(`${darkTaskMarkdownRoot} `),
+    `dark task code paint must stay inside the native Markdown root: ${selector}`,
   );
 }
 assert(
