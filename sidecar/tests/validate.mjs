@@ -1056,7 +1056,7 @@ const darkTaskMarkdownSemanticShadowSelector =
 const darkTaskProgressCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body`;
 const darkTaskMetadataSelector =
-  `${darkTaskMainReadabilityRoot} .thread-scroll-container [data-content-search-unit-key] .text-xs.text-token-text-tertiary`;
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"]) .text-xs.text-token-text-tertiary`;
 const darkTaskTitleSelector =
   `${darkTaskMainReadabilityRoot} [data-testid="app-shell-header-context-menu-surface"] .text-token-foreground > .min-w-0.truncate`;
 const darkTaskActivityCopySelector =
@@ -1168,6 +1168,14 @@ assertCssDeclarations(stylesheetRules, darkTaskProgressCopySelector, {
 assertCssDeclarations(stylesheetRules, darkTaskMetadataSelector, {
   color: "var(--denia-dark-text-tertiary) !important",
 });
+for (const rule of stylesheetRules) {
+  if (![...rule.declarations.values()].some((value) =>
+    canonicalCssValue(value).includes("var(--denia-dark-text-tertiary)"))) continue;
+  assert(
+    rule.selectors.length === 1 && rule.selectors[0] === darkTaskMetadataSelector,
+    "dark text tertiary color must stay on the approved assistant/user metadata selector",
+  );
+}
 assertCssDeclarations(stylesheetRules, darkTaskTitleSelector, {
   color: "var(--denia-dark-text) !important",
 });
@@ -1805,6 +1813,19 @@ ${darkTaskMarkdownRoot} .denia-validator-padding-probe {
 `,
       expected: "dark task Markdown paint must not change native geometry or behavior: padding",
       failure: "validator must reject layout declarations under the approved Markdown root",
+    },
+    {
+      prefix: "denia-validator-css-dark-tool-reasoning-tertiary-",
+      mutate: (source) => `${source}
+${darkTaskMainReadabilityRoot}
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":tool"], [data-content-search-unit-key$=":reasoning"])
+  .text-xs.text-token-text-tertiary {
+  color: var(--denia-dark-text-tertiary) !important;
+}
+`,
+      expected: "dark text tertiary color must stay on the approved assistant/user metadata selector",
+      failure: "validator must reject tertiary metadata color on tool or reasoning content units",
     },
   ];
   for (const fixture of cases) {

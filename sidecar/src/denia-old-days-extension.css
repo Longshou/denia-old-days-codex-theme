@@ -1246,7 +1246,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
   .thread-scroll-container
-  [data-content-search-unit-key]
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   .text-xs.text-token-text-tertiary {
   color: var(--denia-dark-text-tertiary) !important;
 }
