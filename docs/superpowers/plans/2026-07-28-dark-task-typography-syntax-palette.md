@@ -12,7 +12,7 @@
 
 - Work directly on the current `main` branch because the user explicitly requested all theme work be merged into `main`.
 - Preserve the current canvas `#12142F`, base surface `#1A1C3A`, raised surface `#202348`, layout, DOM, focus order, selection, copying, wrapping, and scrolling.
-- Scope every new content rule to the deep task main and `[class*="_markdownContent_"]`.
+- Scope every new content rule to the deep task main, `.thread-scroll-container`, a user/assistant content unit, and `[class*="_markdownContent_"]`.
 - Keep the light theme, dark homepage, terminal, Diff viewer, code editor, logs, sidebars, composer, model selector, permission controls, task art, and state-card geometry unchanged.
 - Use static CSS only: no observer, listener, timer, animation, filter, backdrop filter, runtime network request, font, image, or per-node JavaScript styling.
 - Use exactly the approved text colors `#F3EFF6`, `#E7E3EC`, `#BBB5C9`, `#9E98AE`, and `#8DC5EA`.
@@ -42,7 +42,9 @@ Replace the current single `darkTaskMarkdownSelector` contract and direct-child 
 const darkThemePaletteSelector =
   '.denia-old-days-ds-extension[data-denia-theme="dark"]';
 const darkTaskMarkdownRoot =
-  `${darkTaskMainReadabilityRoot} [class*="_markdownContent_"]`;
+  `${darkTaskMainReadabilityRoot} .thread-scroll-container `
+    + `:is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"]) `
+    + `[class*="_markdownContent_"]`;
 const darkTaskMarkdownHeadingSelector =
   `${darkTaskMarkdownRoot} :is(h1, h2, h3, h4, h5, h6, th)`;
 const darkTaskMarkdownBodySelector =
@@ -202,6 +204,8 @@ Replace the old combined paragraph/heading and inline-code rules with:
 ```css
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"] {
   color: var(--denia-dark-text-body) !important;
   text-shadow: none !important;
@@ -209,6 +213,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is(h1, h2, h3, h4, h5, h6, th) {
   color: var(--denia-dark-text-heading) !important;
@@ -217,6 +223,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is(p, li, ol, ul, blockquote, td) {
   color: var(--denia-dark-text-body) !important;
@@ -225,6 +233,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   [data-markdown-table="true"]
   table {
@@ -234,6 +244,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is(th, td) {
   border-color: var(--denia-dark-divider) !important;
@@ -241,6 +253,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   a {
   color: var(--denia-dark-text-link) !important;
@@ -248,6 +262,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   [data-markdown-copy="inline-code"].inline-markdown {
   color: var(--denia-dark-text-link) !important;
@@ -445,6 +461,8 @@ Add:
 ```css
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"]) {
   color: var(--denia-dark-code-text) !important;
@@ -454,6 +472,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code {
@@ -463,11 +483,15 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   [data-markdown-copy="code-block"]
   [data-markdown-copy="exclude"],
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   [data-markdown-copy="code-block"]
   [data-markdown-copy="exclude"]
@@ -477,6 +501,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   [data-markdown-copy="code-block"]
   [data-markdown-copy="exclude"]
@@ -490,6 +516,8 @@ Add seven Highlight.js rules using the exact selector groups from Step 1. Each r
 ```css
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
@@ -500,6 +528,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
@@ -510,6 +540,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
@@ -520,6 +552,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
@@ -530,6 +564,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
@@ -540,6 +576,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
@@ -550,6 +588,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell)
+  .thread-scroll-container
+  :is([data-content-search-unit-key$=":assistant"], [data-content-search-unit-key$=":user"])
   [class*="_markdownContent_"]
   :is([data-markdown-copy="code-block"], pre[class*="_codeBlockPlaceholder_"])
   code
