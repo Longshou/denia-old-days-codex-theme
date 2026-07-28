@@ -1393,6 +1393,21 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
     linear-gradient(100deg, rgba(247, 216, 138, .86), rgba(141, 197, 234, .28), rgba(217, 143, 179, .72));
 }
 
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .denia-old-days-ds-final-card
+  button.text-token-text-tertiary:not(.end-resource-open-button) {
+  color: var(--denia-dark-text-muted) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
+  main.main-surface:not(.dream-skin-home-shell)
+  .denia-old-days-ds-final-card
+  button.text-token-text-tertiary:not(.end-resource-open-button):is(:hover, :focus-visible) {
+  color: var(--denia-dark-focus) !important;
+  background-color: rgba(141, 197, 234, .12) !important;
+}
+
 @media (max-width: 919px) {
   html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] {
     --denia-deep-home-title-scrim:

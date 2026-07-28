@@ -971,6 +971,10 @@ const darkTaskTitleSelector =
   `${darkTaskMainReadabilityRoot} [data-testid="app-shell-header-context-menu-surface"] .text-token-foreground > .min-w-0.truncate`;
 const darkTaskActivityCopySelector =
   `${darkTaskMainReadabilityRoot} .thread-scroll-container .text-token-conversation-body :is(span[class~="truncate"], .loading-shimmer-pure-text, [class*="_cadencedShimmer"])`;
+const darkTaskNeutralActionSelector =
+  `${darkTaskMainReadabilityRoot} .denia-old-days-ds-final-card button.text-token-text-tertiary:not(.end-resource-open-button)`;
+const darkTaskNeutralActionInteractiveSelector =
+  `${darkTaskNeutralActionSelector}:is(:hover, :focus-visible)`;
 assertCssDeclarations(stylesheetRules, darkTaskMarkdownSelector, {
   color: "var(--denia-dark-text) !important",
 });
@@ -989,6 +993,13 @@ assertCssDeclarations(stylesheetRules, darkTaskTitleSelector, {
 assertCssDeclarations(stylesheetRules, darkTaskActivityCopySelector, {
   color: "inherit !important",
 });
+assertCssDeclarations(stylesheetRules, darkTaskNeutralActionSelector, {
+  color: "var(--denia-dark-text-muted) !important",
+});
+assertCssDeclarations(stylesheetRules, darkTaskNeutralActionInteractiveSelector, {
+  color: "var(--denia-dark-focus) !important",
+  "background-color": "rgba(141, 197, 234, .12) !important",
+});
 for (const selector of [
   darkTaskMarkdownSelector,
   darkTaskInlineMarkdownSelector,
@@ -996,6 +1007,8 @@ for (const selector of [
   darkTaskMetadataSelector,
   darkTaskTitleSelector,
   darkTaskActivityCopySelector,
+  darkTaskNeutralActionSelector,
+  darkTaskNeutralActionInteractiveSelector,
 ]) {
   assert(
     !/(?:^|[\s>+~,(])(?:code|pre|terminal)(?:$|[\s>+~,.:[#])/iu.test(selector)
@@ -1012,9 +1025,40 @@ assert(
   "dark task activity summaries must target only confirmed text spans and shimmer classes",
 );
 assert(
+  darkTaskNeutralActionSelector.includes(".denia-old-days-ds-final-card button.text-token-text-tertiary")
+    && darkTaskNeutralActionSelector.includes(":not(.end-resource-open-button)")
+    && !/(?:aria-label|title|复制|喜欢|剪切|展开)/u.test(darkTaskNeutralActionSelector),
+  "dark task action paint must use the native neutral-control token and exclude resource business actions without localized text matching",
+);
+const darkTaskActionPaintProperties = new Set([
+  "background",
+  "background-color",
+  "border-color",
+  "box-shadow",
+  "color",
+  "outline-color",
+]);
+for (const rule of stylesheetRules) {
+  if (!rule.selectors.some((selector) =>
+    selector.includes(".denia-old-days-ds-final-card button.text-token-text-tertiary"))) continue;
+  assert(
+    rule.selectors.every((selector) =>
+      selector.startsWith(`${darkTaskMainReadabilityRoot} .denia-old-days-ds-final-card`)),
+    "dark task action paint must remain inside the deep task main final card",
+  );
+  for (const property of rule.declarations.keys()) {
+    assert(
+      darkTaskActionPaintProperties.has(property),
+      `dark task action paint must not change native action geometry or behavior: ${property}`,
+    );
+  }
+}
+assert(
   !stylesheetRules.some((rule) => rule.selectors.some((selector) =>
     selector.includes(darkTaskMainReadabilityRoot)
-      && /(?:thread-resource-card|end-resource)/u.test(selector))),
+      && (/thread-resource-card/u.test(selector)
+        || (/end-resource/u.test(selector)
+          && !selector.includes(":not(.end-resource-open-button)"))))),
   "dark task readability paint must not wash out light resource cards",
 );
 assert(
