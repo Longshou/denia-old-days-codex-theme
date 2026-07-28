@@ -30,6 +30,14 @@
 
 Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行包不使用第三方录屏画面、角色 PV、战斗演示、官方 Logo 或来源不明的字体。上传 Kaboo Registry 前仍需确认官方发布插画的再分发边界。
 
+## 美术资源库补充素材
+
+| 形态 | 文件 | 官方来源 | 提取信息 | 尺寸 | SHA-256 |
+| --- | --- | --- | --- | --- | --- |
+| Dark smile close-up | `art/reference/visual-library/production-ready/denia-dark-form-smile-closeup.png` | [Wuthering Waves 官方 X：Post-Lament Anthropocene: Stars Intertwined — Denia](https://x.com/Wuthering_Waves/status/2037002852649099578) | 官方 1080×1920、10.368 Mbps 视频；请求 `00:07.8167`，实际帧 PTS `00:07.8078`；无 Logo、文字或媒体水印；PNG 无二次有损编码 | 1080×1920 | `1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296` |
+
+该补充素材目前只进入本地美术资源库，尚未接入主题运行时。用于确认画面的 Inside Games 640×1137 媒体压缩图未入库；抽帧母视频的 SHA-256 为 `d6fc25fc7ffa0c666eea0632b331edc68725dd50600d5d7d46c4637264d1de69`。
+
 ## 原创源文件
 
 | 文件 | 作者与方式 | 权利状态 | 用途 |
