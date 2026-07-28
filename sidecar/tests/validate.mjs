@@ -442,7 +442,8 @@ assertCssDeclarations(stylesheetRules, taskRailSelector, {
   overflow: "hidden",
   isolation: "isolate",
   "pointer-events": "none",
-  "border-inline-start": "1px solid rgba(89, 132, 145, .14)",
+  "border-inline-start": "1px solid rgba(var(--denia-task-rail-indigo-rgb), .14)",
+  background: "rgba(var(--denia-task-rail-surface-rgb), .3)",
   "mask-image": "linear-gradient(90deg, transparent 0, #000 42px)",
 });
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-chrome", {
@@ -455,7 +456,9 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer", {
   "background-image": "var(--denia-state-art-image)",
   "background-position": "center",
   "background-size": "cover",
+  "background-repeat": "no-repeat",
   opacity: "0",
+  filter: "saturate(.92) contrast(.98)",
   transform: "translateX(12px) scale(.985)",
   transition: "opacity 300ms cubic-bezier(.22, 1, .36, 1), transform 360ms cubic-bezier(.22, 1, .36, 1), filter 360ms cubic-bezier(.22, 1, .36, 1)",
 });
@@ -469,6 +472,53 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-state-art-layer.is-le
   "transition-duration": "180ms",
   "transition-delay": "0ms",
 });
+assertCssDeclarations(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"].is-active',
+  {
+    filter: "saturate(1) contrast(1.1)",
+    transform: "translateX(-3px) scale(1.015)",
+  },
+);
+for (const token of [
+  'staged: Object.freeze({ family: "taskWarm", opacity: ".11" })',
+  'working: Object.freeze({ family: "taskWarm", opacity: ".20" })',
+  'approval: Object.freeze({ family: "taskApproval", opacity: ".43" })',
+  'error: Object.freeze({ family: "taskError", opacity: ".56" })',
+  'complete: Object.freeze({ family: "taskComplete", opacity: ".28" })',
+]) {
+  assert(runtime.includes(token), `state artwork contract changed: ${token}`);
+}
+
+const tintBackgrounds = new Map([
+  [
+    ".denia-old-days-ds-state-art-tint",
+    "linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .96) 0, rgba(var(--denia-task-rail-mid-rgb), .26) 26%, transparent 58%), linear-gradient(180deg, rgba(var(--denia-task-rail-indigo-rgb), .12), rgba(var(--denia-task-rail-rose-rgb), .08))",
+  ],
+  [
+    '.denia-old-days-ds-extension[data-denia-form-state="staged"] .denia-old-days-ds-state-art-tint',
+    "linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .98) 0, rgba(var(--denia-task-rail-mid-rgb), .34) 30%, transparent 62%), linear-gradient(180deg, rgba(var(--denia-task-rail-rose-rgb), .12), rgba(var(--denia-task-rail-indigo-rgb), .1))",
+  ],
+  [
+    '.denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-tint',
+    "linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .96) 0, rgba(var(--denia-task-rail-mid-rgb), .28) 30%, transparent 64%), linear-gradient(180deg, rgba(var(--denia-task-rail-indigo-rgb), .16), rgba(var(--denia-task-rail-rose-rgb), .08))",
+  ],
+  [
+    '.denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-state-art-tint',
+    "linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .96) 0, rgba(var(--denia-task-rail-deep-rgb), .28) 35%, rgba(var(--denia-task-rail-deep-rgb), .08) 72%), linear-gradient(180deg, rgba(var(--denia-task-rail-plum-rgb), .16), rgba(var(--denia-task-rail-deep-rgb), .22))",
+  ],
+  [
+    '.denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art-tint',
+    "linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .95) 0, rgba(var(--denia-task-rail-deep-rgb), .34) 34%, rgba(var(--denia-task-rail-deep-rgb), .14) 74%), linear-gradient(180deg, rgba(228, 90, 168, .18), rgba(var(--denia-task-rail-deep-rgb), .28))",
+  ],
+  [
+    '.denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-state-art-tint',
+    "radial-gradient(circle at 92% 92%, rgba(var(--denia-task-background-rgb), .3), transparent 32%), linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .97) 0, rgba(var(--denia-task-rail-mid-rgb), .26) 30%, transparent 62%), linear-gradient(180deg, rgba(var(--denia-task-rail-rose-rgb), .14), rgba(var(--denia-task-rail-indigo-rgb), .08))",
+  ],
+]);
+for (const [selector, background] of tintBackgrounds) {
+  assertCssDeclarations(stylesheetRules, selector, { background });
+}
 for (const selector of ['.denia-old-days-ds-task [role="main"]', ".denia-old-days-ds-task main"]) {
   const rule = stylesheetRules.find((candidate) => candidate.selectors.includes(selector));
   assert(!rule?.declarations.has("z-index"), `task main must not create a theme stacking context: ${selector}`);
@@ -489,8 +539,8 @@ const taskBackgroundDarkSelector =
 const taskBackgroundNarrowMedia = ["max-width: 919px"];
 
 assertCssDeclarations(stylesheetRules, taskBackgroundRootSelector, {
-  "--denia-task-background-color-light": "#F3EDF2",
-  "--denia-task-background-color-dark": "#0F133B",
+  "--denia-task-background-color-light": "#F2EFF4",
+  "--denia-task-background-color-dark": "#12142F",
 });
 assertCssDeclarations(stylesheetRules, taskBackgroundLightSelector, {
   "--denia-task-background-color": "var(--denia-task-background-color-light)",
@@ -566,18 +616,18 @@ const taskBackgroundValues = stylesheetRules
   .map(([, value]) => value)
   .join(" ");
 for (const requiredColor of [
-  "#F3EDF2",
-  "230, 168, 177",
-  "91, 106, 172",
-  "126, 201, 226",
-  "49, 44, 91",
-  "#0F133B",
-  "29, 37, 95",
-  "46, 59, 126",
-  "86, 113, 177",
-  "149, 103, 143",
-  "190, 132, 164",
-  "212, 170, 193",
+  "#F2EFF4",
+  "205, 158, 182",
+  "83, 83, 139",
+  "121, 126, 173",
+  "96, 77, 112",
+  "#12142F",
+  "30, 35, 90",
+  "48, 53, 111",
+  "87, 95, 154",
+  "118, 79, 126",
+  "161, 107, 145",
+  "190, 144, 172",
 ]) {
   assert(
     taskBackgroundValues.includes(requiredColor),
