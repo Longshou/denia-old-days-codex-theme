@@ -474,8 +474,12 @@ for (const selector of ['.denia-old-days-ds-task [role="main"]', ".denia-old-day
   assert(!rule?.declarations.has("z-index"), `task main must not create a theme stacking context: ${selector}`);
 }
 const taskBackgroundRootSelector = ".denia-old-days-ds-extension";
+const taskBackgroundPaintRootSelector =
+  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task:has(main.main-surface:not(.dream-skin-home-shell))";
 const taskBackgroundBodySelector =
-  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body";
+  `${taskBackgroundPaintRootSelector} body`;
+const taskBackgroundMainSelector =
+  `${taskBackgroundPaintRootSelector} main.main-surface:not(.dream-skin-home-shell)`;
 const taskBackgroundBeforeSelector =
   "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::before";
 const taskBackgroundLightSelector =
@@ -496,14 +500,16 @@ assertCssDeclarations(stylesheetRules, taskBackgroundDarkSelector, {
   "--denia-task-background-color": "var(--denia-task-background-color-dark)",
   "--denia-task-background-image": "var(--denia-task-background-image-dark)",
 });
-assertCssDeclarations(stylesheetRules, taskBackgroundBodySelector, {
-  "background-color": "var(--denia-task-background-color)",
-  "background-image": "var(--denia-task-background-image)",
-  "background-attachment": "fixed",
-  "background-position": "center",
-  "background-repeat": "no-repeat",
-  "background-size": "cover",
-});
+for (const selector of [taskBackgroundBodySelector, taskBackgroundMainSelector]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    "background-color": "var(--denia-task-background-color) !important",
+    "background-image": "var(--denia-task-background-image) !important",
+    "background-attachment": "fixed !important",
+    "background-position": "center !important",
+    "background-repeat": "no-repeat !important",
+    "background-size": "cover !important",
+  });
+}
 assertCssDeclarations(stylesheetRules, taskBackgroundBeforeSelector, {
   background: "none",
 });
@@ -513,10 +519,12 @@ assertCssDeclarations(stylesheetRules, taskBackgroundLightSelector, {
 assertCssDeclarations(stylesheetRules, taskBackgroundDarkSelector, {
   "--denia-task-background-image": "var(--denia-task-background-image-dark-compact)",
 }, taskBackgroundNarrowMedia);
-assertCssDeclarations(stylesheetRules, taskBackgroundBodySelector, {
-  "background-color": "var(--denia-task-background-color)",
-  "background-image": "none",
-}, ["prefers-reduced-transparency: reduce"]);
+for (const selector of [taskBackgroundBodySelector, taskBackgroundMainSelector]) {
+  assertCssDeclarations(stylesheetRules, selector, {
+    "background-color": "var(--denia-task-background-color) !important",
+    "background-image": "none !important",
+  }, ["prefers-reduced-transparency: reduce"]);
+}
 
 for (const rule of stylesheetRules) {
   if (![...rule.declarations.keys()].some((name) => name.startsWith("--denia-task-background"))) continue;
