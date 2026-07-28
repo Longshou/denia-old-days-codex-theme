@@ -12,29 +12,50 @@
   --denia-panel: rgba(255, 250, 246, 0.92);
   --denia-line: rgba(111, 184, 231, 0.28);
   --denia-shadow: 0 18px 48px rgba(38, 53, 72, 0.13);
-  --denia-task-background-color-light: #F3EDF2;
+  --denia-task-background-color-light: #F2EFF4;
+  --denia-task-background-rgb-light: 242, 239, 244;
   --denia-task-background-image-light:
-    radial-gradient(ellipse at 62% 10%, rgba(230, 168, 177, .22), rgba(230, 168, 177, .07) 24%, transparent 46%),
-    radial-gradient(ellipse at 14% 90%, rgba(91, 106, 172, .14), transparent 42%),
-    radial-gradient(circle at 64% 80%, rgba(126, 201, 226, .1), transparent 22%),
-    radial-gradient(circle at 12% 12%, rgba(49, 44, 91, .055), transparent 18%),
-    linear-gradient(135deg, rgba(255, 255, 255, .44), transparent 48%);
+    radial-gradient(ellipse at 62% 10%, rgba(205, 158, 182, .18), rgba(205, 158, 182, .05) 24%, transparent 46%),
+    radial-gradient(ellipse at 14% 90%, rgba(83, 83, 139, .13), transparent 42%),
+    radial-gradient(circle at 64% 80%, rgba(121, 126, 173, .09), transparent 22%),
+    radial-gradient(circle at 12% 12%, rgba(96, 77, 112, .045), transparent 18%),
+    linear-gradient(135deg, rgba(255, 255, 255, .4), transparent 48%);
   --denia-task-background-image-light-compact:
-    radial-gradient(ellipse at 72% 4%, rgba(230, 168, 177, .14), transparent 40%),
-    radial-gradient(ellipse at 8% 100%, rgba(91, 106, 172, .09), transparent 38%),
-    linear-gradient(135deg, rgba(255, 255, 255, .38), transparent 52%);
-  --denia-task-background-color-dark: #0F133B;
+    radial-gradient(ellipse at 72% 4%, rgba(205, 158, 182, .12), transparent 40%),
+    radial-gradient(ellipse at 8% 100%, rgba(83, 83, 139, .08), transparent 38%),
+    linear-gradient(135deg, rgba(255, 255, 255, .34), transparent 52%);
+  --denia-task-background-color-dark: #12142F;
+  --denia-task-background-rgb-dark: 18, 20, 47;
   --denia-task-background-image-dark:
-    radial-gradient(ellipse at 62% 10%, rgba(190, 132, 164, .18), rgba(149, 103, 143, .06) 24%, transparent 46%),
-    radial-gradient(ellipse at 14% 90%, rgba(46, 59, 126, .46), transparent 46%),
-    radial-gradient(circle at 64% 80%, rgba(86, 113, 177, .18), transparent 24%),
-    radial-gradient(circle at 12% 12%, rgba(149, 103, 143, .12), transparent 20%),
-    radial-gradient(circle at 66% 88%, rgba(212, 170, 193, .1), transparent 6%),
-    linear-gradient(145deg, rgba(29, 37, 95, .34), transparent 46%);
+    radial-gradient(ellipse at 62% 10%, rgba(161, 107, 145, .17), rgba(161, 107, 145, .05) 24%, transparent 46%),
+    radial-gradient(ellipse at 14% 90%, rgba(48, 53, 111, .44), transparent 46%),
+    radial-gradient(circle at 64% 80%, rgba(87, 95, 154, .18), transparent 24%),
+    radial-gradient(circle at 12% 12%, rgba(118, 79, 126, .12), transparent 20%),
+    radial-gradient(circle at 66% 88%, rgba(190, 144, 172, .08), transparent 6%),
+    linear-gradient(145deg, rgba(30, 35, 90, .3), transparent 46%);
   --denia-task-background-image-dark-compact:
-    radial-gradient(ellipse at 72% 4%, rgba(190, 132, 164, .12), transparent 40%),
-    radial-gradient(ellipse at 8% 100%, rgba(46, 59, 126, .28), transparent 42%),
-    linear-gradient(145deg, rgba(29, 37, 95, .28), transparent 50%);
+    radial-gradient(ellipse at 72% 4%, rgba(161, 107, 145, .11), transparent 40%),
+    radial-gradient(ellipse at 8% 100%, rgba(48, 53, 111, .28), transparent 42%),
+    linear-gradient(145deg, rgba(30, 35, 90, .26), transparent 50%);
+  --denia-task-rail-surface-rgb-light: 231, 226, 235;
+  --denia-task-rail-mid-rgb-light: 222, 215, 230;
+  --denia-task-rail-deep-rgb-light: 54, 49, 82;
+  --denia-task-rail-rose-rgb-light: 205, 158, 182;
+  --denia-task-rail-indigo-rgb-light: 121, 126, 173;
+  --denia-task-rail-plum-rgb-light: 118, 79, 126;
+  --denia-task-rail-surface-rgb-dark: 24, 24, 52;
+  --denia-task-rail-mid-rgb-dark: 39, 35, 65;
+  --denia-task-rail-deep-rgb-dark: 18, 20, 47;
+  --denia-task-rail-rose-rgb-dark: 161, 107, 145;
+  --denia-task-rail-indigo-rgb-dark: 87, 95, 154;
+  --denia-task-rail-plum-rgb-dark: 118, 79, 126;
+  --denia-task-background-rgb: var(--denia-task-background-rgb-light);
+  --denia-task-rail-surface-rgb: var(--denia-task-rail-surface-rgb-light);
+  --denia-task-rail-mid-rgb: var(--denia-task-rail-mid-rgb-light);
+  --denia-task-rail-deep-rgb: var(--denia-task-rail-deep-rgb-light);
+  --denia-task-rail-rose-rgb: var(--denia-task-rail-rose-rgb-light);
+  --denia-task-rail-indigo-rgb: var(--denia-task-rail-indigo-rgb-light);
+  --denia-task-rail-plum-rgb: var(--denia-task-rail-plum-rgb-light);
   --denia-state-rail-width: clamp(280px, 20vw, 320px);
   color-scheme: light;
   accent-color: var(--denia-crystal);
@@ -69,6 +90,13 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task {
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"] {
   --denia-task-background-color: var(--denia-task-background-color-dark);
   --denia-task-background-image: var(--denia-task-background-image-dark);
+  --denia-task-background-rgb: var(--denia-task-background-rgb-dark);
+  --denia-task-rail-surface-rgb: var(--denia-task-rail-surface-rgb-dark);
+  --denia-task-rail-mid-rgb: var(--denia-task-rail-mid-rgb-dark);
+  --denia-task-rail-deep-rgb: var(--denia-task-rail-deep-rgb-dark);
+  --denia-task-rail-rose-rgb: var(--denia-task-rail-rose-rgb-dark);
+  --denia-task-rail-indigo-rgb: var(--denia-task-rail-indigo-rgb-dark);
+  --denia-task-rail-plum-rgb: var(--denia-task-rail-plum-rgb-dark);
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task:has(main.main-surface:not(.dream-skin-home-shell)) body {
@@ -113,8 +141,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
   overflow: hidden;
   isolation: isolate;
   pointer-events: none;
-  border-inline-start: 1px solid rgba(89, 132, 145, .14);
-  background: rgba(240, 248, 247, .3);
+  border-inline-start: 1px solid rgba(var(--denia-task-rail-indigo-rgb), .14);
+  background: rgba(var(--denia-task-rail-surface-rgb), .3);
   mask-image: linear-gradient(90deg, transparent 0, #000 42px);
 }
 
@@ -178,21 +206,21 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(90deg, rgba(247, 238, 233, .96) 0, rgba(247, 238, 233, .26) 26%, transparent 58%),
-    linear-gradient(180deg, rgba(234, 247, 247, .12), rgba(242, 154, 171, .08));
+    linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .96) 0, rgba(var(--denia-task-rail-mid-rgb), .26) 26%, transparent 58%),
+    linear-gradient(180deg, rgba(var(--denia-task-rail-indigo-rgb), .12), rgba(var(--denia-task-rail-rose-rgb), .08));
   transition: background 500ms cubic-bezier(.22, 1, .36, 1), opacity 420ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="staged"] .denia-old-days-ds-state-art-tint {
   background:
-    linear-gradient(90deg, rgba(247, 238, 233, .98) 0, rgba(247, 238, 233, .34) 30%, transparent 62%),
-    linear-gradient(180deg, rgba(247, 216, 138, .12), rgba(143, 210, 221, .1));
+    linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .98) 0, rgba(var(--denia-task-rail-mid-rgb), .34) 30%, transparent 62%),
+    linear-gradient(180deg, rgba(var(--denia-task-rail-rose-rgb), .12), rgba(var(--denia-task-rail-indigo-rgb), .1));
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-tint {
   background:
-    linear-gradient(90deg, rgba(247, 238, 233, .96) 0, rgba(234, 247, 247, .28) 30%, transparent 64%),
-    linear-gradient(180deg, rgba(111, 184, 231, .16), rgba(143, 210, 221, .08));
+    linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .96) 0, rgba(var(--denia-task-rail-mid-rgb), .28) 30%, transparent 64%),
+    linear-gradient(180deg, rgba(var(--denia-task-rail-indigo-rgb), .16), rgba(var(--denia-task-rail-rose-rgb), .08));
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-state-art-layer[data-denia-art-family="taskWarm"].is-active {
@@ -202,14 +230,14 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
 
 .denia-old-days-ds-extension[data-denia-form-state="approval"] .denia-old-days-ds-state-art-tint {
   background:
-    linear-gradient(90deg, rgba(247, 238, 233, .96) 0, rgba(17, 22, 47, .28) 35%, rgba(17, 22, 47, .08) 72%),
-    linear-gradient(180deg, rgba(117, 86, 217, .16), rgba(17, 22, 47, .22));
+    linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .96) 0, rgba(var(--denia-task-rail-deep-rgb), .28) 35%, rgba(var(--denia-task-rail-deep-rgb), .08) 72%),
+    linear-gradient(180deg, rgba(var(--denia-task-rail-plum-rgb), .16), rgba(var(--denia-task-rail-deep-rgb), .22));
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art-tint {
   background:
-    linear-gradient(90deg, rgba(247, 238, 233, .95) 0, rgba(17, 22, 47, .34) 34%, rgba(17, 22, 47, .14) 74%),
-    linear-gradient(180deg, rgba(228, 90, 168, .18), rgba(17, 22, 47, .28));
+    linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .95) 0, rgba(var(--denia-task-rail-deep-rgb), .34) 34%, rgba(var(--denia-task-rail-deep-rgb), .14) 74%),
+    linear-gradient(180deg, rgba(228, 90, 168, .18), rgba(var(--denia-task-rail-deep-rgb), .28));
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="error"] .denia-old-days-ds-state-art {
@@ -225,9 +253,9 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task body::b
 
 .denia-old-days-ds-extension[data-denia-form-state="complete"] .denia-old-days-ds-state-art-tint {
   background:
-    radial-gradient(circle at 92% 92%, rgba(247, 238, 233, .3), transparent 32%),
-    linear-gradient(90deg, rgba(247, 238, 233, .97) 0, rgba(255, 253, 241, .26) 30%, transparent 62%),
-    linear-gradient(180deg, rgba(247, 216, 138, .14), rgba(242, 154, 171, .08));
+    radial-gradient(circle at 92% 92%, rgba(var(--denia-task-background-rgb), .3), transparent 32%),
+    linear-gradient(90deg, rgba(var(--denia-task-background-rgb), .97) 0, rgba(var(--denia-task-rail-mid-rgb), .26) 30%, transparent 62%),
+    linear-gradient(180deg, rgba(var(--denia-task-rail-rose-rgb), .14), rgba(var(--denia-task-rail-indigo-rgb), .08));
 }
 
 .denia-old-days-ds-sidebar-brand {
