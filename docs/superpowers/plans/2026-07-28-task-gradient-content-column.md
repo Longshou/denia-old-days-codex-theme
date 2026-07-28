@@ -31,7 +31,7 @@
 - Consumes: `stylesheetRules`, `findCssRule`, `assertCssDeclarations`, and `canonicalCssValue`.
 - Produces: a static contract for solid-body paint, main-only gradients, and the `66%` character-rail safety boundary.
 
-- [ ] **Step 1: Split body and main paint expectations**
+- [x] **Step 1: Split body and main paint expectations**
 
 Replace the shared body/main declaration loop with:
 
@@ -50,7 +50,7 @@ assertCssDeclarations(stylesheetRules, taskBackgroundMainSelector, {
 });
 ```
 
-- [ ] **Step 2: Add exact anchor and rail-safety assertions**
+- [x] **Step 2: Add exact anchor and rail-safety assertions**
 
 Add after the light/dark activation assertions:
 
@@ -80,7 +80,7 @@ for (const requiredAnchor of ["at 62% 10%", "at 14% 90%", "at 64% 80%", "at 12% 
 }
 ```
 
-- [ ] **Step 3: Run the validator and verify RED**
+- [x] **Step 3: Run the validator and verify RED**
 
 Run:
 
@@ -102,7 +102,7 @@ Expected: FAIL because the body still owns the gradient and the existing full-wi
 - Consumes: `--denia-task-background-color` and `--denia-task-background-image`.
 - Produces: a solid task body and a content-column gradient on `main.main-surface`.
 
-- [ ] **Step 1: Re-anchor the light and dark gradient variables**
+- [x] **Step 1: Re-anchor the light and dark gradient variables**
 
 Use this shared spatial skeleton:
 
@@ -135,7 +135,7 @@ Keep compact anchors inside the visible column:
     linear-gradient(145deg, rgba(29, 37, 95, .28), transparent 50%);
 ```
 
-- [ ] **Step 2: Split body and main painting**
+- [x] **Step 2: Split body and main painting**
 
 Replace the grouped paint rule with:
 
@@ -155,7 +155,7 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task:has(mai
 }
 ```
 
-- [ ] **Step 3: Keep reduced-transparency fallback on both surfaces**
+- [x] **Step 3: Keep reduced-transparency fallback on both surfaces**
 
 Keep the existing reduced-transparency selector pair, with both surfaces resolving to:
 
@@ -164,7 +164,7 @@ Keep the existing reduced-transparency selector pair, with both surfaces resolvi
   background-image: none !important;
 ```
 
-- [ ] **Step 4: Run the validator and verify GREEN**
+- [x] **Step 4: Run the validator and verify GREEN**
 
 Run:
 
@@ -185,7 +185,7 @@ Expected: `Validated 达妮娅 · 旧日斑斓 extension 0.1.0: 20 required file
 - Consumes: the completed CSS and static contract.
 - Produces: live light/dark screenshots and a verified local Kaboo package.
 
-- [ ] **Step 1: Hot-install the current Sidecar**
+- [x] **Step 1: Hot-install the current Sidecar**
 
 Run:
 
@@ -195,7 +195,7 @@ bash sidecar/scripts/install.sh
 
 Expected: installation succeeds and the LaunchAgent is active on port `9341`.
 
-- [ ] **Step 2: Capture and inspect the real light task page**
+- [x] **Step 2: Capture and inspect the real light task page**
 
 Run:
 
@@ -205,13 +205,13 @@ bash sidecar/scripts/verify.sh --screenshot /tmp/denia-content-column-light.png
 
 Expected: live verification reports `"pass": true`; the pink, blue-violet, and crystal-blue fields are visible in the content column while the center remains readable.
 
-- [ ] **Step 3: Verify the dark spatial skeleton and restore light**
+- [x] **Step 3: Verify the dark spatial skeleton and restore light**
 
 Temporarily set `data-denia-theme="dark"` through the active CDP target, capture `/tmp/denia-content-column-dark.png`, assert that `main.main-surface` computes to `rgb(15, 19, 59)` with radial gradients, then remove the attribute.
 
 Expected: the dark gradient anchors appear in the same content-column regions and the live page returns to default light afterward.
 
-- [ ] **Step 4: Run full repository verification**
+- [x] **Step 4: Run full repository verification**
 
 Run:
 
@@ -224,7 +224,7 @@ bash sidecar/scripts/verify.sh
 
 Expected: every command exits zero, live verification reports `"pass": true`, and the build produces `bundle.zip` without missing files or checksum errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sidecar/src/denia-old-days-extension.css sidecar/tests/validate.mjs
