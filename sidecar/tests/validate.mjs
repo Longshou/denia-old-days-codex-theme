@@ -162,6 +162,49 @@ for (const hash of [
 ]) {
   assert(packageNotice.includes(hash), `NOTICE must include official source SHA-256 ${hash}`);
 }
+const darkHomeNoticeMarkers = [
+  "Dark homepage",
+  "denia-home-dark.webp",
+  "source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg",
+  "4096×2304",
+  "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce",
+  "2048×1152",
+  "24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c",
+];
+for (const marker of darkHomeNoticeMarkers) {
+  assert(packageNotice.includes(marker), `NOTICE must include dark-home provenance marker: ${marker}`);
+}
+const darkHomeNoticeLine = packageNotice.split("\n").find((line) => line.includes("denia-home-dark.webp")) || "";
+assert(!/https?:\/\//u.test(darkHomeNoticeLine), "dark-home NOTICE entry must not invent a public source URL");
+assert(
+  packageNotice.includes("No ownership of, or redistribution license for, the official material is claimed."),
+  "NOTICE must explicitly apply the no-ownership/no-redistribution-license disclaimer to official material",
+);
+
+const bundleRoot = path.resolve(root, "..");
+let bundleManifest = null;
+try {
+  bundleManifest = JSON.parse(await fs.readFile(path.join(bundleRoot, "kaboo-package.json"), "utf8"));
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
+if (bundleManifest) {
+  const [bundleNotice, bundleReadme] = await Promise.all([
+    fs.readFile(path.join(bundleRoot, "NOTICE.md"), "utf8"),
+    fs.readFile(path.join(bundleRoot, "README.md"), "utf8"),
+  ]);
+  for (const marker of darkHomeNoticeMarkers) {
+    assert(bundleNotice.includes(marker), `top-level NOTICE must include dark-home provenance marker: ${marker}`);
+  }
+  assert(
+    bundleNotice.includes("No ownership of, or redistribution license for, official material is claimed."),
+    "top-level NOTICE must disclaim ownership and redistribution rights for official material",
+  );
+  assert(bundleManifest.summary.includes("暖色 P2 拍立得") && bundleManifest.summary.includes("深色全景首页"), "release summary must name both light P2 and dark panoramic home treatments");
+  assert(bundleManifest.description.includes("浅色模式") && bundleManifest.description.includes("深色模式"), "release description must distinguish the light and dark homepage treatments");
+  assert(bundleManifest.theme?.recommendedNativeAppearance === "light", "release manifest must preserve the recommended light native appearance");
+  assert(bundleReadme.includes("warm P2 polaroid homepage") && bundleReadme.includes("dark panoramic homepage"), "package README must describe both homepage treatments");
+}
 
 const runtimeTokens = [
   "__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__",

@@ -39,8 +39,8 @@ const manifest = {
   id,
   displayName: "达妮娅 · 旧日斑斓",
   version,
-  summary: "达妮娅双形态学院手账，以暖色记忆页和情绪状态美术栏陪伴 Codex 任务。",
-  description: "暖色 P2 拍立得首页配合虹彩泡泡；任务页按等待、工作、审批、错误和完成状态切换四组本地角色美术。明暗形态只在匹配的情绪场景出现，工作区与右侧美术保持清晰分隔。",
+  summary: "达妮娅双形态学院手账，以暖色 P2 拍立得、深色全景首页和情绪状态美术栏陪伴 Codex 任务。",
+  description: "浅色模式保留暖色 P2 拍立得首页与虹彩泡泡；深色模式使用独立全景首页。任务页按等待、工作、审批、错误和完成状态切换四组本地角色美术，工作区与右侧美术保持清晰分隔。",
   publisher: {
     id: "gongwenkang",
     displayName: "gongwenkang",
@@ -82,7 +82,7 @@ const packageReadme = `# 达妮娅 · 旧日斑斓
 
 Kaboo Codex Dream Skin local package \`${id}@${version}\`.
 
-The Base Theme provides the warm paper environment. The removable Sidecar adds the P2 polaroid homepage, iridescent bubbles, native action proxies, diary cards, composer treatment, and an emotion-aware right artwork rail.
+The Base Theme provides the warm paper environment. The removable Sidecar adds a warm P2 polaroid homepage in light mode, an independent dark panoramic homepage, iridescent bubbles, native action proxies, diary cards, composer treatment, and an emotion-aware right artwork rail.
 
 The task rail uses warm garden-and-bubbles artwork for staged and working; approval uses the official dual-form vertical artwork; error uses the separate official anniversary exhibition artwork with a complete unsmiling face and tense raised-arm movement; complete uses the bright anniversary direct-gaze crop. It stays behind the native task UI without changing workspace or composer geometry, hides below 920px, and honors reduced-motion and reduced-transparency preferences.
 
@@ -108,6 +108,7 @@ Denia Old Days is an internal, unofficial fan theme. It is not affiliated with, 
 The package contains local WebP derivatives of reviewed official published artwork:
 
 - Old Days in Color homepage story exception: \`d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd\`.
+- Dark homepage (\`denia-home-dark.webp\`): a confirmed official-published X original archived from the visual library at \`source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg\`; source 4096×2304, source SHA-256 \`b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce\`; runtime derivative 2048×1152, derivative SHA-256 \`24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c\`.
 - Warm garden and bubbles rail: \`481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b\`.
 - Approval dual-form vertical rail: \`3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0\`.
 - Separate error anniversary exhibition rail cropped around the complete unsmiling face and tense raised-arm pose: \`42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4\`.

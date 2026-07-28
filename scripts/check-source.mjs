@@ -263,6 +263,24 @@ for (const marker of [
 ]) {
   if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing separate task-art provenance: ${marker}`);
 }
+for (const marker of [
+  "暖色 P2 拍立得",
+  "深色全景首页",
+  "warm P2 polaroid homepage",
+  "dark panoramic homepage",
+  "Dark homepage",
+  "denia-home-dark.webp",
+  "source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg",
+  "4096×2304",
+  "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce",
+  "2048×1152",
+  "24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c",
+]) {
+  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing dark-home release metadata: ${marker}`);
+}
+if (!localReleaseBuilder.includes('recommendedNativeAppearance: "light"')) {
+  throw new Error("local Kaboo release builder must keep the recommended native appearance light");
+}
 if (/approval\s*\/\s*error/iu.test(localReleaseBuilder)) {
   throw new Error("local Kaboo release builder must not describe approval/error as shared artwork");
 }
