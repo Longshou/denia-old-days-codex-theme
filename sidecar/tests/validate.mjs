@@ -76,7 +76,7 @@ assert(manifest.capabilities.includes("task.state-art-rail"), "state art rail ca
 if (canonSources) {
   const officialRows = new Map(
     canonSources.split("\n")
-      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene|Approval rail|Error rail) \|/u.test(line))
+      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene|Approval rail|Error rail|Right sidebar) \|/u.test(line))
       .map((line) => [line.split("|")[1].trim(), line]),
   );
   const officialSourceUrls = {
@@ -88,6 +88,7 @@ if (canonSources) {
     "Wide scene": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
     "Approval rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
     "Error rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
+    "Right sidebar": ["https://x.com/Wuthering_Waves/status/2037002852649099578"],
   };
   for (const [form, urls] of Object.entries(officialSourceUrls)) {
     const row = officialRows.get(form) || "";
@@ -96,6 +97,7 @@ if (canonSources) {
   const exactSourceHashes = {
     "Approval rail": "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
     "Error rail": "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
+    "Right sidebar": "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296",
   };
   for (const [form, hash] of Object.entries(exactSourceHashes)) {
     assert(officialRows.get(form)?.includes(`\`${hash}\``), `${form} official source row must include exact SHA-256 ${hash}`);
@@ -177,6 +179,17 @@ for (const marker of darkHomeNoticeMarkers) {
 }
 const darkHomeNoticeLine = packageNotice.split("\n").find((line) => line.includes("denia-home-dark.webp")) || "";
 assert(!/https?:\/\//u.test(darkHomeNoticeLine), "dark-home NOTICE entry must not invent a public source URL");
+const rightSidebarNoticeMarkers = [
+  "Right sidebar portrait",
+  "denia-right-sidebar.webp",
+  "1080×1920",
+  "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296",
+  "640×1600",
+  "2f26b9623ad2df363479ee9c6895a718b7e8f158ed3bc65d747b9bebd386231c",
+];
+for (const marker of rightSidebarNoticeMarkers) {
+  assert(packageNotice.includes(marker), `NOTICE must include right-sidebar provenance marker: ${marker}`);
+}
 assert(
   packageNotice.includes("No ownership of, or redistribution license for, the official material is claimed."),
   "NOTICE must explicitly apply the no-ownership/no-redistribution-license disclaimer to official material",
@@ -197,12 +210,16 @@ if (bundleManifest) {
   for (const marker of darkHomeNoticeMarkers) {
     assert(bundleNotice.includes(marker), `top-level NOTICE must include dark-home provenance marker: ${marker}`);
   }
+  for (const marker of rightSidebarNoticeMarkers) {
+    assert(bundleNotice.includes(marker), `top-level NOTICE must include right-sidebar provenance marker: ${marker}`);
+  }
   assert(
     bundleNotice.includes("No ownership of, or redistribution license for, official material is claimed."),
     "top-level NOTICE must disclaim ownership and redistribution rights for official material",
   );
   assert(bundleManifest.summary.includes("暖色 P2 拍立得") && bundleManifest.summary.includes("深色全景首页"), "release summary must name both light P2 and dark panoramic home treatments");
   assert(bundleManifest.description.includes("浅色模式") && bundleManifest.description.includes("深色模式"), "release description must distinguish the light and dark homepage treatments");
+  assert(bundleManifest.description.includes("原生右侧栏"), "release description must name the native right sidebar portrait skin");
   assert(bundleManifest.theme?.recommendedNativeAppearance === "light", "release manifest must preserve the recommended light native appearance");
   assert(bundleReadme.includes("warm P2 polaroid homepage") && bundleReadme.includes("dark panoramic homepage"), "package README must describe both homepage treatments");
 }

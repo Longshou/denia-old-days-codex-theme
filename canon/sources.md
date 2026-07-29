@@ -24,6 +24,7 @@
 | Wide scene | `art/source/official/denia-dual-form-panorama.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust) | 4096×2304 | `646b290ae6a7584ce617cad85976f5caa6ae74e6d6678cd86a17a028266648b5` |
 | Approval rail | `art/source/official/denia-approval-dual-form.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)的周年双形态竖幅贺图 | 1871×3327 | `3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0` |
 | Error rail | `art/source/official/denia-error-reaching.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)的周年插画展发布图 | 1920×1080 | `42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4` |
+| Right sidebar | `art/source/official/denia-dark-form-smile-closeup.png` | [Wuthering Waves 官方 X：Post-Lament Anthropocene: Stars Intertwined - Denia](https://x.com/Wuthering_Waves/status/2037002852649099578) | 1080×1920 | `1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296` |
 
 紧凑首页复用 Home 源文件，通过同一画面的裁切保持视觉连续，不再使用单独立绘。任务侧栏按状态使用独立的 `rail-portrait` 衍生图；Approval rail 保留明色正脸和上方暗色注视，Error rail 优先保留完整无笑意正脸与抬臂动势；Wide scene 保持完整横图，仅用于适合宽幅叙事的版式。
 
@@ -37,7 +38,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | --- | --- | --- | --- | --- | --- |
 | Dark smile close-up | `art/reference/visual-library/production-ready/denia-dark-form-smile-closeup.png` | [Wuthering Waves 官方 X：Post-Lament Anthropocene: Stars Intertwined — Denia](https://x.com/Wuthering_Waves/status/2037002852649099578) | 官方 1080×1920、10.368 Mbps 视频；请求 `00:07.8167`，实际帧 PTS `00:07.8078`；无 Logo、文字或媒体水印；PNG 无二次有损编码 | 1080×1920 | `1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296` |
 
-该补充素材目前只进入本地美术资源库，尚未接入主题运行时。用于确认画面的 Inside Games 640×1137 媒体压缩图未入库；抽帧母视频的 SHA-256 为 `d6fc25fc7ffa0c666eea0632b331edc68725dd50600d5d7d46c4637264d1de69`。
+该补充素材已按相同字节提升为 `art/source/official/denia-dark-form-smile-closeup.png`，用于生成原生右侧栏皮肤。资料库文件继续作为不可变归档。用于确认画面的 Inside Games 640×1137 媒体压缩图未入库；抽帧母视频的 SHA-256 为 `d6fc25fc7ffa0c666eea0632b331edc68725dd50600d5d7d46c4637264d1de69`。
 
 ## 原创源文件
 
@@ -64,6 +65,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `theme/background.jpg` | 1920×1080 | `75f90080bcca721a2a0a41318f159b56e0723e0c90383493c03d51f535df31fc` | `background.svg`；resize 1920×1080、cover；flatten `#f7eee9`；JPEG quality 90、4:4:4 |
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
 | `sidecar/assets/denia-home-dark.webp` | 2048×1152 | `24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c` | `denia-home-dark-hjz.jpg`；原始 16:9 画面等比缩放，保留人物与中央记忆泡泡；WebP quality 80、smartSubsample |
+| `sidecar/assets/denia-right-sidebar.webp` | 640×1600 | `2f26b9623ad2df363479ee9c6895a718b7e8f158ed3bc65d747b9bebd386231c` | `denia-dark-form-smile-closeup.png`；resize 640×1600、cover、east；保留双眼、笑容和蓝色手套；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
 | `sidecar/assets/denia-task-approval.webp` | 640×2000 | `d8e9124ad68a04021c8911819a6e21cba51b543f480a505cb3a24b98caa347a9` | 双形态竖幅的明色正脸与暗色注视；`470,220,896×2800`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-error.webp` | 640×2000 | `55ebb464e95001b96f6a68c5a18054e80e0764450551e4e912a4c4b525f1c8c6` | 完整无笑意正脸与抬臂动势；`1140,100,282×880`；WebP quality 86、smartSubsample |
