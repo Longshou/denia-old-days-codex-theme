@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build:kaboo": "node scripts/build-local-kaboo-release.mjs",
-    "check": "node scripts/check-source.mjs && node sidecar/tests/validate.mjs sidecar"
+    "check": "node scripts/check-source.mjs && node sidecar/tests/validate.mjs sidecar",
+    "test:release": "node --test scripts/public-release-contract.test.mjs"
   },
   "engines": {
     "node": ">=20"
