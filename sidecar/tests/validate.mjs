@@ -2272,6 +2272,33 @@ function assertNativeRightSidebarLifecycle(payload) {
   const closedState = closed.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar?.state;
   assert(closedState === "closed", "a visible sidebar toggle with no right-docked panel must resolve closed");
 
+  const openingFocusArea = createRuntimeHarness((index) => `blob:sidebar-focus-area-${index + 1}`);
+  appendTaskMain(openingFocusArea);
+  const openingFocusToggle = appendToggle(openingFocusArea, { "aria-pressed": "false" });
+  vm.runInContext(payload, openingFocusArea.context, { timeout: 1000 });
+  openingFocusArea.clearMutationRecords();
+  openingFocusToggle.setAttribute("aria-pressed", "true");
+  const openingFocusPanel = openingFocusArea.document.createElement("aside");
+  openingFocusPanel.setAttribute("data-app-shell-focus-area", "right-panel");
+  openingFocusPanel.setRect({ x: 1512, y: 46, width: 0, height: 813 });
+  openingFocusArea.document.body.append(openingFocusPanel);
+  assert(
+    openingFocusArea.flushMutations() >= 2,
+    "opening a focus-area sidebar must deliver its toggle and mount mutations together",
+  );
+  const openingFocusState =
+    openingFocusArea.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__.sidebar;
+  assert(
+    openingFocusState?.state === "open"
+      && openingFocusState.confidence === "high"
+      && openingFocusState.anchorKind === "focus-area",
+    "the native right-panel focus area must identify an opening sidebar before geometry settles",
+  );
+  assert(
+    openingFocusPanel.classList.contains("denia-old-days-ds-native-right-sidebar"),
+    "the opening focus-area sidebar must receive its skin before the next animation frame",
+  );
+
   const conflicting = createRuntimeHarness((index) => `blob:sidebar-conflict-${index + 1}`);
   appendTaskMain(conflicting);
   appendToggle(conflicting, { "aria-controls": "invisible-sidebar", "aria-expanded": "true" });

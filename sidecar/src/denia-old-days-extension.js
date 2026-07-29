@@ -431,6 +431,13 @@
     };
   }
 
+  function nativeRightFocusAreaPanels() {
+    return [...document.querySelectorAll('aside[data-app-shell-focus-area="right-panel"]')]
+      .filter((panel) =>
+        !isExcludedSidebarCandidate(panel)
+        && panel.getAttribute("aria-hidden") !== "true");
+  }
+
   function detectNativeRightSidebar() {
     const toggle = findNativeToggle(nativeSidebarTogglePattern, "sidebar");
     if (!toggle) return sidebarDetectionResult("unknown", "none", "none", null, null);
@@ -464,6 +471,14 @@
     }
     if (controlledIds.length && expanded === "true") {
       return sidebarDetectionResult("unknown", "none", "aria-controls", null, toggle);
+    }
+
+    const focusAreaPanels = nativeRightFocusAreaPanels();
+    if (focusAreaPanels.length === 1 && expanded === "true") {
+      return sidebarDetectionResult("open", "high", "focus-area", focusAreaPanels[0], toggle);
+    }
+    if (focusAreaPanels.length > 1 && expanded === "true") {
+      return sidebarDetectionResult("unknown", "none", "focus-area", null, toggle);
     }
 
     const viewportWidth = window.visualViewport?.width || window.innerWidth;
