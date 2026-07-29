@@ -2070,6 +2070,7 @@
     const readySurface = relevantRecords.length ? paintReadySurface() : null;
     if (readySurface && root.dataset.deniaTheme === "dark") {
       syncSurfaceClasses(readySurface);
+      if (readySurface !== "settings") syncNativeLeftSidebar();
     }
     const darkHomePaintReady = relevantRecords.length
       && root.dataset.deniaTheme === "dark"

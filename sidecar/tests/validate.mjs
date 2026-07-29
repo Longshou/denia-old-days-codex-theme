@@ -4592,15 +4592,22 @@ function assertSettingsSurfaceLifecycle(payload) {
   const main = harness.document.createElement("main");
   main.classList.add("main-surface");
   main.setRect({ x: 245, y: 0, width: 1195, height: 900 });
+  const taskSidebar = harness.document.createElement("nav");
+  taskSidebar.setRect({ x: 0, y: 0, width: 245, height: 900 });
   const assistant = harness.document.createElement("article");
   assistant.setAttribute("data-content-search-unit-key", "task:assistant");
   main.append(assistant);
+  harness.document.body.append(taskSidebar);
   harness.document.body.append(main);
   assert(harness.flushMutations() > 0);
   assert(
     harness.root.classList.contains("denia-old-days-ds-task")
       && !harness.root.classList.contains("denia-old-days-ds-settings"),
     "a ready task surface must replace settings paint before the queued frame",
+  );
+  assert(
+    taskSidebar.classList.contains("denia-old-days-ds-native-left-sidebar"),
+    "the returning task sidebar must receive its dark paint marker before the queued frame",
   );
 
   state.cleanup();
