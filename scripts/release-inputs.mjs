@@ -6,6 +6,7 @@ export const RENDERER_SOURCE_INPUTS = Object.freeze([
   "art/source/official/denia-approval-dual-form.jpg",
   "art/source/official/denia-error-reaching.jpg",
   "art/source/official/denia-anniversary-direct-gaze.jpg",
+  "art/source/official/denia-dark-form-smile-closeup.png",
   "art/source/task-preview.svg",
 ]);
 

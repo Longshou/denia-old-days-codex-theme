@@ -21,6 +21,7 @@ const officialSources = new Map([
   ["art/source/official/denia-dual-form-panorama.jpg", "646b290ae6a7584ce617cad85976f5caa6ae74e6d6678cd86a17a028266648b5"],
   ["art/source/official/denia-approval-dual-form.jpg", "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0"],
   ["art/source/official/denia-error-reaching.jpg", "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4"],
+  ["art/source/official/denia-dark-form-smile-closeup.png", "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296"],
 ]);
 
 for (const [relative, expected] of officialSources) {
@@ -396,6 +397,7 @@ const generatedFiles = [
   "sidecar/assets/denia-task-approval.webp",
   "sidecar/assets/denia-task-error.webp",
   "sidecar/assets/denia-task-complete.webp",
+  "sidecar/assets/denia-right-sidebar.webp",
   "evidence/home.png",
   "evidence/home-compact.png",
   "evidence/task-staged.png",
@@ -419,6 +421,18 @@ const darkHomeArtwork = path.join(root, "sidecar/assets/denia-home-dark.webp");
 const darkHomeMetadata = await sharp(darkHomeArtwork).metadata();
 if (darkHomeMetadata.format !== "webp" || (darkHomeMetadata.width || 0) < 2048 || (darkHomeMetadata.height || 0) < 1152) {
   throw new Error(`dark home artwork must be a WebP of at least 2048x1152: ${darkHomeMetadata.width}x${darkHomeMetadata.height}`);
+}
+
+const rightSidebarArtwork = path.join(root, "sidecar/assets/denia-right-sidebar.webp");
+const rightSidebarMetadata = await sharp(rightSidebarArtwork).metadata();
+if (
+  rightSidebarMetadata.format !== "webp"
+  || rightSidebarMetadata.width !== 640
+  || rightSidebarMetadata.height !== 1600
+) {
+  throw new Error(
+    `right sidebar artwork must be a 640x1600 WebP: ${rightSidebarMetadata.width}x${rightSidebarMetadata.height}`,
+  );
 }
 
 const expectedDimensions = new Map([

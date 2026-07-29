@@ -50,6 +50,11 @@ for (const item of runtimeArt) {
   await image.resize(item.resize).webp(item.webp).toFile(output(item.target));
 }
 
+await sharp(source("official/denia-dark-form-smile-closeup.png"))
+  .resize(640, 1600, { fit: "cover", position: "east" })
+  .webp({ quality: 86, smartSubsample: true })
+  .toFile(output("sidecar/assets/denia-right-sidebar.webp"));
+
 const TASK_RAIL_SOURCES = Object.freeze({
   warm: {
     source: "official/denia-garden-bubbles-warm.jpg",
