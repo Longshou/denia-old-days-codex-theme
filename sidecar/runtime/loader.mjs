@@ -207,6 +207,9 @@ const cleanupExpression = `(() => {
   delete root.dataset.deniaSidebarState;
   delete root.dataset.deniaSidebarConfidence;
   delete root.dataset.deniaSidebarToggleState;
+  delete root.dataset.deniaSidebarLayout;
+  delete root.dataset.deniaSidebarArtwork;
+  delete root.dataset.deniaSidebarResizing;
   delete root.dataset.deniaSummaryState;
   delete root.dataset.deniaBottomPanelState;
   delete root.dataset.deniaWorkSurfaceState;
@@ -231,6 +234,7 @@ const cleanupExpression = `(() => {
   }
   for (const property of artworkProperties) root.style.removeProperty(property);
   for (const blobUrl of fallbackBlobArtUrls) URL.revokeObjectURL(blobUrl);
+  document.querySelectorAll('.denia-old-days-ds-native-sidebar-art').forEach((node) => node.remove());
   document.querySelectorAll('.denia-old-days-ds-hero').forEach((node) => {
     for (const property of ['background-image', 'background-position', 'background-size', 'background-repeat', 'background-color']) node.style.removeProperty(property);
   });

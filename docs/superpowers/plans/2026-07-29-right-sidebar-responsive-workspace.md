@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **2026-07-29 暂停点：** 实机拖拽后取消逐像素交叉混图。当前实现改为拖拽期间显示主题遮罩，停止 `120ms` 后按面板宽高比选择竖图或宽图；本文后续涉及连续 `progress` 的步骤仅保留为实施历史。
+
 **Goal:** 让原生右侧栏在用户拖拽宽度时由近景平滑过渡到指定宽幅舞台图，并修复快捷项首帧白闪、选项外框和输入焦点线。
 
 **Architecture:** 新增一张预加载宽幅资源，并在已确认的右侧栏内挂载唯一的绝对定位自有视觉层。运行时使用 `ResizeObserver` 将面板实际宽度归一化为进度变量，CSS 只动画画面层的透明度和轻微位移；结构化列表识别负责首帧快捷项装饰，composer 使用容器内焦点环。

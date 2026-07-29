@@ -321,7 +321,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-de
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
-  main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"] {
+  main .thread-scroll-container
+  [class*="mx-auto"][class*="thread-content-max-width"]:not([data-thread-scroll-footer="true"] *) {
   margin-inline-start: max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important;
   margin-inline-end: auto !important;
 }
@@ -564,8 +565,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
     0 16px 40px rgba(38, 53, 72, .14) !important;
 }
 
-html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-layout="workspace"]
-  .denia-old-days-ds-composer {
+html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="light"][data-denia-sidebar-layout="workspace"]
+  .composer-surface-chrome.denia-old-days-ds-composer {
   border-color: rgba(111, 184, 231, .72) !important;
   background: rgba(249, 255, 255, .95) !important;
   box-shadow:
@@ -664,25 +665,114 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 .denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar {
   color: var(--denia-ink);
   background-color: rgba(255, 252, 249, .992) !important;
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(255, 252, 249, .78) 0%,
-      rgba(255, 252, 249, .64) 25%,
-      rgba(246, 251, 253, .34) 56%,
-      rgba(225, 239, 247, .18) 100%
-    ),
-    var(--denia-old-days-art-right-sidebar);
-  background-position: center bottom, center bottom;
-  background-repeat: no-repeat, no-repeat;
-  background-size: cover, cover;
+  background-image: none;
   border-color: rgba(111, 184, 231, .32) !important;
+  isolation: isolate;
+  position: relative;
   box-shadow:
     inset 3px 0 rgba(111, 184, 231, .34),
     inset 2px 0 rgba(255, 255, 255, .84),
     inset 12px 0 28px rgba(111, 184, 231, .06),
     -16px 0 40px rgba(38, 53, 72, .09);
   transition: background-color 220ms cubic-bezier(.22, 1, .36, 1), box-shadow 220ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art {
+  --denia-sidebar-portrait-image: var(--denia-old-days-art-right-sidebar);
+  --denia-sidebar-wide-image: var(--denia-old-days-art-right-sidebar-wide);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  contain: paint;
+  pointer-events: none;
+  background-color: #dfe7ef;
+}
+
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art > span {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-portrait {
+  background-image: var(--denia-sidebar-portrait-image);
+  background-position: center bottom;
+  background-size: cover;
+  opacity: 0;
+  filter: saturate(.9) brightness(.88) contrast(1.02);
+  transform: scale(1.02);
+  transition:
+    opacity 160ms cubic-bezier(.22, 1, .36, 1),
+    transform 200ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-wide-ambient {
+  background-image: var(--denia-sidebar-wide-image);
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  filter: blur(18px) saturate(.72) brightness(.72);
+  transform: scale(1.08);
+  transition: opacity 160ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-wide-scene {
+  background-image: var(--denia-sidebar-wide-image);
+  background-position: center;
+  background-size: contain;
+  opacity: 0;
+  filter: saturate(.88) brightness(.9) contrast(1.02);
+  transform: scale(1.018);
+  transition:
+    opacity 160ms cubic-bezier(.22, 1, .36, 1),
+    transform 200ms cubic-bezier(.22, 1, .36, 1);
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="portrait"]:not([data-denia-sidebar-resizing="true"])
+  .denia-old-days-ds-native-sidebar-art-portrait {
+  opacity: 1;
+  transform: scale(1);
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="wide"]:not([data-denia-sidebar-resizing="true"])
+  .denia-old-days-ds-native-sidebar-art-wide-ambient {
+  opacity: .46;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="wide"]:not([data-denia-sidebar-resizing="true"])
+  .denia-old-days-ds-native-sidebar-art-wide-scene {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-scrim {
+  opacity: 1;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(245, 248, 252, .28) 0%,
+      rgba(247, 250, 253, .5) 42%,
+      rgba(238, 245, 250, .38) 70%,
+      rgba(224, 235, 244, .2) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(248, 250, 253, .28) 0%,
+      rgba(236, 244, 249, .06) 48%,
+      rgba(209, 224, 236, .22) 100%
+    );
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"]
+  .denia-old-days-ds-native-sidebar-art-scrim {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(232, 240, 247, .98),
+      rgba(218, 231, 240, .96)
+    );
 }
 
 .denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar .bg-token-main-surface-primary {
@@ -709,18 +799,6 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 .denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row:is(:hover, :focus-visible) {
   background-color: rgba(234, 247, 247, .72) !important;
   box-shadow: none;
-}
-
-.denia-old-days-ds-extension.denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar {
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(255, 252, 249, .82) 0%,
-      rgba(255, 252, 249, .68) 28%,
-      rgba(246, 251, 253, .38) 58%,
-      rgba(225, 239, 247, .2) 100%
-    ),
-    var(--denia-old-days-art-right-sidebar);
 }
 
 .denia-old-days-ds-extension[data-denia-form-state="working"] .denia-old-days-ds-native-right-sidebar {
@@ -992,6 +1070,10 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
   .denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar,
   .denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row {
     background: #fffdf9 !important;
+  }
+
+  .denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art {
+    display: none;
   }
 
   .denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group {
@@ -1490,6 +1572,22 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
   opacity: 1;
 }
 
+html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-layout="workspace"]
+  .composer-surface-chrome.denia-old-days-ds-composer {
+  border-color: rgba(141, 197, 234, .72) !important;
+  background: rgba(18, 20, 47, .94) !important;
+  box-shadow:
+    inset 0 1px rgba(243, 239, 246, .08),
+    0 18px 46px rgba(8, 10, 32, .38) !important;
+}
+
+.denia-old-days-ds-extension[data-denia-theme="dark"]
+  .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible) {
+  box-shadow:
+    inset 0 0 0 2px rgba(141, 197, 234, .9),
+    0 18px 44px rgba(8, 10, 32, .36) !important;
+}
+
 .denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-attachment {
   color: var(--denia-dark-text-muted) !important;
 }
@@ -1586,23 +1684,61 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
 .denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-right-sidebar {
   color: var(--denia-dark-text);
   background-color: rgba(26, 28, 58, .99) !important;
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(18, 20, 47, .98) 0%,
-      rgba(20, 23, 52, .94) 25%,
-      rgba(20, 24, 55, .78) 56%,
-      rgba(12, 15, 37, .68) 100%
-    ),
-    var(--denia-old-days-art-right-sidebar);
-  background-position: center bottom, center bottom;
-  background-repeat: no-repeat, no-repeat;
-  background-size: cover, cover;
+  background-image: none;
   border-color: var(--denia-dark-divider) !important;
+  isolation: isolate;
+  position: relative;
   box-shadow:
     inset 3px 0 rgba(141, 197, 234, .28),
     inset 2px 0 rgba(243, 239, 246, .04),
     -16px 0 40px rgba(8, 10, 32, .26);
+}
+
+.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-sidebar-art {
+  background-color: #12142F;
+}
+
+.denia-old-days-ds-extension[data-denia-theme="dark"]
+  .denia-old-days-ds-native-sidebar-art-portrait {
+  filter: saturate(.86) brightness(.68) contrast(1.05);
+}
+
+.denia-old-days-ds-extension[data-denia-theme="dark"]
+  .denia-old-days-ds-native-sidebar-art-wide-ambient {
+  filter: blur(18px) saturate(.74) brightness(.5);
+}
+
+.denia-old-days-ds-extension[data-denia-theme="dark"]
+  .denia-old-days-ds-native-sidebar-art-wide-scene {
+  filter: saturate(.84) brightness(.66) contrast(1.04);
+}
+
+.denia-old-days-ds-extension[data-denia-theme="dark"]
+  .denia-old-days-ds-native-sidebar-art-scrim {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(18, 20, 47, .48) 0%,
+      rgba(18, 20, 47, .68) 42%,
+      rgba(19, 22, 51, .58) 70%,
+      rgba(11, 14, 34, .34) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(12, 15, 37, .46) 0%,
+      rgba(18, 20, 47, .12) 48%,
+      rgba(8, 10, 28, .42) 100%
+    );
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-resizing="true"]
+  .denia-old-days-ds-native-sidebar-art-scrim {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(18, 20, 47, .98),
+      rgba(11, 14, 34, .97)
+    );
 }
 
 .denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-sidebar-group {
@@ -1644,19 +1780,6 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
   .denia-old-days-ds-native-right-sidebar
   :is(.text-token-text-primary, .text-token-text-secondary) {
   color: inherit !important;
-}
-
-.denia-old-days-ds-extension[data-denia-theme="dark"].denia-old-days-ds-home
-  .denia-old-days-ds-native-right-sidebar {
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(18, 20, 47, .99) 0%,
-      rgba(20, 23, 52, .95) 28%,
-      rgba(20, 24, 55, .8) 58%,
-      rgba(12, 15, 37, .7) 100%
-    ),
-    var(--denia-old-days-art-right-sidebar);
 }
 
 .denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-form-state="working"]

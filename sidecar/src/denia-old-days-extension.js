@@ -23,6 +23,8 @@
   let nativeSidebarArt = null;
   let nativeSidebarResizeObserver = null;
   let nativeSidebarResizeTarget = null;
+  let nativeSidebarResizeTimer = 0;
+  let nativeSidebarLastObservedWidth = 0;
   let nativeHomePrompt = null;
   let taskChrome = null;
   let finalAssistantUnitKey = "";
@@ -577,7 +579,6 @@
 
   function clearNativeRightSidebarClasses() {
     syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
-    removeStyleProperty(nativeSidebarPanel, "--denia-sidebar-wide-progress");
     for (const group of nativeSidebarGroups) syncClass(group, "denia-old-days-ds-native-sidebar-group", false);
     for (const row of nativeSidebarRows) syncClass(row, "denia-old-days-ds-native-sidebar-row", false);
     clearNativeSidebarArt();
@@ -594,6 +595,36 @@
       ownedNodes.delete(node);
     }
     nativeSidebarArt = null;
+  }
+
+  function clearNativeSidebarResizeTimer() {
+    if (!nativeSidebarResizeTimer) return;
+    clearTimeout(nativeSidebarResizeTimer);
+    nativeSidebarResizeTimer = 0;
+  }
+
+  function sidebarArtworkForRect(rect) {
+    const width = Number(rect?.width);
+    const height = Number(rect?.height);
+    const aspectRatio = Number.isFinite(width)
+      && Number.isFinite(height)
+      && height > 0
+      ? width / height
+      : 0;
+    return {
+      artwork: aspectRatio >= .82 ? "wide" : "portrait",
+      aspectRatio,
+    };
+  }
+
+  function commitNativeSidebarArtwork(panel, rect, refreshAfter = true) {
+    if (!panel || panel !== nativeSidebarResizeTarget) return;
+    const selection = sidebarArtworkForRect(rect || measuredRect(panel));
+    setDatasetValue(root, "deniaSidebarArtwork", selection.artwork);
+    removeDatasetValue(root, "deniaSidebarResizing");
+    if (refreshAfter) {
+      scheduleRefresh(DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES);
+    }
   }
 
   function ensureNativeSidebarArt(panel) {
@@ -616,13 +647,34 @@
 
   function syncNativeSidebarResizeTarget(panel) {
     if (nativeSidebarResizeTarget === panel) return;
+    clearNativeSidebarResizeTimer();
+    removeDatasetValue(root, "deniaSidebarResizing");
     if (nativeSidebarResizeObserver && nativeSidebarResizeTarget) {
       nativeSidebarResizeObserver.disconnect();
     }
     nativeSidebarResizeTarget = panel;
+    nativeSidebarLastObservedWidth = Number(measuredRect(panel)?.width) || 0;
+    if (!panel) {
+      removeDatasetValue(root, "deniaSidebarArtwork");
+    }
     if (!panel || typeof ResizeObserver !== "function") return;
     if (!nativeSidebarResizeObserver) {
-      nativeSidebarResizeObserver = new ResizeObserver(() => {
+      nativeSidebarResizeObserver = new ResizeObserver((entries) => {
+        const entry = entries.find((candidate) => candidate.target === nativeSidebarResizeTarget);
+        const observedWidth = Number(entry?.contentRect?.width)
+          || Number(measuredRect(nativeSidebarResizeTarget)?.width)
+          || 0;
+        if (Math.abs(observedWidth - nativeSidebarLastObservedWidth) > .5) {
+          nativeSidebarLastObservedWidth = observedWidth;
+          setDatasetValue(root, "deniaSidebarResizing", "true");
+          clearNativeSidebarResizeTimer();
+          nativeSidebarResizeTimer = setTimeout(() => {
+            nativeSidebarResizeTimer = 0;
+            const target = nativeSidebarResizeTarget;
+            if (!target) return;
+            commitNativeSidebarArtwork(target, measuredRect(target));
+          }, 120);
+        }
         scheduleRefresh(DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES);
       });
     }
@@ -632,7 +684,6 @@
   function syncNativeSidebarPanel(nextPanel) {
     if (nativeSidebarPanel !== nextPanel) {
       syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
-      removeStyleProperty(nativeSidebarPanel, "--denia-sidebar-wide-progress");
       clearNativeSidebarArt();
       syncNativeSidebarResizeTarget(null);
       nativeSidebarPanel = nextPanel
@@ -655,21 +706,13 @@
 
   function sidebarLayoutForWidth(width) {
     const measuredWidth = Number.isFinite(width) ? width : 0;
-    const progress = Math.min(1, Math.max(0, (measuredWidth - 440) / 400));
     return {
       layout: measuredWidth <= 440
         ? "compact"
         : measuredWidth >= 840
           ? "workspace"
           : "transition",
-      progress,
     };
-  }
-
-  function serializedSidebarProgress(progress) {
-    if (progress <= 0) return "0";
-    if (progress >= 1) return "1";
-    return String(Math.round(progress * 1000) / 1000).replace(/^0/u, "");
   }
 
   function syncNativeSidebarClassSet(currentNodes, nextNodes, className) {
@@ -749,11 +792,9 @@
       ? sidebarLayoutForWidth(result.panelRect?.width)
       : null;
     if (nextPanel && sidebarLayout) {
-      setStyleProperty(
-        nextPanel,
-        "--denia-sidebar-wide-progress",
-        serializedSidebarProgress(sidebarLayout.progress),
-      );
+      if (!root.dataset.deniaSidebarArtwork) {
+        commitNativeSidebarArtwork(nextPanel, result.panelRect, false);
+      }
       setDatasetValue(root, "deniaSidebarLayout", sidebarLayout.layout);
     } else {
       removeDatasetValue(root, "deniaSidebarLayout");
@@ -779,7 +820,11 @@
       togglePresent: Boolean(result.toggle),
       toggleState,
       layout: sidebarLayout?.layout || "closed",
-      wideProgress: sidebarLayout?.progress || 0,
+      artwork: root.dataset.deniaSidebarArtwork || "closed",
+      resizing: root.dataset.deniaSidebarResizing === "true",
+      aspectRatio: nextPanel
+        ? Math.round(sidebarArtworkForRect(result.panelRect).aspectRatio * 1000) / 1000
+        : 0,
     };
     setDatasetValue(root, "deniaSidebarState", result.state);
     setDatasetValue(root, "deniaSidebarConfidence", result.confidence);
@@ -1843,6 +1888,8 @@
     delete root.dataset.deniaSidebarConfidence;
     delete root.dataset.deniaSidebarToggleState;
     delete root.dataset.deniaSidebarLayout;
+    delete root.dataset.deniaSidebarArtwork;
+    delete root.dataset.deniaSidebarResizing;
     delete root.dataset.deniaSummaryState;
     delete root.dataset.deniaBottomPanelState;
     delete root.dataset.deniaWorkSurfaceState;

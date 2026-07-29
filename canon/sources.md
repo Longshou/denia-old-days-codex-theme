@@ -25,6 +25,7 @@
 | Approval rail | `art/source/official/denia-approval-dual-form.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)的周年双形态竖幅贺图 | 1871×3327 | `3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0` |
 | Error rail | `art/source/official/denia-error-reaching.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)的周年插画展发布图 | 1920×1080 | `42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4` |
 | Right sidebar | `art/source/official/denia-dark-form-smile-closeup.png` | [Wuthering Waves 官方 X：Post-Lament Anthropocene: Stars Intertwined - Denia](https://x.com/Wuthering_Waves/status/2037002852649099578) | 1080×1920 | `1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296` |
+| Right sidebar wide | `art/source/official/denia-right-sidebar-wide.jpg` | [官方发布插画索引](https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust)，字节与资料库 `production-ready/dark-stage-complete.jpg` 一致 | 1840×1080 | `d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed` |
 
 紧凑首页复用 Home 源文件，通过同一画面的裁切保持视觉连续，不再使用单独立绘。任务侧栏按状态使用独立的 `rail-portrait` 衍生图；Approval rail 保留明色正脸和上方暗色注视，Error rail 优先保留完整无笑意正脸与抬臂动势；Wide scene 保持完整横图，仅用于适合宽幅叙事的版式。
 
@@ -66,6 +67,7 @@ Codex 运行时仅使用包内 WebP 衍生图，不发起远程请求。运行�
 | `sidecar/assets/denia-old-days-bright.webp` | 1440×810 | `fa471d994e9a974159ba8a39606841371d2ebff18b3ec3a84bde2438378f0706` | `old-days-bright-102s.jpg`；resize 1440×810、cover、centre；WebP quality 88、smartSubsample |
 | `sidecar/assets/denia-home-dark.webp` | 2048×1152 | `24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c` | `denia-home-dark-hjz.jpg`；原始 16:9 画面等比缩放，保留人物与中央记忆泡泡；WebP quality 80、smartSubsample |
 | `sidecar/assets/denia-right-sidebar.webp` | 640×1600 | `2f26b9623ad2df363479ee9c6895a718b7e8f158ed3bc65d747b9bebd386231c` | `denia-dark-form-smile-closeup.png`；resize 640×1600、cover、east；保留双眼、笑容和蓝色手套；WebP quality 86、smartSubsample |
+| `sidecar/assets/denia-right-sidebar-wide.webp` | 1840×1080 | `30b632c8d45f12e757d6be96dd07e18b7aba2e53beb4541bae755fa75fb6e629` | `denia-right-sidebar-wide.jpg`；保持完整舞台构图；WebP quality 84、smartSubsample |
 | `sidecar/assets/denia-task-warm.webp` | 640×2000 | `97e767e03cc02df0b76b11106c1697918608823706842bb92d37e80c7b37431f` | 花园泡泡壁纸的无字近景；`245,0,346×1080`；WebP quality 86 |
 | `sidecar/assets/denia-task-approval.webp` | 640×2000 | `d8e9124ad68a04021c8911819a6e21cba51b543f480a505cb3a24b98caa347a9` | 双形态竖幅的明色正脸与暗色注视；`470,220,896×2800`；WebP quality 86、smartSubsample |
 | `sidecar/assets/denia-task-error.webp` | 640×2000 | `55ebb464e95001b96f6a68c5a18054e80e0764450551e4e912a4c4b525f1c8c6` | 完整无笑意正脸与抬臂动势；`1140,100,282×880`；WebP quality 86、smartSubsample |

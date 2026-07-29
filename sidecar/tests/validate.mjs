@@ -77,7 +77,7 @@ assert(manifest.capabilities.includes("task.state-art-rail"), "state art rail ca
 if (canonSources) {
   const officialRows = new Map(
     canonSources.split("\n")
-      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene|Approval rail|Error rail|Right sidebar) \|/u.test(line))
+      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene|Approval rail|Error rail|Right sidebar|Right sidebar wide) \|/u.test(line))
       .map((line) => [line.split("|")[1].trim(), line]),
   );
   const officialSourceUrls = {
@@ -90,6 +90,7 @@ if (canonSources) {
     "Approval rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
     "Error rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
     "Right sidebar": ["https://x.com/Wuthering_Waves/status/2037002852649099578"],
+    "Right sidebar wide": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
   };
   for (const [form, urls] of Object.entries(officialSourceUrls)) {
     const row = officialRows.get(form) || "";
@@ -99,6 +100,7 @@ if (canonSources) {
     "Approval rail": "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
     "Error rail": "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
     "Right sidebar": "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296",
+    "Right sidebar wide": "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed",
   };
   for (const [form, hash] of Object.entries(exactSourceHashes)) {
     assert(officialRows.get(form)?.includes(`\`${hash}\``), `${form} official source row must include exact SHA-256 ${hash}`);
@@ -191,6 +193,16 @@ const rightSidebarNoticeMarkers = [
 for (const marker of rightSidebarNoticeMarkers) {
   assert(packageNotice.includes(marker), `NOTICE must include right-sidebar provenance marker: ${marker}`);
 }
+const rightSidebarWideNoticeMarkers = [
+  "Right sidebar wide scene",
+  "denia-right-sidebar-wide.webp",
+  "1840×1080",
+  "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed",
+  "30b632c8d45f12e757d6be96dd07e18b7aba2e53beb4541bae755fa75fb6e629",
+];
+for (const marker of rightSidebarWideNoticeMarkers) {
+  assert(packageNotice.includes(marker), `NOTICE must include wide right-sidebar provenance marker: ${marker}`);
+}
 assert(
   packageNotice.includes("No ownership of, or redistribution license for, the official material is claimed."),
   "NOTICE must explicitly apply the no-ownership/no-redistribution-license disclaimer to official material",
@@ -214,6 +226,9 @@ if (bundleManifest) {
   for (const marker of rightSidebarNoticeMarkers) {
     assert(bundleNotice.includes(marker), `top-level NOTICE must include right-sidebar provenance marker: ${marker}`);
   }
+  for (const marker of rightSidebarWideNoticeMarkers) {
+    assert(bundleNotice.includes(marker), `top-level NOTICE must include wide right-sidebar provenance marker: ${marker}`);
+  }
   assert(
     bundleNotice.includes("No ownership of, or redistribution license for, official material is claimed."),
     "top-level NOTICE must disclaim ownership and redistribution rights for official material",
@@ -221,6 +236,7 @@ if (bundleManifest) {
   assert(bundleManifest.summary.includes("暖色 P2 拍立得") && bundleManifest.summary.includes("深色全景首页"), "release summary must name both light P2 and dark panoramic home treatments");
   assert(bundleManifest.description.includes("浅色模式") && bundleManifest.description.includes("深色模式"), "release description must distinguish the light and dark homepage treatments");
   assert(bundleManifest.description.includes("原生右侧栏"), "release description must name the native right sidebar portrait skin");
+  assert(bundleManifest.description.includes("拖拽") && bundleManifest.description.includes("宽幅舞台"), "release description must name the responsive wide sidebar treatment");
   assert(bundleManifest.theme?.recommendedNativeAppearance === "light", "release manifest must preserve the recommended light native appearance");
   assert(bundleReadme.includes("warm P2 polaroid homepage") && bundleReadme.includes("dark panoramic homepage"), "package README must describe both homepage treatments");
 }
@@ -363,6 +379,7 @@ for (const token of [
   "--denia-old-days-art-bright",
   "--denia-old-days-art-dark",
   "--denia-old-days-art-right-sidebar",
+  "--denia-old-days-art-right-sidebar-wide",
   "--denia-old-days-art-task-warm",
   "--denia-old-days-art-task-approval",
   "--denia-old-days-art-task-error",
@@ -526,12 +543,29 @@ const composerEditorFocusSelector =
   '.denia-old-days-ds-extension .denia-old-days-ds-composer :is(textarea, [contenteditable="true"]):focus-visible';
 const composerShellFocusSelector =
   '.denia-old-days-ds-extension .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible)';
+const lightWorkspaceComposerSelector =
+  'html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="light"][data-denia-sidebar-layout="workspace"] .composer-surface-chrome.denia-old-days-ds-composer';
+const darkWorkspaceComposerSelector =
+  'html:root.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-layout="workspace"] .composer-surface-chrome.denia-old-days-ds-composer';
+const darkComposerShellFocusSelector =
+  '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible)';
 assertCssDeclarations(stylesheetRules, composerEditorFocusSelector, {
   outline: "none !important",
   "outline-offset": "0 !important",
 });
 assertCssDeclarations(stylesheetRules, composerShellFocusSelector, {
   "box-shadow": "inset 0 0 0 2px rgba(111, 184, 231, .86), 0 16px 40px rgba(38, 53, 72, .14) !important",
+});
+assertCssDeclarations(stylesheetRules, lightWorkspaceComposerSelector, {
+  "border-color": "rgba(111, 184, 231, .72) !important",
+  background: "rgba(249, 255, 255, .95) !important",
+});
+assertCssDeclarations(stylesheetRules, darkWorkspaceComposerSelector, {
+  "border-color": "rgba(141, 197, 234, .72) !important",
+  background: "rgba(18, 20, 47, .94) !important",
+});
+assertCssDeclarations(stylesheetRules, darkComposerShellFocusSelector, {
+  "box-shadow": "inset 0 0 0 2px rgba(141, 197, 234, .9), 0 18px 44px rgba(8, 10, 32, .36) !important",
 });
 const darkComposerPlaceholderSelector =
   '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer textarea::placeholder';
@@ -589,6 +623,16 @@ assertArtworkVariableWhitelist(stylesheetRules, new Map([
   ["--denia-old-days-art-dark", {
     selector: 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] main.main-surface.dream-skin-home-shell',
     property: "background-image",
+    atRuleFragments: [],
+  }],
+  ["--denia-old-days-art-right-sidebar", {
+    selector: ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art",
+    property: "--denia-sidebar-portrait-image",
+    atRuleFragments: [],
+  }],
+  ["--denia-old-days-art-right-sidebar-wide", {
+    selector: ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art",
+    property: "--denia-sidebar-wide-image",
     atRuleFragments: [],
   }],
   ["--denia-old-days-art-task-warm", {
@@ -945,6 +989,8 @@ const sidebarPaintProperties = new Set([
   "box-shadow",
   "color",
   "outline-color",
+  "isolation",
+  "position",
   "transition",
   "transition-duration",
 ]);
@@ -1008,7 +1054,6 @@ const nativeSidebarClasses = [
   ".denia-old-days-ds-native-sidebar-group",
   ".denia-old-days-ds-native-sidebar-row",
 ];
-const rightSidebarArtworkProperty = "--denia-old-days-art-right-sidebar";
 const forbiddenRightSidebarArtworkProperties = [
   "--denia-old-days-art-bright",
   "--denia-old-days-art-dark",
@@ -1026,14 +1071,6 @@ for (const rule of stylesheetRules) {
   }
   for (const [property, value] of rule.declarations) {
     if (!value.includes("--denia-old-days-art-")) continue;
-    assert(
-      selectors.every((selector) => selector.includes(".denia-old-days-ds-native-right-sidebar")),
-      `only the native right sidebar may use character artwork: ${property}`,
-    );
-    assert(
-      value.includes(rightSidebarArtworkProperty),
-      `native right sidebar must use its dedicated artwork: ${property}`,
-    );
     for (const forbidden of forbiddenRightSidebarArtworkProperties) {
       assert(!value.includes(forbidden), `native right sidebar must not use ${forbidden}`);
     }
@@ -1049,16 +1086,16 @@ const darkRightSidebarRule = findCssRule(
 );
 for (const rule of [lightRightSidebarRule, darkRightSidebarRule]) {
   assert(
-    rule.declarations.get("background-image")?.includes(rightSidebarArtworkProperty),
-    "both themes must paint the dedicated right sidebar artwork",
+    canonicalCssValue(rule.declarations.get("background-image")) === "none",
+    "responsive sidebar artwork must live in the owned visual surface",
   );
   assert(
-    canonicalCssValue(rule.declarations.get("background-position")) === "centerbottom,centerbottom",
-    "right sidebar artwork must stay bottom anchored",
+    canonicalCssValue(rule.declarations.get("position")) === "relative",
+    "the native sidebar must anchor its out-of-flow visual surface",
   );
   assert(
-    canonicalCssValue(rule.declarations.get("background-size")) === "cover,cover",
-    "right sidebar artwork must cover the panel",
+    canonicalCssValue(rule.declarations.get("isolation")) === "isolate",
+    "the native sidebar must contain the negative visual layer",
   );
 }
 for (const forbiddenSelector of [
@@ -1085,10 +1122,9 @@ assert(
 );
 assertCssDeclarations(stylesheetRules, nativeSidebarPanelSelector, {
   "background-color": "rgba(255, 252, 249, .992) !important",
-  "background-image": "linear-gradient(180deg, rgba(255, 252, 249, .78) 0%, rgba(255, 252, 249, .64) 25%, rgba(246, 251, 253, .34) 56%, rgba(225, 239, 247, .18) 100%), var(--denia-old-days-art-right-sidebar)",
-  "background-position": "center bottom, center bottom",
-  "background-repeat": "no-repeat, no-repeat",
-  "background-size": "cover, cover",
+  "background-image": "none",
+  isolation: "isolate",
+  position: "relative",
 });
 assertCssDeclarations(stylesheetRules, nativeSidebarGroupSelector, {
   background: "transparent !important",
@@ -1111,17 +1147,13 @@ assertCssDeclarations(stylesheetRules, nativeLeftSidebarHostSelector, {
   background: "radial-gradient(circle at 14% 8%, rgba(143, 210, 221, .15), transparent 24%), radial-gradient(circle at 92% 18%, rgba(242, 154, 171, .1), transparent 28%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .04) 31px 32px), rgb(255, 252, 249) !important",
   "box-shadow": "inset -2px 0 rgba(111, 184, 231, .3), inset -1px 0 rgba(255, 255, 255, .9), inset -10px 0 26px rgba(111, 184, 231, .045), 10px 0 30px rgba(38, 53, 72, .075) !important",
 });
-const nativeSidebarHomeRule = findCssRule(stylesheetRules, ".denia-old-days-ds-extension.denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar");
 assert(
-  nativeSidebarHomeRule.sourceIndex > nativeSidebarPanelRule.sourceIndex
-    && nativeSidebarHomeRule.declarations.has("background-image")
-    && !canonicalCssValue(nativeSidebarHomeRule.declarations.get("background-image")).includes("!important"),
-  "home sidebar background-image must follow and override the unlocked base image",
-);
-assert(
-  canonicalCssValue(nativeSidebarHomeRule.declarations.get("background-image"))
-    === canonicalCssValue("linear-gradient(180deg, rgba(255, 252, 249, .82) 0%, rgba(255, 252, 249, .68) 28%, rgba(246, 251, 253, .38) 58%, rgba(225, 239, 247, .2) 100%), var(--denia-old-days-art-right-sidebar)"),
-  "home sidebar scrim must keep the portrait visible in light mode",
+  !stylesheetRules.some((rule) =>
+    rule.selectors.some((selector) =>
+      selector.includes("denia-old-days-ds-home")
+        && selector.includes("denia-old-days-ds-native-right-sidebar"))
+      && rule.declarations.has("background-image")),
+  "home routes must reuse the responsive visual surface instead of repainting the panel",
 );
 assert(
   rgbaAlpha(nativeSidebarPanelRule.declarations.get("background-color")) >= .97,
@@ -1135,6 +1167,90 @@ assert(
   canonicalCssValue(nativeSidebarRowRule.declarations.get("background")) === "transparent!important",
   "native sidebar rows must not draw persistent option containers",
 );
+const nativeSidebarArtSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art";
+const nativeSidebarArtLayerSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art > span";
+const nativeSidebarPortraitSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-portrait";
+const nativeSidebarWideAmbientSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-wide-ambient";
+const nativeSidebarWideSceneSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-wide-scene";
+const nativeSidebarScrimSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-art-scrim";
+const nativeSidebarPortraitChoiceSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="portrait"]:not([data-denia-sidebar-resizing="true"]) .denia-old-days-ds-native-sidebar-art-portrait';
+const nativeSidebarWideAmbientChoiceSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="wide"]:not([data-denia-sidebar-resizing="true"]) .denia-old-days-ds-native-sidebar-art-wide-ambient';
+const nativeSidebarWideSceneChoiceSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="wide"]:not([data-denia-sidebar-resizing="true"]) .denia-old-days-ds-native-sidebar-art-wide-scene';
+const nativeSidebarResizeScrimSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim';
+const darkNativeSidebarResizeScrimSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim';
+assertCssDeclarations(stylesheetRules, nativeSidebarArtSelector, {
+  "--denia-sidebar-portrait-image": "var(--denia-old-days-art-right-sidebar)",
+  "--denia-sidebar-wide-image": "var(--denia-old-days-art-right-sidebar-wide)",
+  position: "absolute",
+  inset: "0",
+  "z-index": "-1",
+  overflow: "hidden",
+  contain: "paint",
+  "pointer-events": "none",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarArtLayerSelector, {
+  position: "absolute",
+  inset: "0",
+  "background-repeat": "no-repeat",
+  "pointer-events": "none",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarPortraitSelector, {
+  "background-image": "var(--denia-sidebar-portrait-image)",
+  "background-position": "center bottom",
+  "background-size": "cover",
+  opacity: "0",
+  transform: "scale(1.02)",
+  transition: "opacity 160ms cubic-bezier(.22, 1, .36, 1), transform 200ms cubic-bezier(.22, 1, .36, 1)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarWideAmbientSelector, {
+  "background-image": "var(--denia-sidebar-wide-image)",
+  "background-position": "center",
+  "background-size": "cover",
+  opacity: "0",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarWideSceneSelector, {
+  "background-image": "var(--denia-sidebar-wide-image)",
+  "background-position": "center",
+  "background-size": "contain",
+  opacity: "0",
+  transform: "scale(1.018)",
+  transition: "opacity 160ms cubic-bezier(.22, 1, .36, 1), transform 200ms cubic-bezier(.22, 1, .36, 1)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarScrimSelector, {
+  opacity: "1",
+  background: "linear-gradient(90deg, rgba(245, 248, 252, .28) 0%, rgba(247, 250, 253, .5) 42%, rgba(238, 245, 250, .38) 70%, rgba(224, 235, 244, .2) 100%), linear-gradient(180deg, rgba(248, 250, 253, .28) 0%, rgba(236, 244, 249, .06) 48%, rgba(209, 224, 236, .22) 100%)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarPortraitChoiceSelector, {
+  opacity: "1",
+  transform: "scale(1)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarWideAmbientChoiceSelector, {
+  opacity: ".46",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarWideSceneChoiceSelector, {
+  opacity: "1",
+  transform: "scale(1)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarResizeScrimSelector, {
+  background: "linear-gradient(135deg, rgba(232, 240, 247, .98), rgba(218, 231, 240, .96))",
+});
+assertCssDeclarations(stylesheetRules, darkNativeSidebarResizeScrimSelector, {
+  background: "linear-gradient(135deg, rgba(18, 20, 47, .98), rgba(11, 14, 34, .97))",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarArtSelector, {
+  display: "none",
+}, ["prefers-reduced-transparency: reduce"]);
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 const darkTaskMainReadabilityRoot =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"] main.main-surface:not(.dream-skin-home-shell)';
@@ -1523,7 +1639,7 @@ assert(
       && selector !== darkTaskTitleSelector)),
   "dark task foreground-token paint must stay pinned to the native thread title",
 );
-const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]';
+const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]:not([data-thread-scroll-footer="true"] *)';
 const taskContentMotionSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container > [class*="min-h-full"][class*="shrink-0"]';
 const taskContentAlignmentRule = findCssRule(stylesheetRules, taskContentAlignmentSelector);
 assert(
@@ -2145,8 +2261,9 @@ function assertNativeRightSidebarLifecycle(payload) {
   );
   assert(
     open.root.dataset.deniaSidebarLayout === "compact"
-      && aside.style.getPropertyValue("--denia-sidebar-wide-progress") === "0",
-    "a 334px native sidebar must use the compact portrait state",
+      && open.root.dataset.deniaSidebarArtwork === "portrait"
+      && !("deniaSidebarResizing" in open.root.dataset),
+    "a 334px native sidebar must settle on the portrait without a resize mask",
   );
   assert(
     open.root.style.getPropertyValue("--denia-thread-content-width") === "1482px",
@@ -2185,9 +2302,21 @@ function assertNativeRightSidebarLifecycle(payload) {
   assert(open.flushAnimationFrames() === 1, "a sidebar resize must coalesce into one refresh frame");
   assert(
     open.root.dataset.deniaSidebarLayout === "transition"
-      && aside.style.getPropertyValue("--denia-sidebar-wide-progress") === ".3",
-    "a 560px native sidebar must expose the normalized transition state",
+      && open.root.dataset.deniaSidebarResizing === "true"
+      && open.root.dataset.deniaSidebarArtwork === "portrait",
+    "a 560px drag must keep the last portrait choice hidden behind the resize mask",
   );
+  assert(
+    open.pendingTimerDelays().includes(120),
+    "sidebar artwork selection must wait 120ms after the final resize observation",
+  );
+  assert(open.flushTimers() === 1, "the settled 560px drag must commit one artwork decision");
+  assert(
+    !("deniaSidebarResizing" in open.root.dataset)
+      && open.root.dataset.deniaSidebarArtwork === "portrait",
+    "a settled portrait-like 560px panel must reveal the portrait artwork",
+  );
+  assert(open.flushAnimationFrames() === 1, "settled portrait selection must refresh diagnostics once");
 
   aside.setRect({ x: 672, width: 840 });
   main.setRect({ width: 672 });
@@ -2195,14 +2324,34 @@ function assertNativeRightSidebarLifecycle(payload) {
   assert(open.flushAnimationFrames() === 1, "workspace width must refresh in one frame");
   assert(
     open.root.dataset.deniaSidebarLayout === "workspace"
-      && aside.style.getPropertyValue("--denia-sidebar-wide-progress") === "1",
-    "an 840px native sidebar must use the complete wide scene",
+      && open.root.dataset.deniaSidebarResizing === "true"
+      && open.root.dataset.deniaSidebarArtwork === "portrait",
+    "workspace drag must keep the previous artwork hidden until the width settles",
   );
+  assert(open.flushTimers() === 1, "the settled workspace drag must commit one artwork decision");
+  assert(
+    !("deniaSidebarResizing" in open.root.dataset)
+      && open.root.dataset.deniaSidebarArtwork === "wide",
+    "a settled landscape-like 840px panel must reveal the complete wide scene",
+  );
+  assert(open.flushAnimationFrames() === 1, "settled wide selection must refresh diagnostics once");
 
   aside.setRect({ x: 1178, width: 334 });
   main.setRect({ width: 1178 });
   assert(open.flushResizeObservers(aside) === 1, "returning to compact width must keep drag observation active");
   assert(open.flushAnimationFrames() === 1, "returning to compact width must refresh in one frame");
+  assert(
+    open.root.dataset.deniaSidebarResizing === "true"
+      && open.root.dataset.deniaSidebarArtwork === "wide",
+    "the return drag must mask the previously committed wide scene",
+  );
+  assert(open.flushTimers() === 1, "the returned compact width must commit one artwork decision");
+  assert(
+    !("deniaSidebarResizing" in open.root.dataset)
+      && open.root.dataset.deniaSidebarArtwork === "portrait",
+    "the settled compact width must restore the portrait",
+  );
+  assert(open.flushAnimationFrames() === 1, "restored portrait selection must refresh diagnostics once");
 
   const rightOnlyHome = createRuntimeHarness((index) => `blob:sidebar-home-right-only-${index + 1}`);
   const rightOnlyMain = appendTaskMain(rightOnlyHome);
@@ -2326,6 +2475,8 @@ function assertNativeRightSidebarLifecycle(payload) {
   assert(!("deniaSidebarState" in open.root.dataset), "cleanup must remove the root sidebar state marker");
   assert(!("deniaSidebarConfidence" in open.root.dataset), "cleanup must remove the root sidebar confidence marker");
   assert(!("deniaSidebarToggleState" in open.root.dataset), "cleanup must remove the root sidebar toggle state marker");
+  assert(!("deniaSidebarArtwork" in open.root.dataset), "cleanup must remove the settled sidebar artwork marker");
+  assert(!("deniaSidebarResizing" in open.root.dataset), "cleanup must remove the sidebar resize mask marker");
   assert(!open.root.style.getPropertyValue("--denia-native-sidebar-width"), "cleanup must remove the native sidebar width snapshot");
   assert(!open.root.style.getPropertyValue("--denia-thread-content-width"), "cleanup must remove the thread content width snapshot");
   assert(!("deniaSidebarLayout" in open.root.dataset), "cleanup must remove the responsive sidebar layout marker");
@@ -4048,14 +4199,22 @@ function assertFallbackCleanupBehavior(loaderSource) {
   harness.root.dataset.deniaSidebarState = "open";
   harness.root.dataset.deniaSidebarConfidence = "high";
   harness.root.dataset.deniaSidebarToggleState = "open";
+  harness.root.dataset.deniaSidebarLayout = "workspace";
+  harness.root.dataset.deniaSidebarArtwork = "wide";
+  harness.root.dataset.deniaSidebarResizing = "true";
   harness.root.dataset.deniaSummaryState = "open";
   harness.root.dataset.deniaBottomPanelState = "open";
   harness.root.dataset.deniaWorkSurfaceState = "open";
   harness.root.style.setProperty("--denia-native-sidebar-width", "320px");
   harness.root.style.setProperty("--denia-thread-content-width", "1242px");
+  const fallbackSidebarArt = harness.document.createElement("div");
+  fallbackSidebarArt.classList.add("denia-old-days-ds-native-sidebar-art");
+  harness.document.body.append(fallbackSidebarArt);
   const fallbackArtworkValues = new Map([
     ["bright", 'url("blob:fallback-bright")'],
     ["dark", "url(blob:fallback-dark)"],
+    ["right-sidebar", "url(blob:fallback-sidebar)"],
+    ["right-sidebar-wide", "url(blob:fallback-sidebar-wide)"],
     ["task-warm", "url(blob:fallback-bright)"],
     ["task-approval", "url(data:image/webp;base64,AA==)"],
     ["task-error", "url(https://example.invalid/error.webp)"],
@@ -4076,6 +4235,9 @@ function assertFallbackCleanupBehavior(loaderSource) {
   assert(!("deniaSidebarState" in harness.root.dataset), "fallback cleanup must remove the sidebar state marker");
   assert(!("deniaSidebarConfidence" in harness.root.dataset), "fallback cleanup must remove the sidebar confidence marker");
   assert(!("deniaSidebarToggleState" in harness.root.dataset), "fallback cleanup must remove the sidebar toggle state marker");
+  assert(!("deniaSidebarLayout" in harness.root.dataset), "fallback cleanup must remove the responsive sidebar layout marker");
+  assert(!("deniaSidebarArtwork" in harness.root.dataset), "fallback cleanup must remove the settled sidebar artwork marker");
+  assert(!("deniaSidebarResizing" in harness.root.dataset), "fallback cleanup must remove the sidebar resize mask marker");
   assert(!("deniaSummaryState" in harness.root.dataset), "fallback cleanup must remove the summary state marker");
   assert(!("deniaBottomPanelState" in harness.root.dataset), "fallback cleanup must remove the bottom panel state marker");
   assert(!("deniaWorkSurfaceState" in harness.root.dataset), "fallback cleanup must remove the work-surface state marker");
@@ -4085,9 +4247,11 @@ function assertFallbackCleanupBehavior(loaderSource) {
     assert(!harness.root.style.getPropertyValue(`--denia-old-days-art-${name}`), `fallback cleanup must remove ${name} artwork CSS variable`);
   }
   assert(
-    harness.revoked.join(",") === "blob:fallback-bright,blob:fallback-dark",
+    harness.revoked.join(",")
+      === "blob:fallback-bright,blob:fallback-dark,blob:fallback-sidebar,blob:fallback-sidebar-wide",
     "fallback cleanup must revoke every unique blob artwork URL exactly once without revoking data or HTTP URLs",
   );
+  assert(!fallbackSidebarArt.isConnected, "fallback cleanup must remove the owned responsive sidebar visual surface");
   for (const id of ownedIds) assert(!harness.document.getElementById(id), `fallback cleanup must remove owned node ${id}`);
   removableClasses.forEach((className, index) => {
     assert(!touched[index].classList.contains(className), `fallback cleanup must remove touched class ${className}`);
@@ -6099,10 +6263,14 @@ function assertCssCascadeDeclarations(rules, selector, expected, atRuleFragments
 
 function assertArtworkVariableWhitelist(rules, whitelist) {
   for (const [variable, approved] of whitelist) {
+    const variablePattern = new RegExp(
+      `${variable.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![a-z0-9_-])`,
+      "iu",
+    );
     let occurrences = 0;
     for (const rule of rules) {
       for (const [property, value] of rule.declarations) {
-        if (!value.includes(variable)) continue;
+        if (!variablePattern.test(value)) continue;
         occurrences += 1;
         const approvedMedia = approved.atRuleFragments.length === 0
           ? rule.atRules.length === 0
