@@ -31,6 +31,7 @@ test("Kaboo source declares the layout contract", () => {
   assert.equal(contract.schemaVersion, 1);
   assert.equal(contract.packageId, extension.id);
   assert.equal(contract.packageVersion, extension.version);
+  assert.equal(contract.coordinateSpace, "css-pixel");
   assert.deepEqual(
     contract.requiredTargets,
     [
@@ -40,6 +41,8 @@ test("Kaboo source declares the layout contract", () => {
       { id: "task-narrow", route: "/task/current", viewport: { width: 390, height: 844 } },
     ],
   );
+  assert.ok(contract.assertions.length >= 1);
+  assert.ok(contract.assertions.every(({ path }) => path.startsWith("targets.*.result.")));
   assert.match(loader, /Emulation\.setDeviceMetricsOverride/u);
   assert.match(loader, /layoutContract\.requiredTargets/u);
   assert.match(loader, /targets:\s*layoutResults/u);
@@ -59,5 +62,25 @@ test("public README exposes reproducible Kaboo commands", () => {
     "kaboo-cli codex-theme publish",
   ]) {
     assert.match(readme, new RegExp(escapeRegex(token), "u"), `README missing ${token}`);
+  }
+});
+
+test("Kaboo release builder exposes an offline protocol validator", () => {
+  assert.ok(exists("scripts/validate-kaboo-release.mjs"), "release validator must exist");
+  const packageJson = json("package.json");
+  assert.equal(
+    packageJson.scripts["check:kaboo"],
+    "node scripts/validate-kaboo-release.mjs sidecar/release/kaboo-local/denia-old-days/0.1.0/catalog-version.json",
+  );
+  const builder = read("scripts/build-local-kaboo-release.mjs");
+  for (const token of [
+    "<!-- kaboo-theme-readme:v1 -->",
+    "## Runtime dependencies",
+    "## Rendering architecture",
+    "## Layout verification",
+    "## AI adaptation fallback",
+    "## Troubleshooting",
+  ]) {
+    assert.match(builder, new RegExp(escapeRegex(token), "u"), `package README missing ${token}`);
   }
 });

@@ -3,6 +3,7 @@
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd -P)/common.sh"
 
+[ "$#" -eq 0 ] || fail "stop.sh does not accept arguments"
 PORT="$(resolve_port)"
 NODE="$(resolve_node)"
 

@@ -53,6 +53,7 @@ const layoutContract = JSON.parse(await readRequired(manifest.layoutContract));
 assert(layoutContract.schemaVersion === 1, "layout contract schemaVersion must be 1");
 assert(layoutContract.packageId === manifest.id, "layout contract packageId must match the extension");
 assert(layoutContract.packageVersion === manifest.version, "layout contract packageVersion must match the extension");
+assert(layoutContract.coordinateSpace === "css-pixel", "layout contract coordinateSpace must be css-pixel");
 assert(
   JSON.stringify(layoutContract.requiredTargets) === JSON.stringify([
     { id: "home-desktop", route: "/", viewport: { width: 1440, height: 900 } },
@@ -61,6 +62,12 @@ assert(
     { id: "task-narrow", route: "/task/current", viewport: { width: 390, height: 844 } },
   ]),
   "layout contract must declare the four supported verification targets",
+);
+assert(
+  Array.isArray(layoutContract.assertions)
+    && layoutContract.assertions.length >= 1
+    && layoutContract.assertions.every(({ path }) => path?.startsWith("targets.*.result.")),
+  "layout contract assertions must apply to every declared target result",
 );
 const expectedAssets = {
   runtimeWallpaper: "assets/denia-old-days-bright.webp",
@@ -195,51 +202,15 @@ assert(
 );
 const packageDocumentation = `${packageReadme}\n${packageNotice}`;
 assert(!/同一暗色图|approval\s*\/\s*error|approval\s+and\s+error[^.\n]*(?:same|shared)/iu.test(packageDocumentation), "README/NOTICE must not claim approval and error share one image");
-for (const hash of [
-  "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
-  "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
+for (const marker of [
+  "denia-old-days@0.1.0",
+  "sidecar/layout-contract.json",
+  "sidecar/scripts/verify.sh",
+  "SHA256SUMS",
+  "app://-/index.html",
 ]) {
-  assert(packageNotice.includes(hash), `NOTICE must include official source SHA-256 ${hash}`);
+  assert(packageNotice.includes(marker), `NOTICE must include package boundary marker: ${marker}`);
 }
-const darkHomeNoticeMarkers = [
-  "Dark homepage",
-  "denia-home-dark.webp",
-  "source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg",
-  "4096×2304",
-  "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce",
-  "2048×1152",
-  "24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c",
-];
-for (const marker of darkHomeNoticeMarkers) {
-  assert(packageNotice.includes(marker), `NOTICE must include dark-home provenance marker: ${marker}`);
-}
-const darkHomeNoticeLine = packageNotice.split("\n").find((line) => line.includes("denia-home-dark.webp")) || "";
-assert(!/https?:\/\//u.test(darkHomeNoticeLine), "dark-home NOTICE entry must not invent a public source URL");
-const rightSidebarNoticeMarkers = [
-  "Right sidebar portrait",
-  "denia-right-sidebar.webp",
-  "1080×1920",
-  "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296",
-  "640×1600",
-  "2f26b9623ad2df363479ee9c6895a718b7e8f158ed3bc65d747b9bebd386231c",
-];
-for (const marker of rightSidebarNoticeMarkers) {
-  assert(packageNotice.includes(marker), `NOTICE must include right-sidebar provenance marker: ${marker}`);
-}
-const rightSidebarWideNoticeMarkers = [
-  "Right sidebar wide scene",
-  "denia-right-sidebar-wide.webp",
-  "1840×1080",
-  "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed",
-  "30b632c8d45f12e757d6be96dd07e18b7aba2e53beb4541bae755fa75fb6e629",
-];
-for (const marker of rightSidebarWideNoticeMarkers) {
-  assert(packageNotice.includes(marker), `NOTICE must include wide right-sidebar provenance marker: ${marker}`);
-}
-assert(
-  packageNotice.includes("No ownership of, or redistribution license for, the official material is claimed."),
-  "NOTICE must explicitly apply the no-ownership/no-redistribution-license disclaimer to official material",
-);
 
 const bundleRoot = path.resolve(root, "..");
 let bundleManifest = null;
@@ -253,25 +224,22 @@ if (bundleManifest) {
     fs.readFile(path.join(bundleRoot, "NOTICE.md"), "utf8"),
     fs.readFile(path.join(bundleRoot, "README.md"), "utf8"),
   ]);
-  for (const marker of darkHomeNoticeMarkers) {
-    assert(bundleNotice.includes(marker), `top-level NOTICE must include dark-home provenance marker: ${marker}`);
-  }
-  for (const marker of rightSidebarNoticeMarkers) {
-    assert(bundleNotice.includes(marker), `top-level NOTICE must include right-sidebar provenance marker: ${marker}`);
-  }
-  for (const marker of rightSidebarWideNoticeMarkers) {
-    assert(bundleNotice.includes(marker), `top-level NOTICE must include wide right-sidebar provenance marker: ${marker}`);
-  }
-  assert(
-    bundleNotice.includes("No ownership of, or redistribution license for, official material is claimed."),
-    "top-level NOTICE must disclaim ownership and redistribution rights for official material",
-  );
+  assert(bundleNotice === packageNotice, "top-level NOTICE must match the canonical Sidecar notice");
   assert(bundleManifest.summary.includes("暖色 P2 拍立得") && bundleManifest.summary.includes("深色全景首页"), "release summary must name both light P2 and dark panoramic home treatments");
   assert(bundleManifest.description.includes("浅色模式") && bundleManifest.description.includes("深色模式"), "release description must distinguish the light and dark homepage treatments");
   assert(bundleManifest.description.includes("原生右侧栏"), "release description must name the native right sidebar portrait skin");
   assert(bundleManifest.description.includes("拖拽") && bundleManifest.description.includes("宽幅舞台"), "release description must name the responsive wide sidebar treatment");
   assert(bundleManifest.theme?.recommendedNativeAppearance === "light", "release manifest must preserve the recommended light native appearance");
-  assert(bundleReadme.includes("warm P2 polaroid homepage") && bundleReadme.includes("dark panoramic homepage"), "package README must describe both homepage treatments");
+  assert(bundleReadme.startsWith("<!-- kaboo-theme-readme:v1 -->\n"), "package README must use the Kaboo v1 marker");
+  for (const heading of [
+    "## Runtime dependencies",
+    "## Rendering architecture",
+    "## Layout verification",
+    "## AI adaptation fallback",
+    "## Troubleshooting",
+  ]) {
+    assert(bundleReadme.includes(heading), `package README must include ${heading}`);
+  }
 }
 
 const runtimeTokens = [

@@ -3,6 +3,7 @@
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd -P)/common.sh"
 
+[ "$#" -eq 0 ] || fail "start.sh does not accept arguments"
 [ -d "$INSTALL_DIR" ] || fail "Extension is not installed at $INSTALL_DIR"
 ensure_state_root
 PORT="$(resolve_port)"
@@ -63,11 +64,9 @@ fi
 
 for _ in 1 2 3 4 5 6 7 8; do
   if launch_job_running && [ -f "$RUNTIME_STATE" ] && /usr/bin/grep -q '"status": "running"' "$RUNTIME_STATE"; then
-    if "$NODE" "$INSTALL_DIR/runtime/loader.mjs" --verify --extension-dir "$INSTALL_DIR" --port "$PORT" >/dev/null; then
-      PID="$(json_number_field "$RUNTIME_STATE" pid || true)"
-      /usr/bin/printf 'Denia Old Days extension LaunchAgent is active (pid=%s, port=%s).\n' "$PID" "$PORT"
-      exit 0
-    fi
+    PID="$(json_number_field "$RUNTIME_STATE" pid || true)"
+    /usr/bin/printf 'Denia Old Days extension LaunchAgent is active (pid=%s, port=%s).\n' "$PID" "$PORT"
+    exit 0
   fi
   /bin/sleep 0.5
 done

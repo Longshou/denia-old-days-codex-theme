@@ -216,7 +216,7 @@ const sidecarStartIndex = localLauncher.indexOf(
   sidecarPathIndex,
 );
 const sidecarVerifyIndex = localLauncher.indexOf(
-  'PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/verify.sh" --home',
+  'PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/verify.sh"',
   sidecarStartIndex,
 );
 if (
@@ -249,8 +249,8 @@ for (const [label, sourceText] of [
 for (const marker of [
   "暖色 P2 拍立得",
   "深色全景首页",
-  "warm P2 polaroid homepage",
-  "dark panoramic homepage",
+  "<!-- kaboo-theme-readme:v1 -->",
+  "## Layout verification",
 ]) {
   if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing theme description: ${marker}`);
 }

@@ -192,6 +192,6 @@ start_injector
 
 /usr/bin/printf '%s\n' "Starting the Denia theme extension…"
 PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/start.sh"
-PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/verify.sh" --home
+PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/verify.sh"
 /usr/bin/osascript -e 'tell application id "com.openai.codex" to activate' >/dev/null 2>&1 || true
 /usr/bin/printf '%s\n' "Denia themed Codex is active."

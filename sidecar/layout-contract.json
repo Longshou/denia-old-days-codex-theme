@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "packageId": "denia-old-days",
   "packageVersion": "0.1.0",
+  "coordinateSpace": "css-pixel",
   "requiredTargets": [
     {
       "id": "home-desktop",
@@ -34,6 +35,50 @@
         "width": 390,
         "height": 844
       }
+    }
+  ],
+  "assertions": [
+    {
+      "id": "extension-active",
+      "type": "equals",
+      "path": "targets.*.result.extensionActive",
+      "expected": true
+    },
+    {
+      "id": "surface-matches",
+      "type": "equals",
+      "path": "targets.*.result.surfaceMatches",
+      "expected": true
+    },
+    {
+      "id": "viewport-matches",
+      "type": "equals",
+      "path": "targets.*.result.viewportMatches",
+      "expected": true
+    },
+    {
+      "id": "no-horizontal-overflow",
+      "type": "equals",
+      "path": "targets.*.result.overflowX",
+      "expected": false
+    },
+    {
+      "id": "composer-visible",
+      "type": "equals",
+      "path": "targets.*.result.composerVisible",
+      "expected": true
+    },
+    {
+      "id": "route-layout-pass",
+      "type": "equals",
+      "path": "targets.*.result.layoutPass",
+      "expected": true
+    },
+    {
+      "id": "target-pass",
+      "type": "equals",
+      "path": "targets.*.result.pass",
+      "expected": true
     }
   ]
 }

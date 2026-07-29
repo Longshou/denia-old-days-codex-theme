@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
-import sharp from "sharp";
 import { RELEASE_COPY_SOURCES } from "./release-inputs.mjs";
 
 const sourceRoot = path.resolve(import.meta.dirname, "..");
@@ -78,47 +77,44 @@ const manifest = {
   },
 };
 
-const packageReadme = `# 达妮娅 · 旧日斑斓
+const packageReadme = `<!-- kaboo-theme-readme:v1 -->
+# 达妮娅 · 旧日斑斓
 
-Kaboo Codex Dream Skin local package \`${id}@${version}\`.
+Kaboo Codex Dream Skin package \`${id}@${version}\`. The installed runtime must match the package identity and the minimum Dream Skin version declared in \`sidecar/extension.json\`.
 
-The Base Theme provides the warm paper environment. The removable Sidecar adds a warm P2 polaroid homepage in light mode, an independent dark panoramic homepage, iridescent bubbles, native action proxies, diary cards, composer treatment, an emotion-aware right artwork rail, and a shared portrait skin for the native right sidebar in both appearance modes.
+## Runtime dependencies
 
-The task rail uses warm garden-and-bubbles artwork for staged and working; approval uses the official dual-form vertical artwork; error uses the separate official anniversary exhibition artwork with a complete unsmiling face and tense raised-arm movement; complete uses the bright anniversary direct-gaze crop. It stays behind the native task UI without changing workspace or composer geometry, hides below 920px, and honors reduced-motion and reduced-transparency preferences.
+- macOS on Apple Silicon or Intel.
+- Codex Desktop with Kaboo's versioned Dream Skin runtime.
+- Dream Skin runtime requirement: \`>=1.2.0\`.
+- Kaboo CLI with the \`codex-theme\` command surface.
+- Node.js 20 or newer for the package-local validator.
 
-This package does not modify Codex.app, app.asar, code signatures, accounts, models, or API configuration. It makes no runtime network request.
+## Rendering architecture
+
+\`theme/\` provides the portable base wallpaper and palette. \`sidecar/\` adds the removable \`cdp-loopback-v1\` component layer to the exact \`app://-/index.html\` renderer. Runtime artwork is package-local, no remote asset request is made, and the package does not modify the Codex application.
+
+## Layout verification
+
+The machine-readable contract is \`sidecar/layout-contract.json\`. It covers \`home-desktop\`, \`home-narrow\`, \`task-desktop\`, and \`task-narrow\`. After installation, run the exact verifier:
+
+Installed verification command: \`kaboo-cli codex-theme verify ${id}\`.
 
 \`\`\`bash
-kaboo-cli codex-theme install-local /absolute/path/to/catalog-version.json
-kaboo-cli codex-theme status ${id}
-\`\`\`
-
-If the verified Dream Skin loopback endpoint is not ready, installation leaves the theme prepared and does not restart Codex. Start the user-authorized Dream Skin session, then run:
-
-\`\`\`bash
-kaboo-cli codex-theme activate ${id}
 kaboo-cli codex-theme verify ${id}
 \`\`\`
-`;
 
-const artworkNotice = `# Artwork, source, and IP notice
+For visual review, run \`kaboo-cli codex-theme preview-local /absolute/path/to/catalog-version.json --target <target-id>\` once for every declared target while the matching Codex surface is open.
 
-Denia Old Days is an internal, unofficial fan theme. It is not affiliated with, endorsed by, or sponsored by OpenAI, Kuro Games, or the Wuthering Waves rights holders. No ownership of, or redistribution license for, official material is claimed.
+## AI adaptation fallback
 
-The package contains local WebP derivatives of reviewed official published artwork:
+If a Codex update changes native selectors or layout behavior, repair the canonical theme source, rebuild the package, and publish a new semantic version. Do not edit the installed immutable copy or teach Kaboo to emulate a retired runtime state schema.
 
-- Old Days in Color homepage story exception: \`d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd\`.
-- Dark homepage (\`denia-home-dark.webp\`): a confirmed official-published X original archived from the visual library at \`source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg\`; source 4096×2304, source SHA-256 \`b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce\`; runtime derivative 2048×1152, derivative SHA-256 \`24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c\`.
-- Right sidebar portrait (\`denia-right-sidebar.webp\`): an official-published Denia video frame; source 1080×1920, source SHA-256 \`1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296\`; runtime derivative 640×1600, derivative SHA-256 \`2f26b9623ad2df363479ee9c6895a718b7e8f158ed3bc65d747b9bebd386231c\`.
-- Right sidebar wide scene (\`denia-right-sidebar-wide.webp\`): a reviewed official-published stage composition promoted from \`production-ready/dark-stage-complete.jpg\`; source 1840×1080, source SHA-256 \`d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed\`; runtime derivative 1840×1080, derivative SHA-256 \`30b632c8d45f12e757d6be96dd07e18b7aba2e53beb4541bae755fa75fb6e629\`.
-- Warm garden and bubbles rail: \`481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b\`.
-- Approval dual-form vertical rail: \`3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0\`.
-- Separate error anniversary exhibition rail cropped around the complete unsmiling face and tense raised-arm pose: \`42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4\`.
-- Anniversary complete rail: \`dea27e716f9561131e2b5255ea60a84de2512e8e81886073f09c64e02739fc6e\`.
+## Troubleshooting
 
-The old dark direct-gaze source \`aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292\` remains only as a legacy source in the source repository; it is not the current approval or error runtime artwork.
-
-Character PV and combat-demo frames are not used. Promotional text and logos are excluded from runtime crops. Registry publication remains blocked on a separate rights review.
+- A \`prepared\` install needs the explicit \`kaboo-cli codex-theme activate ${id} --restart\` flow before verification.
+- If a task target cannot be opened, open one existing Codex task and rerun its preview.
+- A layout assertion failure must be fixed in source and rebuilt; do not bypass \`sidecar/scripts/verify.sh\`.
 `;
 
 function run(command, commandArgs, options = {}) {
@@ -189,21 +185,15 @@ try {
   await fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.themeBackground), path.join(bundleDir, "theme/background.jpg"));
 
   await Promise.all([
-    sharp(releaseSource(RELEASE_COPY_SOURCES.homePreview))
-      .resize({ width: 1600, withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toFile(path.join(bundleDir, "previews/home.webp")),
-    sharp(releaseSource(RELEASE_COPY_SOURCES.taskPreview))
-      .resize({ width: 1600, withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toFile(path.join(bundleDir, "previews/task.webp")),
+    fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.homePreview), path.join(bundleDir, "previews/home.webp")),
+    fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.taskPreview), path.join(bundleDir, "previews/task.webp")),
   ]);
 
   await writeJson(path.join(bundleDir, "kaboo-package.json"), manifest);
   await fs.writeFile(path.join(bundleDir, "README.md"), packageReadme);
   await fs.copyFile(releaseSource(RELEASE_COPY_SOURCES.license), path.join(bundleDir, "LICENSE"));
   const sidecarNotice = await fs.readFile(releaseSource(RELEASE_COPY_SOURCES.notice), "utf8");
-  await fs.writeFile(path.join(bundleDir, "NOTICE.md"), `${artworkNotice}\n${sidecarNotice.trim()}\n`);
+  await fs.writeFile(path.join(bundleDir, "NOTICE.md"), `${sidecarNotice.trim()}\n`);
 
   run(process.execPath, [
     path.join(bundleDir, "sidecar/tests/validate.mjs"),

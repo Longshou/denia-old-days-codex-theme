@@ -67,7 +67,10 @@ if (
   layoutContract.schemaVersion !== 1
   || layoutContract.packageId !== manifest.id
   || layoutContract.packageVersion !== manifest.version
+  || layoutContract.coordinateSpace !== "css-pixel"
   || JSON.stringify(layoutContract.requiredTargets) !== JSON.stringify(expectedLayoutTargets)
+  || !Array.isArray(layoutContract.assertions)
+  || layoutContract.assertions.length < 1
 ) {
   throw new Error("Unsupported or incomplete layout contract");
 }
