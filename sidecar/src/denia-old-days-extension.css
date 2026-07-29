@@ -556,6 +556,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
 }
 
 .denia-old-days-ds-extension .denia-old-days-ds-composer
+  :is(textarea, [contenteditable="true"]):focus-visible,
+.denia-old-days-ds-extension .composer-surface-chrome
   :is(textarea, [contenteditable="true"]):focus-visible {
   outline: none !important;
   outline-offset: 0 !important;
@@ -1661,6 +1663,8 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-de
 }
 
 .denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer
+  :is(textarea, [contenteditable="true"]),
+.denia-old-days-ds-extension[data-denia-theme="dark"] .composer-surface-chrome
   :is(textarea, [contenteditable="true"]) {
   color: var(--denia-dark-text) !important;
   background-color: transparent !important;

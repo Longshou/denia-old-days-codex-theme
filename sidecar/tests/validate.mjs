@@ -543,6 +543,8 @@ const composerPaintProperties = new Set([
 ]);
 const composerEditorFocusSelector =
   '.denia-old-days-ds-extension .denia-old-days-ds-composer :is(textarea, [contenteditable="true"]):focus-visible';
+const nativeComposerEditorFocusSelector =
+  '.denia-old-days-ds-extension .composer-surface-chrome :is(textarea, [contenteditable="true"]):focus-visible';
 const composerShellFocusSelector =
   '.denia-old-days-ds-extension .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible)';
 const lightWorkspaceComposerSelector =
@@ -552,6 +554,10 @@ const darkWorkspaceComposerSelector =
 const darkComposerShellFocusSelector =
   '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible)';
 assertCssDeclarations(stylesheetRules, composerEditorFocusSelector, {
+  outline: "none !important",
+  "outline-offset": "0 !important",
+});
+assertCssDeclarations(stylesheetRules, nativeComposerEditorFocusSelector, {
   outline: "none !important",
   "outline-offset": "0 !important",
 });
@@ -571,6 +577,8 @@ assertCssDeclarations(stylesheetRules, darkComposerShellFocusSelector, {
 });
 const darkComposerPlaceholderSelector =
   '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer textarea::placeholder';
+const darkNativeComposerEditorSelector =
+  '.denia-old-days-ds-extension[data-denia-theme="dark"] .composer-surface-chrome :is(textarea, [contenteditable="true"])';
 const darkHomeComposerSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-denia-theme="dark"] .denia-old-days-ds-composer';
 const darkTaskComposerSelector =
@@ -594,6 +602,10 @@ for (const rule of stylesheetRules) {
 assertCssDeclarations(stylesheetRules, darkComposerPlaceholderSelector, {
   color: "var(--denia-dark-text-muted) !important",
   opacity: "1",
+});
+assertCssDeclarations(stylesheetRules, darkNativeComposerEditorSelector, {
+  color: "var(--denia-dark-text) !important",
+  "background-color": "transparent !important",
 });
 assert(
   !stylesheetRules.some((rule) =>
