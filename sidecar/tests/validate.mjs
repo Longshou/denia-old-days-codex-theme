@@ -51,6 +51,7 @@ assert(manifest.entrypoints?.runtime === "src/denia-old-days-extension.js", "une
 const expectedAssets = {
   runtimeWallpaper: "assets/denia-old-days-bright.webp",
   darkHomeArtwork: "assets/denia-home-dark.webp",
+  rightSidebarArtwork: "assets/denia-right-sidebar.webp",
   taskWarmArtwork: "assets/denia-task-warm.webp",
   taskApprovalArtwork: "assets/denia-task-approval.webp",
   taskErrorArtwork: "assets/denia-task-error.webp",
@@ -211,6 +212,7 @@ const runtimeTokens = [
   "__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_DARK_HOME_ART_JSON__",
+  "__DENIA_OLD_DAYS_EXTENSION_RIGHT_SIDEBAR_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__",
   "__DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__",
@@ -257,6 +259,10 @@ for (const assetKey of Object.keys(expectedAssets)) {
 }
 assert(loader.includes("--denia-old-days-art-bright"), "live verification must read bright artwork variable");
 assert(loader.includes("--denia-old-days-art-dark"), "live verification must read dark home artwork variable");
+assert(
+  loader.includes("--denia-old-days-art-right-sidebar"),
+  "live verification must read right sidebar artwork variable",
+);
 assert(loader.includes("denia-old-days-ds-home-visuals"), "loader cleanup and verification must recognize the out-of-flow home visual layer");
 assert(loader.includes("homeLayoutPreserved"), "live verification must enforce native home layout preservation");
 assert(loader.includes("composerViewportPass"), "live verification must keep the home composer inside the viewport");
@@ -2320,15 +2326,24 @@ function assertNativeRightSidebarLifecycle(payload) {
 }
 
 function assertRuntimeArtworkLifecycle(payload) {
-  const propertyNames = ["bright", "dark", "task-warm", "task-approval", "task-error", "task-complete"]
+  const propertyNames = [
+    "bright",
+    "dark",
+    "right-sidebar",
+    "task-warm",
+    "task-approval",
+    "task-error",
+    "task-complete",
+  ]
     .map((name) => `--denia-old-days-art-${name}`);
+  const artworkKeys = "bright,dark,rightSidebar,taskWarm,taskApproval,taskError,taskComplete";
   const successful = createRuntimeHarness((index) => `blob:denia-${index + 1}`);
 
   vm.runInContext(payload, successful.context, { timeout: 1000 });
   const firstState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const firstArtworkMaps = successful.freezeCalls.filter((value) =>
-    Object.keys(value).join(",") === "bright,dark,taskWarm,taskApproval,taskError,taskComplete");
-  assert(successful.created.length === 6, "runtime install must create six artwork URLs");
+    Object.keys(value).join(",") === artworkKeys);
+  assert(successful.created.length === 7, "runtime install must create seven artwork URLs");
   assert(firstArtworkMaps.length === 1 && Object.isFrozen(firstArtworkMaps[0]), "runtime must freeze the artwork URL map");
   assert(firstState?.artReady === true, "runtime artReady must be true when every artwork URL succeeds");
   assert(
@@ -2338,8 +2353,8 @@ function assertRuntimeArtworkLifecycle(payload) {
   );
   assert(!publicStateContainsUrl(firstState), "runtime public state must not expose artwork URLs");
   assert(
-    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 6,
-    "runtime install must set exactly six CSS artwork variables",
+    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 7,
+    "runtime install must set exactly seven CSS artwork variables",
   );
   for (const [index, property] of propertyNames.entries()) {
     assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 1}")`, `runtime install must set ${property}`);
@@ -2349,35 +2364,35 @@ function assertRuntimeArtworkLifecycle(payload) {
   vm.runInContext(payload, successful.context, { timeout: 1000 });
   const secondState = successful.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
   const secondArtworkMaps = successful.freezeCalls.filter((value) =>
-    Object.keys(value).join(",") === "bright,dark,taskWarm,taskApproval,taskError,taskComplete");
-  assert(successful.created.length === 12, "runtime reinstall must create six replacement artwork URLs");
+    Object.keys(value).join(",") === artworkKeys);
+  assert(successful.created.length === 14, "runtime reinstall must create seven replacement artwork URLs");
   assert(secondArtworkMaps.length === 2 && secondArtworkMaps.every(Object.isFrozen), "runtime reinstall must freeze its replacement artwork URL map");
-  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3,blob:denia-4,blob:denia-5,blob:denia-6", "runtime reinstall must revoke previous artwork URLs");
-  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-7");
+  assert(successful.revoked.join(",") === "blob:denia-1,blob:denia-2,blob:denia-3,blob:denia-4,blob:denia-5,blob:denia-6,blob:denia-7", "runtime reinstall must revoke previous artwork URLs");
+  const firstReplacementCreate = successful.events.indexOf("create:blob:denia-8");
   const reinstallCleanupEvents = successful.events.slice(firstInstallEventCount, firstReplacementCreate);
   assert(propertyNames.every((property) => reinstallCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime reinstall must remove each previous CSS artwork variable before creating replacements");
   assert(
     reinstallCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",")
-      === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3,revoke:blob:denia-4,revoke:blob:denia-5,revoke:blob:denia-6",
+      === "revoke:blob:denia-1,revoke:blob:denia-2,revoke:blob:denia-3,revoke:blob:denia-4,revoke:blob:denia-5,revoke:blob:denia-6,revoke:blob:denia-7",
     "runtime reinstall must clean previous artwork URLs before creating replacements",
   );
   assert(
-    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 12,
-    "runtime reinstall must set exactly six replacement CSS artwork variables",
+    successful.events.filter((event) => propertyNames.some((property) => event.startsWith(`set:${property}:`))).length === 14,
+    "runtime reinstall must set exactly seven replacement CSS artwork variables",
   );
   assert(secondState?.artReady === true && !publicStateContainsUrl(secondState), "runtime reinstall must retain ready state without exposing URLs");
   for (const [index, property] of propertyNames.entries()) {
-    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 7}")`, `runtime reinstall must reset ${property}`);
+    assert(successful.root.style.getPropertyValue(property) === `url("blob:denia-${index + 8}")`, `runtime reinstall must reset ${property}`);
   }
 
   const finalCleanupEventCount = successful.events.length;
   secondState.cleanup();
   const finalCleanupEvents = successful.events.slice(finalCleanupEventCount);
-  assert(successful.revoked.join(",") === Array.from({ length: 12 }, (_value, index) => `blob:denia-${index + 1}`).join(","), "runtime cleanup must revoke current artwork URLs");
+  assert(successful.revoked.join(",") === Array.from({ length: 14 }, (_value, index) => `blob:denia-${index + 1}`).join(","), "runtime cleanup must revoke current artwork URLs");
   assert(propertyNames.every((property) => finalCleanupEvents.filter((event) => event === `remove:${property}`).length === 1), "runtime cleanup must remove each current CSS artwork variable exactly once");
   assert(
     finalCleanupEvents.filter((event) => event.startsWith("revoke:")).join(",")
-      === "revoke:blob:denia-7,revoke:blob:denia-8,revoke:blob:denia-9,revoke:blob:denia-10,revoke:blob:denia-11,revoke:blob:denia-12",
+      === "revoke:blob:denia-8,revoke:blob:denia-9,revoke:blob:denia-10,revoke:blob:denia-11,revoke:blob:denia-12,revoke:blob:denia-13,revoke:blob:denia-14",
     "runtime cleanup must revoke each current artwork URL exactly once",
   );
   assert(propertyNames.every((property) => successful.root.style.getPropertyValue(property) === ""), "runtime cleanup must remove every CSS artwork variable");
@@ -3396,6 +3411,7 @@ function assertLiveTaskVerification(loaderSource) {
           return {
             getPropertyValue: (name) => ({
               "--denia-old-days-art-bright": 'url("blob:bright")',
+              "--denia-old-days-art-right-sidebar": 'url("blob:right-sidebar")',
               "--denia-old-days-art-task-warm": 'url("blob:warm")',
               "--denia-old-days-art-task-approval": 'url("blob:approval")',
               "--denia-old-days-art-task-error": 'url("blob:error")',
