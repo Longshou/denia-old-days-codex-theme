@@ -519,7 +519,20 @@ const composerPaintProperties = new Set([
   "color",
   "filter",
   "opacity",
+  "outline",
+  "outline-offset",
 ]);
+const composerEditorFocusSelector =
+  '.denia-old-days-ds-extension .denia-old-days-ds-composer :is(textarea, [contenteditable="true"]):focus-visible';
+const composerShellFocusSelector =
+  '.denia-old-days-ds-extension .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible)';
+assertCssDeclarations(stylesheetRules, composerEditorFocusSelector, {
+  outline: "none !important",
+  "outline-offset": "0 !important",
+});
+assertCssDeclarations(stylesheetRules, composerShellFocusSelector, {
+  "box-shadow": "inset 0 0 0 2px rgba(111, 184, 231, .86), 0 16px 40px rgba(38, 53, 72, .14) !important",
+});
 const darkComposerPlaceholderSelector =
   '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-composer textarea::placeholder';
 const darkHomeComposerSelector =
@@ -1089,7 +1102,9 @@ assertCssDeclarations(stylesheetRules, darkNativeSidebarGroupSelector, {
   "box-shadow": "none",
 });
 assertCssDeclarations(stylesheetRules, nativeSidebarRowSelector, {
-  background: "rgba(255, 254, 252, .64)",
+  background: "transparent !important",
+  "border-color": "transparent !important",
+  "box-shadow": "none",
 });
 assertCssDeclarations(stylesheetRules, nativeLeftSidebarHostSelector, {
   color: "var(--denia-ink) !important",
@@ -1117,9 +1132,8 @@ assert(
   "native sidebar group must not draw an outer container",
 );
 assert(
-  rgbaAlpha(nativeSidebarRowRule.declarations.get("background")) >= .6
-    && rgbaAlpha(nativeSidebarRowRule.declarations.get("background")) <= .68,
-  "native sidebar rows must preserve text readability without hiding the portrait",
+  canonicalCssValue(nativeSidebarRowRule.declarations.get("background")) === "transparent!important",
+  "native sidebar rows must not draw persistent option containers",
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 const darkTaskMainReadabilityRoot =
@@ -2130,12 +2144,30 @@ function assertNativeRightSidebarLifecycle(payload) {
     "an open native sidebar must expose its measured stable width for close alignment",
   );
   assert(
+    open.root.dataset.deniaSidebarLayout === "compact"
+      && aside.style.getPropertyValue("--denia-sidebar-wide-progress") === "0",
+    "a 334px native sidebar must use the compact portrait state",
+  );
+  assert(
     open.root.style.getPropertyValue("--denia-thread-content-width") === "1482px",
     "task layout must expose a stable full-width thread content measurement",
   );
   assert(group.classList.contains("denia-old-days-ds-native-sidebar-group"), "the smallest common row ancestor must receive the group class");
   assert(firstRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "wide visible sidebar buttons must receive the row class");
   assert(secondRow.classList.contains("denia-old-days-ds-native-sidebar-row"), "wide visible sidebar links must receive the row class");
+  const sidebarArt = aside.querySelector(".denia-old-days-ds-native-sidebar-art");
+  assert(
+    sidebarArt
+      && sidebarArt.getAttribute("aria-hidden") === "true"
+      && sidebarArt.children.length === 4
+      && state.ownedNodes.has(sidebarArt),
+    "an open sidebar must receive one owned four-layer visual surface",
+  );
+  assert(
+    ["portrait", "wide-ambient", "wide-scene", "scrim"].every((name) =>
+      Boolean(sidebarArt.querySelector(`.denia-old-days-ds-native-sidebar-art-${name}`))),
+    "the sidebar visual surface must contain portrait, ambient, scene, and scrim layers",
+  );
   assert(!leftAside.classList.contains("denia-old-days-ds-native-right-sidebar"), "left navigation must never be skinned as the right sidebar");
   assert(leftAside.classList.contains("denia-old-days-ds-native-left-sidebar"), "the left navigation must receive its dedicated high-contrast skin class");
   assert(!dialog.classList.contains("denia-old-days-ds-native-right-sidebar"), "dialogs and menus must never be classified as the right sidebar");
@@ -2147,6 +2179,30 @@ function assertNativeRightSidebarLifecycle(payload) {
   for (const [node, attributes, before, label] of nativeSnapshots) {
     assertNativeNodeUnchanged(node, attributes, before, label);
   }
+
+  aside.setRect({ x: 952, width: 560 });
+  assert(open.flushResizeObservers(aside) === 1, "dragging the sidebar must notify one ResizeObserver");
+  assert(open.flushAnimationFrames() === 1, "a sidebar resize must coalesce into one refresh frame");
+  assert(
+    open.root.dataset.deniaSidebarLayout === "transition"
+      && aside.style.getPropertyValue("--denia-sidebar-wide-progress") === ".3",
+    "a 560px native sidebar must expose the normalized transition state",
+  );
+
+  aside.setRect({ x: 672, width: 840 });
+  main.setRect({ width: 672 });
+  assert(open.flushResizeObservers(aside) === 1, "reaching workspace width must keep the observer attached");
+  assert(open.flushAnimationFrames() === 1, "workspace width must refresh in one frame");
+  assert(
+    open.root.dataset.deniaSidebarLayout === "workspace"
+      && aside.style.getPropertyValue("--denia-sidebar-wide-progress") === "1",
+    "an 840px native sidebar must use the complete wide scene",
+  );
+
+  aside.setRect({ x: 1178, width: 334 });
+  main.setRect({ width: 1178 });
+  assert(open.flushResizeObservers(aside) === 1, "returning to compact width must keep drag observation active");
+  assert(open.flushAnimationFrames() === 1, "returning to compact width must refresh in one frame");
 
   const rightOnlyHome = createRuntimeHarness((index) => `blob:sidebar-home-right-only-${index + 1}`);
   const rightOnlyMain = appendTaskMain(rightOnlyHome);
@@ -2163,10 +2219,12 @@ function assertNativeRightSidebarLifecycle(payload) {
   vm.runInContext(payload, rightOnlyHome.context, { timeout: 1000 });
   const rightOnlyBrand = rightOnlyHome.document.getElementById("denia-old-days-ds-sidebar-brand");
   assert(!rightOnlyBrand, "home with only a native right sidebar must not create a sidebar brand");
+  const rightOnlyNativeChildren = rightOnlyPanel.children.filter((child) =>
+    !child.classList.contains("denia-old-days-ds-native-sidebar-art"));
   assert(
-    rightOnlyPanel.children.length === rightOnlyChildren.length
-      && rightOnlyPanel.children.every((child, index) => child === rightOnlyChildren[index]),
-    "home branding must not change native right sidebar children",
+    rightOnlyNativeChildren.length === rightOnlyChildren.length
+      && rightOnlyNativeChildren.every((child, index) => child === rightOnlyChildren[index]),
+    "the visual surface must preserve every native right sidebar child and its order",
   );
   assert(JSON.stringify(rightOnlyPanel.getBoundingClientRect()) === rightOnlyRect, "home branding must not change native right sidebar geometry");
 
@@ -2270,6 +2328,9 @@ function assertNativeRightSidebarLifecycle(payload) {
   assert(!("deniaSidebarToggleState" in open.root.dataset), "cleanup must remove the root sidebar toggle state marker");
   assert(!open.root.style.getPropertyValue("--denia-native-sidebar-width"), "cleanup must remove the native sidebar width snapshot");
   assert(!open.root.style.getPropertyValue("--denia-thread-content-width"), "cleanup must remove the thread content width snapshot");
+  assert(!("deniaSidebarLayout" in open.root.dataset), "cleanup must remove the responsive sidebar layout marker");
+  assert(!sidebarArt.isConnected, "cleanup must remove the owned sidebar visual surface");
+  assert(open.resizeDisconnectCount() >= 1, "cleanup must disconnect the sidebar ResizeObserver");
 
   const closed = createRuntimeHarness((index) => `blob:sidebar-closed-${index + 1}`);
   appendTaskMain(closed);
@@ -2287,6 +2348,14 @@ function assertNativeRightSidebarLifecycle(payload) {
   const openingFocusPanel = openingFocusArea.document.createElement("aside");
   openingFocusPanel.setAttribute("data-app-shell-focus-area", "right-panel");
   openingFocusPanel.setRect({ x: 1512, y: 46, width: 0, height: 813 });
+  const openingFocusList = openingFocusArea.document.createElement("ul");
+  const openingFocusItem = openingFocusArea.document.createElement("li");
+  const openingFocusRow = openingFocusArea.document.createElement("button");
+  openingFocusRow.textContent = "浏览器";
+  openingFocusRow.setRect({ x: 1512, y: 120, width: 0, height: 40 });
+  openingFocusItem.append(openingFocusRow);
+  openingFocusList.append(openingFocusItem);
+  openingFocusPanel.append(openingFocusList);
   openingFocusArea.document.body.append(openingFocusPanel);
   assert(
     openingFocusArea.flushMutations() >= 2,
@@ -2303,6 +2372,14 @@ function assertNativeRightSidebarLifecycle(payload) {
   assert(
     openingFocusPanel.classList.contains("denia-old-days-ds-native-right-sidebar"),
     "the opening focus-area sidebar must receive its skin before the next animation frame",
+  );
+  assert(
+    openingFocusRow.classList.contains("denia-old-days-ds-native-sidebar-row"),
+    "a zero-width list shortcut must become transparent before the next animation frame",
+  );
+  assert(
+    openingFocusArea.flushAnimationFrames() === 0,
+    "zero-width shortcut decoration must not wait for a deferred frame",
   );
 
   const conflicting = createRuntimeHarness((index) => `blob:sidebar-conflict-${index + 1}`);
@@ -2746,6 +2823,7 @@ function createRuntimeHarness(createObjectUrl) {
   const events = [];
   const freezeCalls = [];
   const mutationObservers = new Set();
+  const resizeObservers = new Set();
   const animationFrames = new Map();
   const timers = new Map();
   let pointTarget = null;
@@ -3132,6 +3210,27 @@ function createRuntimeHarness(createObjectUrl) {
         return records;
       }
     },
+    ResizeObserver: class {
+      constructor(callback) {
+        this.callback = callback;
+        this.targets = new Set();
+        this.disconnects = 0;
+        resizeObservers.add(this);
+      }
+
+      observe(target) {
+        this.targets.add(target);
+      }
+
+      unobserve(target) {
+        this.targets.delete(target);
+      }
+
+      disconnect() {
+        this.targets.clear();
+        this.disconnects += 1;
+      }
+    },
     URL: {
       createObjectURL(blob) {
         const value = createObjectUrl(created.length, blob);
@@ -3199,6 +3298,19 @@ function createRuntimeHarness(createObjectUrl) {
     events,
     freezeCalls,
     observerCount() { return mutationObservers.size; },
+    resizeObserverCount() { return resizeObservers.size; },
+    resizeDisconnectCount() {
+      return [...resizeObservers].reduce((total, observer) => total + observer.disconnects, 0);
+    },
+    flushResizeObservers(target) {
+      let delivered = 0;
+      for (const observer of resizeObservers) {
+        if (!observer.targets.has(target)) continue;
+        observer.callback([{ target, contentRect: target.getBoundingClientRect() }], observer);
+        delivered += 1;
+      }
+      return delivered;
+    },
     classMutationCount(node, className) {
       return classMutations.get(node)?.get(className) || 0;
     },

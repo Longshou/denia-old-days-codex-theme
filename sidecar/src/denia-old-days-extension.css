@@ -551,6 +551,28 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
   backdrop-filter: blur(18px) saturate(1.05);
 }
 
+.denia-old-days-ds-extension .denia-old-days-ds-composer
+  :is(textarea, [contenteditable="true"]):focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
+.denia-old-days-ds-extension
+  .denia-old-days-ds-composer:has(:is(textarea, [contenteditable="true"]):focus-visible) {
+  box-shadow:
+    inset 0 0 0 2px rgba(111, 184, 231, .86),
+    0 16px 40px rgba(38, 53, 72, .14) !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-layout="workspace"]
+  .denia-old-days-ds-composer {
+  border-color: rgba(111, 184, 231, .72) !important;
+  background: rgba(249, 255, 255, .95) !important;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, .82),
+    0 18px 46px rgba(38, 53, 72, .18) !important;
+}
+
 .denia-old-days-ds-send {
   border-radius: 50% !important;
   color: var(--denia-gold) !important;
@@ -677,18 +699,16 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-de
 
 .denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row {
   color: var(--denia-ink) !important;
-  background: rgba(255, 254, 252, .64);
-  border-color: rgba(111, 184, 231, .1);
+  background: transparent !important;
+  border-color: transparent !important;
   border-radius: 10px;
-  box-shadow: inset 0 0 0 1px rgba(111, 184, 231, .11);
+  box-shadow: none;
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
-.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row:hover {
-  background-color: rgba(234, 247, 247, .9);
-  box-shadow:
-    inset 0 0 0 1px rgba(111, 184, 231, .26),
-    0 5px 14px rgba(38, 53, 72, .055);
+.denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row:is(:hover, :focus-visible) {
+  background-color: rgba(234, 247, 247, .72) !important;
+  box-shadow: none;
 }
 
 .denia-old-days-ds-extension.denia-old-days-ds-home .denia-old-days-ds-native-right-sidebar {
@@ -1594,16 +1614,15 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]
 
 .denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-sidebar-row {
   color: var(--denia-dark-text) !important;
-  background: rgba(26, 28, 58, .84);
-  border-color: rgba(141, 154, 211, .2);
-  box-shadow: inset 0 0 0 1px rgba(141, 197, 234, .1);
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none;
 }
 
-.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-sidebar-row:hover {
-  background-color: var(--denia-dark-surface-raised);
-  box-shadow:
-    inset 0 0 0 1px rgba(141, 197, 234, .3),
-    0 5px 14px rgba(8, 10, 32, .16);
+.denia-old-days-ds-extension[data-denia-theme="dark"]
+  .denia-old-days-ds-native-sidebar-row:is(:hover, :focus-visible) {
+  background-color: rgba(32, 35, 72, .72) !important;
+  box-shadow: none;
 }
 
 html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]

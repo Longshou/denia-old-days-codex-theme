@@ -20,6 +20,9 @@
   const listeners = [];
   let nativeLeftSidebarPanel = null;
   let nativeSidebarPanel = null;
+  let nativeSidebarArt = null;
+  let nativeSidebarResizeObserver = null;
+  let nativeSidebarResizeTarget = null;
   let nativeHomePrompt = null;
   let taskChrome = null;
   let finalAssistantUnitKey = "";
@@ -538,6 +541,19 @@
     return null;
   }
 
+  function nativeSidebarStructuredRow(node, panel) {
+    if (isExcludedSidebarCandidate(node) || isOwnedSubtree(node)) return false;
+    const item = node.closest?.("li");
+    const list = item?.parentElement;
+    return Boolean(
+      item
+        && list
+        && (list.tagName === "UL" || list.tagName === "OL")
+        && panel.contains(item)
+        && panel.contains(list),
+    );
+  }
+
   function detectNativeLeftSidebar() {
     const mainRect = measuredRect(findMain());
     return [...document.querySelectorAll('[data-testid="sidebar"], [data-slot="sidebar"], aside, nav')]
@@ -561,24 +577,99 @@
 
   function clearNativeRightSidebarClasses() {
     syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
+    removeStyleProperty(nativeSidebarPanel, "--denia-sidebar-wide-progress");
     for (const group of nativeSidebarGroups) syncClass(group, "denia-old-days-ds-native-sidebar-group", false);
     for (const row of nativeSidebarRows) syncClass(row, "denia-old-days-ds-native-sidebar-row", false);
+    clearNativeSidebarArt();
+    syncNativeSidebarResizeTarget(null);
     nativeSidebarPanel = null;
     nativeSidebarGroups.clear();
     nativeSidebarRows.clear();
   }
 
+  function clearNativeSidebarArt() {
+    if (!nativeSidebarArt) return;
+    for (const node of [nativeSidebarArt, ...nativeSidebarArt.querySelectorAll("*")].reverse()) {
+      node.remove();
+      ownedNodes.delete(node);
+    }
+    nativeSidebarArt = null;
+  }
+
+  function ensureNativeSidebarArt(panel) {
+    if (nativeSidebarArt?.isConnected && nativeSidebarArt.parentElement === panel) {
+      return nativeSidebarArt;
+    }
+    clearNativeSidebarArt();
+    const art = own(document.createElement("div"));
+    art.className = "denia-old-days-ds-native-sidebar-art";
+    art.setAttribute("aria-hidden", "true");
+    for (const name of ["portrait", "wide-ambient", "wide-scene", "scrim"]) {
+      const layer = own(document.createElement("span"));
+      layer.className = `denia-old-days-ds-native-sidebar-art-${name}`;
+      art.append(layer);
+    }
+    panel.prepend(art);
+    nativeSidebarArt = art;
+    return art;
+  }
+
+  function syncNativeSidebarResizeTarget(panel) {
+    if (nativeSidebarResizeTarget === panel) return;
+    if (nativeSidebarResizeObserver && nativeSidebarResizeTarget) {
+      nativeSidebarResizeObserver.disconnect();
+    }
+    nativeSidebarResizeTarget = panel;
+    if (!panel || typeof ResizeObserver !== "function") return;
+    if (!nativeSidebarResizeObserver) {
+      nativeSidebarResizeObserver = new ResizeObserver(() => {
+        scheduleRefresh(DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES);
+      });
+    }
+    nativeSidebarResizeObserver.observe(panel);
+  }
+
   function syncNativeSidebarPanel(nextPanel) {
     if (nativeSidebarPanel !== nextPanel) {
       syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
+      removeStyleProperty(nativeSidebarPanel, "--denia-sidebar-wide-progress");
+      clearNativeSidebarArt();
+      syncNativeSidebarResizeTarget(null);
       nativeSidebarPanel = nextPanel
         ? touch(nextPanel, "denia-old-days-ds-native-right-sidebar")
         : null;
+      if (nativeSidebarPanel) {
+        ensureNativeSidebarArt(nativeSidebarPanel);
+        syncNativeSidebarResizeTarget(nativeSidebarPanel);
+      }
       return;
     }
     if (nextPanel && !nextPanel.classList.contains("denia-old-days-ds-native-right-sidebar")) {
       touch(nextPanel, "denia-old-days-ds-native-right-sidebar");
     }
+    if (nextPanel) {
+      ensureNativeSidebarArt(nextPanel);
+      syncNativeSidebarResizeTarget(nextPanel);
+    }
+  }
+
+  function sidebarLayoutForWidth(width) {
+    const measuredWidth = Number.isFinite(width) ? width : 0;
+    const progress = Math.min(1, Math.max(0, (measuredWidth - 440) / 400));
+    return {
+      layout: measuredWidth <= 440
+        ? "compact"
+        : measuredWidth >= 840
+          ? "workspace"
+          : "transition",
+      progress,
+    };
+  }
+
+  function serializedSidebarProgress(progress) {
+    if (progress <= 0) return "0";
+    if (progress >= 1) return "1";
+    return String(Math.round(progress * 1000) / 1000).replace(/^0/u, "");
   }
 
   function syncNativeSidebarClassSet(currentNodes, nextNodes, className) {
@@ -617,9 +708,14 @@
     const nextRows = new Set();
     if (result.state === "open" && result.confidence === "high" && result.panel && result.panelRect) {
       const { panel, panelRect } = result;
-      root.style.setProperty("--denia-native-sidebar-width", `${panelRect.width}px`);
+      if (panelRect.width > 0) {
+        root.style.setProperty("--denia-native-sidebar-width", `${panelRect.width}px`);
+      }
       nextPanel = panel;
-      const rowCandidates = [...panel.querySelectorAll('button, a, [role="button"]')].filter((node) => {
+      const interactiveCandidates = [...panel.querySelectorAll('button, a, [role="button"]')];
+      const structuredRows = interactiveCandidates.filter((node) =>
+        nativeSidebarStructuredRow(node, panel));
+      const geometryRows = interactiveCandidates.filter((node) => {
         if (!visible(node) || ownedNodes.has(node)) return false;
         const rect = measuredRect(node);
         return rect.width >= Math.min(160, panelRect.width * 0.55)
@@ -627,7 +723,12 @@
           && rect.height <= 64
           && rect.y >= panelRect.y + 44;
       });
+      const rowCandidates = [...new Set([...structuredRows, ...geometryRows])];
       for (const row of rowCandidates) nextRows.add(row);
+      const structuredLists = new Set(structuredRows.map((row) => row.closest("li")?.parentElement).filter(Boolean));
+      for (const list of structuredLists) {
+        if (!ownedNodes.has(list)) nextGroups.add(list);
+      }
       for (let firstIndex = 0; firstIndex < rowCandidates.length; firstIndex += 1) {
         for (let secondIndex = firstIndex + 1; secondIndex < rowCandidates.length; secondIndex += 1) {
           const group = nearestCommonAncestor(rowCandidates[firstIndex], rowCandidates[secondIndex], panel);
@@ -644,6 +745,19 @@
       }
     }
     syncNativeSidebarPanel(nextPanel);
+    const sidebarLayout = nextPanel
+      ? sidebarLayoutForWidth(result.panelRect?.width)
+      : null;
+    if (nextPanel && sidebarLayout) {
+      setStyleProperty(
+        nextPanel,
+        "--denia-sidebar-wide-progress",
+        serializedSidebarProgress(sidebarLayout.progress),
+      );
+      setDatasetValue(root, "deniaSidebarLayout", sidebarLayout.layout);
+    } else {
+      removeDatasetValue(root, "deniaSidebarLayout");
+    }
     syncNativeSidebarClassSet(
       nativeSidebarGroups,
       nextGroups,
@@ -664,6 +778,8 @@
       rowCount: nativeSidebarRows.size,
       togglePresent: Boolean(result.toggle),
       toggleState,
+      layout: sidebarLayout?.layout || "closed",
+      wideProgress: sidebarLayout?.progress || 0,
     };
     setDatasetValue(root, "deniaSidebarState", result.state);
     setDatasetValue(root, "deniaSidebarConfidence", result.confidence);
@@ -1726,6 +1842,7 @@
     delete root.dataset.deniaSidebarState;
     delete root.dataset.deniaSidebarConfidence;
     delete root.dataset.deniaSidebarToggleState;
+    delete root.dataset.deniaSidebarLayout;
     delete root.dataset.deniaSummaryState;
     delete root.dataset.deniaBottomPanelState;
     delete root.dataset.deniaWorkSurfaceState;
