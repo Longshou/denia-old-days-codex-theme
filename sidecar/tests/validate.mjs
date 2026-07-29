@@ -523,6 +523,11 @@ assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-prompt", 
   "z-index": "1",
   translate: "0 var(--denia-old-days-native-prompt-shift, 0)",
 });
+const pendingHomePromptSelector =
+  "html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task .denia-old-days-ds-native-home-prompt";
+assertCssDeclarations(stylesheetRules, pendingHomePromptSelector, {
+  visibility: "hidden",
+});
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-native-home-suggestions", {
   display: "none !important",
 });
@@ -5550,6 +5555,10 @@ function assertFinalReviewRegressions(payload) {
       && homeHarness.root.classList.contains("denia-old-days-ds-task"),
     "a home prompt must not activate home paint before the native home shell is ready",
   );
+  assert(
+    replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt"),
+    "a prompt-first task-to-home transition must hide the native title until the home shell is ready",
+  );
   assert(homeState.homeActive === false, "a prompt-only transition must retain task route state until refresh");
 
   homeHarness.clearMutationRecords();
@@ -5563,6 +5572,11 @@ function assertFinalReviewRegressions(payload) {
   assert(
     initialSuggestions.classList.contains("denia-old-days-ds-native-home-suggestions"),
     "dark task-to-home transitions must hide native suggestion cards before the scheduled route refresh",
+  );
+  assert(
+    replacementPrompt.classList.contains("denia-old-days-ds-native-home-prompt")
+      && replacementPrompt.style.getPropertyValue("--denia-old-days-native-prompt-shift") === "246px",
+    "dark task-to-home transitions must align the native title before the scheduled route refresh",
   );
   assert(homeState.homeActive === false, "early task-to-home paint must not bypass the scheduled route-state refresh");
   assert(homeHarness.flushAnimationFrames() === 1, "task-to-home transitions must retain one route refresh frame");

@@ -2072,6 +2072,11 @@
       syncSurfaceClasses(readySurface);
       if (readySurface !== "settings") syncNativeLeftSidebar();
     }
+    const pendingHomePaint = relevantRecords.length
+      && !state.homeActive
+      && !isHomePaintReady()
+      && isHomeView();
+    if (pendingHomePaint) syncNativeHomePrompt();
     const darkHomePaintReady = relevantRecords.length
       && root.dataset.deniaTheme === "dark"
       && isHomePaintReady()
@@ -2080,7 +2085,10 @@
       const homeMain = findMain();
       if (!state.homeActive) {
         syncSurfaceClasses("home");
+        ensureHomeHero();
+        syncHomeVisualFrame(homeMain);
       }
+      syncNativeHomePrompt();
       if (!state.homeActive
         || relevantRecords.some((record) => childListAddsButton(record, homeMain))) {
         syncNativeHomeSuggestions();

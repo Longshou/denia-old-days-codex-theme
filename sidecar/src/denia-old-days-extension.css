@@ -543,6 +543,11 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
   translate: 0 var(--denia-old-days-native-prompt-shift, 0);
 }
 
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
+  .denia-old-days-ds-native-home-prompt {
+  visibility: hidden;
+}
+
 .denia-old-days-ds-native-home-suggestions {
   display: none !important;
 }
