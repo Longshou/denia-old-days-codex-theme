@@ -322,7 +322,10 @@ html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-home[data-de
 
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task
   main .thread-scroll-container
-  [class*="mx-auto"][class*="thread-content-max-width"]:not([data-thread-scroll-footer="true"] *) {
+  [class*="mx-auto"][class*="thread-content-max-width"]:not([data-thread-scroll-footer="true"] *),
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"]
+  main .thread-scroll-container
+  [data-thread-scroll-footer="true"] [class*="mx-auto"][class*="thread-content-max-width"] {
   margin-inline-start: max(16px, calc((var(--denia-thread-content-width, 100cqw) - var(--thread-content-max-width) - var(--denia-state-rail-width)) / 2)) !important;
   margin-inline-end: auto !important;
 }

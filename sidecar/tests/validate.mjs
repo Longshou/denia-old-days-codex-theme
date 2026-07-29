@@ -1696,16 +1696,18 @@ assert(
   "dark task foreground-token paint must stay pinned to the native thread title",
 );
 const taskContentAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container [class*="mx-auto"][class*="thread-content-max-width"]:not([data-thread-scroll-footer="true"] *)';
+const taskClosedFooterAlignmentSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-sidebar-state="closed"] main .thread-scroll-container [data-thread-scroll-footer="true"] [class*="mx-auto"][class*="thread-content-max-width"]';
 const taskContentMotionSelector = 'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task main .thread-scroll-container > [class*="min-h-full"][class*="shrink-0"]';
 const taskContentAlignmentRule = findCssRule(stylesheetRules, taskContentAlignmentSelector);
 assert(
-  taskContentAlignmentRule?.selectors.length === 1,
-  "task content alignment must use one route-stable selector",
+  taskContentAlignmentRule?.selectors.length === 2
+    && taskContentAlignmentRule.selectors.includes(taskClosedFooterAlignmentSelector),
+  "task content must stay stable while the composer alignment is limited to the closed native sidebar state",
 );
 for (const rule of stylesheetRules) {
   if (!rule.selectors.some((selector) => selector.includes(".denia-old-days-ds-task"))) continue;
   for (const property of rule.declarations.keys()) {
-    if (rule.selectors.includes(taskContentAlignmentSelector)
+    if (rule === taskContentAlignmentRule
       && ["margin-inline-start", "margin-inline-end"].includes(property)) continue;
     assert(!taskLayoutProperties.test(property), `task stylesheet must not override native layout property ${property}`);
   }
