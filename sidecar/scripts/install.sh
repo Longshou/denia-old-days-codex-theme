@@ -23,6 +23,7 @@ cleanup_stage() {
 trap cleanup_stage EXIT
 for item in \
   extension.json \
+  layout-contract.json \
   assets \
   src \
   runtime \

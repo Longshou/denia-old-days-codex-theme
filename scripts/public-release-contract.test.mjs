@@ -46,6 +46,7 @@ test("Kaboo source declares the layout contract", () => {
   assert.match(loader, /Emulation\.setDeviceMetricsOverride/u);
   assert.match(loader, /layoutContract\.requiredTargets/u);
   assert.match(loader, /targets:\s*layoutResults/u);
+  assert.match(read("sidecar/scripts/install.sh"), /\n  layout-contract\.json \\\n/u);
   assert.match(read("sidecar/scripts/verify.sh"), /--verify/u);
 });
 
