@@ -945,6 +945,13 @@ const darkRightSidebarNeutralTextSelector =
   `${darkSidebarRoot} .denia-old-days-ds-native-right-sidebar ${darkSidebarNeutralTextTarget}`;
 const darkRightSidebarRowNeutralTextSelector =
   `${darkSidebarRoot} :is(.denia-old-days-ds-native-sidebar-group, .denia-old-days-ds-native-sidebar-row) ${darkSidebarNeutralTextTarget}`;
+const darkRightSidebarTokenTextSelector =
+  `${darkSidebarRoot} .denia-old-days-ds-native-right-sidebar :is(.text-token-text-primary, .text-token-text-secondary)`;
+const rightSidebarNativeSurfaceSelector =
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar .bg-token-main-surface-primary";
+assertCssDeclarations(stylesheetRules, rightSidebarNativeSurfaceSelector, {
+  "background-color": "transparent !important",
+});
 assertCssDeclarations(stylesheetRules, darkLeftSidebarInteractiveSelector, {
   color: "var(--denia-dark-text-muted) !important",
 });
@@ -952,6 +959,7 @@ for (const selector of [
   darkLeftSidebarNeutralTextSelector,
   darkRightSidebarNeutralTextSelector,
   darkRightSidebarRowNeutralTextSelector,
+  darkRightSidebarTokenTextSelector,
 ]) {
   assertCssDeclarations(stylesheetRules, selector, { color: "inherit !important" });
 }
@@ -1046,19 +1054,36 @@ for (const forbiddenSelector of [
 }
 const nativeSidebarPanelSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar";
 const nativeSidebarGroupSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group";
+const nativeSidebarRowSelector = ".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row";
+const darkNativeSidebarGroupSelector = '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-sidebar-group';
 const nativeLeftSidebarHostSelector = "html.codex-dream-skin.denia-old-days-ds-extension[data-denia-form-state][data-denia-sidebar-state][data-denia-sidebar-confidence] aside.app-shell-left-panel.denia-old-days-ds-native-left-sidebar";
 const nativeSidebarPanelRule = findCssRule(stylesheetRules, nativeSidebarPanelSelector);
 const nativeSidebarGroupRule = findCssRule(stylesheetRules, nativeSidebarGroupSelector);
+const nativeSidebarRowRule = findCssRule(stylesheetRules, nativeSidebarRowSelector);
 assert(
   !canonicalCssValue(nativeSidebarPanelRule.declarations.get("background")).includes("!important"),
   "native sidebar base shorthand must not lock background-image with !important",
 );
 assertCssDeclarations(stylesheetRules, nativeSidebarPanelSelector, {
   "background-color": "rgba(255, 252, 249, .992) !important",
-  "background-image": "linear-gradient(180deg, rgba(255, 252, 249, .98) 0%, rgba(255, 252, 249, .94) 25%, rgba(246, 251, 253, .76) 56%, rgba(225, 239, 247, .62) 100%), var(--denia-old-days-art-right-sidebar)",
+  "background-image": "linear-gradient(180deg, rgba(255, 252, 249, .78) 0%, rgba(255, 252, 249, .64) 25%, rgba(246, 251, 253, .34) 56%, rgba(225, 239, 247, .18) 100%), var(--denia-old-days-art-right-sidebar)",
   "background-position": "center bottom, center bottom",
   "background-repeat": "no-repeat, no-repeat",
   "background-size": "cover, cover",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarGroupSelector, {
+  background: "transparent !important",
+  "border-color": "transparent !important",
+  "border-radius": "0",
+  "box-shadow": "none",
+});
+assertCssDeclarations(stylesheetRules, darkNativeSidebarGroupSelector, {
+  background: "transparent !important",
+  "border-color": "transparent !important",
+  "box-shadow": "none",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarRowSelector, {
+  background: "rgba(255, 254, 252, .64)",
 });
 assertCssDeclarations(stylesheetRules, nativeLeftSidebarHostSelector, {
   color: "var(--denia-ink) !important",
@@ -1073,13 +1098,22 @@ assert(
   "home sidebar background-image must follow and override the unlocked base image",
 );
 assert(
+  canonicalCssValue(nativeSidebarHomeRule.declarations.get("background-image"))
+    === canonicalCssValue("linear-gradient(180deg, rgba(255, 252, 249, .82) 0%, rgba(255, 252, 249, .68) 28%, rgba(246, 251, 253, .38) 58%, rgba(225, 239, 247, .2) 100%), var(--denia-old-days-art-right-sidebar)"),
+  "home sidebar scrim must keep the portrait visible in light mode",
+);
+assert(
   rgbaAlpha(nativeSidebarPanelRule.declarations.get("background-color")) >= .97,
   "native sidebar panel surface must be at least .97 opaque",
 );
-const nativeSidebarGroupAlpha = rgbaAlpha(nativeSidebarGroupRule.declarations.get("background"));
 assert(
-  nativeSidebarGroupAlpha >= .86 && nativeSidebarGroupAlpha <= .94,
-  "native sidebar group surface must stay readable while revealing the portrait",
+  canonicalCssValue(nativeSidebarGroupRule.declarations.get("background")) === "transparent!important",
+  "native sidebar group must not draw an outer container",
+);
+assert(
+  rgbaAlpha(nativeSidebarRowRule.declarations.get("background")) >= .6
+    && rgbaAlpha(nativeSidebarRowRule.declarations.get("background")) <= .68,
+  "native sidebar rows must preserve text readability without hiding the portrait",
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 const darkTaskMainReadabilityRoot =
@@ -1597,9 +1631,12 @@ for (const [selector, background] of [
   [".denia-old-days-ds-composer", "#f9ffff !important"],
   [".denia-old-days-ds-final-card", "#fffdf1 !important"],
   [".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar", "#fffdf9 !important"],
-  [".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group", "#fffdf9 !important"],
+  [".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-group", "transparent !important"],
   [".denia-old-days-ds-extension .denia-old-days-ds-native-sidebar-row", "#fffdf9 !important"],
 ]) assertCssDeclarations(stylesheetRules, selector, { background }, transparencyMedia);
+assertCssDeclarations(stylesheetRules, darkNativeSidebarGroupSelector, {
+  background: "transparent !important",
+}, transparencyMedia);
 assertCssDeclarations(stylesheetRules, ".denia-old-days-ds-composer", {
   "backdrop-filter": "none",
 }, transparencyMedia);
