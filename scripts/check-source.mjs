@@ -22,6 +22,7 @@ const officialSources = new Map([
   ["art/source/official/denia-approval-dual-form.jpg", "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0"],
   ["art/source/official/denia-error-reaching.jpg", "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4"],
   ["art/source/official/denia-dark-form-smile-closeup.png", "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296"],
+  ["art/source/official/denia-right-sidebar-wide.jpg", "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed"],
 ]);
 
 for (const [relative, expected] of officialSources) {
@@ -398,6 +399,7 @@ const generatedFiles = [
   "sidecar/assets/denia-task-error.webp",
   "sidecar/assets/denia-task-complete.webp",
   "sidecar/assets/denia-right-sidebar.webp",
+  "sidecar/assets/denia-right-sidebar-wide.webp",
   "evidence/home.png",
   "evidence/home-compact.png",
   "evidence/task-staged.png",
@@ -432,6 +434,18 @@ if (
 ) {
   throw new Error(
     `right sidebar artwork must be a 640x1600 WebP: ${rightSidebarMetadata.width}x${rightSidebarMetadata.height}`,
+  );
+}
+
+const rightSidebarWideArtwork = path.join(root, "sidecar/assets/denia-right-sidebar-wide.webp");
+const rightSidebarWideMetadata = await sharp(rightSidebarWideArtwork).metadata();
+if (
+  rightSidebarWideMetadata.format !== "webp"
+  || rightSidebarWideMetadata.width !== 1840
+  || rightSidebarWideMetadata.height !== 1080
+) {
+  throw new Error(
+    `right sidebar wide artwork must be a 1840x1080 WebP: ${rightSidebarWideMetadata.width}x${rightSidebarWideMetadata.height}`,
   );
 }
 

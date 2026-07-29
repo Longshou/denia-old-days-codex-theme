@@ -55,6 +55,11 @@ await sharp(source("official/denia-dark-form-smile-closeup.png"))
   .webp({ quality: 86, smartSubsample: true })
   .toFile(output("sidecar/assets/denia-right-sidebar.webp"));
 
+await sharp(source("official/denia-right-sidebar-wide.jpg"))
+  .resize(1840, 1080, { fit: "cover", position: "centre" })
+  .webp({ quality: 84, smartSubsample: true })
+  .toFile(output("sidecar/assets/denia-right-sidebar-wide.webp"));
+
 const TASK_RAIL_SOURCES = Object.freeze({
   warm: {
     source: "official/denia-garden-bubbles-warm.jpg",

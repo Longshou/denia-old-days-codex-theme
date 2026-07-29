@@ -4,6 +4,7 @@
   const brightArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__;
   const darkHomeArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_DARK_HOME_ART_JSON__;
   const rightSidebarArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_RIGHT_SIDEBAR_ART_JSON__;
+  const rightSidebarWideArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_RIGHT_SIDEBAR_WIDE_ART_JSON__;
   const taskWarmArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__;
   const taskApprovalArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__;
   const taskErrorArtDataUrl = __DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__;
@@ -98,6 +99,7 @@
     bright: dataUrlToObjectUrl(brightArtDataUrl),
     dark: dataUrlToObjectUrl(darkHomeArtDataUrl),
     rightSidebar: dataUrlToObjectUrl(rightSidebarArtDataUrl),
+    rightSidebarWide: dataUrlToObjectUrl(rightSidebarWideArtDataUrl),
     taskWarm: dataUrlToObjectUrl(taskWarmArtDataUrl),
     taskApproval: dataUrlToObjectUrl(taskApprovalArtDataUrl),
     taskError: dataUrlToObjectUrl(taskErrorArtDataUrl),
@@ -108,6 +110,7 @@
   root.style.setProperty("--denia-old-days-art-bright", `url("${artUrls.bright}")`);
   root.style.setProperty("--denia-old-days-art-dark", `url("${artUrls.dark}")`);
   root.style.setProperty("--denia-old-days-art-right-sidebar", `url("${artUrls.rightSidebar}")`);
+  root.style.setProperty("--denia-old-days-art-right-sidebar-wide", `url("${artUrls.rightSidebarWide}")`);
   root.style.setProperty("--denia-old-days-art-task-warm", `url("${artUrls.taskWarm}")`);
   root.style.setProperty("--denia-old-days-art-task-approval", `url("${artUrls.taskApproval}")`);
   root.style.setProperty("--denia-old-days-art-task-error", `url("${artUrls.taskError}")`);
@@ -1732,6 +1735,7 @@
       "bright",
       "dark",
       "right-sidebar",
+      "right-sidebar-wide",
       "task-warm",
       "task-approval",
       "task-error",

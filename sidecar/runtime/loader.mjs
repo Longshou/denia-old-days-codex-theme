@@ -56,6 +56,7 @@ const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
 const darkHomePath = path.resolve(extensionDir, manifest.assets.darkHomeArtwork);
 const rightSidebarPath = path.resolve(extensionDir, manifest.assets.rightSidebarArtwork);
+const rightSidebarWidePath = path.resolve(extensionDir, manifest.assets.rightSidebarWideArtwork);
 const taskWarmPath = path.resolve(extensionDir, manifest.assets.taskWarmArtwork);
 const taskApprovalPath = path.resolve(extensionDir, manifest.assets.taskApprovalArtwork);
 const taskErrorPath = path.resolve(extensionDir, manifest.assets.taskErrorArtwork);
@@ -66,6 +67,7 @@ const [
   brightRealPath,
   darkHomeRealPath,
   rightSidebarRealPath,
+  rightSidebarWideRealPath,
   taskWarmRealPath,
   taskApprovalRealPath,
   taskErrorRealPath,
@@ -76,17 +78,19 @@ const [
   resolveExtensionFile(brightPath, manifest.assets.runtimeWallpaper),
   resolveExtensionFile(darkHomePath, manifest.assets.darkHomeArtwork),
   resolveExtensionFile(rightSidebarPath, manifest.assets.rightSidebarArtwork),
+  resolveExtensionFile(rightSidebarWidePath, manifest.assets.rightSidebarWideArtwork),
   resolveExtensionFile(taskWarmPath, manifest.assets.taskWarmArtwork),
   resolveExtensionFile(taskApprovalPath, manifest.assets.taskApprovalArtwork),
   resolveExtensionFile(taskErrorPath, manifest.assets.taskErrorArtwork),
   resolveExtensionFile(taskCompletePath, manifest.assets.taskCompleteArtwork),
 ]);
-const [cssText, runtimeTemplate, bright, darkHome, rightSidebar, taskWarm, taskApproval, taskError, taskComplete] = await Promise.all([
+const [cssText, runtimeTemplate, bright, darkHome, rightSidebar, rightSidebarWide, taskWarm, taskApproval, taskError, taskComplete] = await Promise.all([
   fs.readFile(styleRealPath, "utf8"),
   fs.readFile(runtimeRealPath, "utf8"),
   fs.readFile(brightRealPath),
   fs.readFile(darkHomeRealPath),
   fs.readFile(rightSidebarRealPath),
+  fs.readFile(rightSidebarWideRealPath),
   fs.readFile(taskWarmRealPath),
   fs.readFile(taskApprovalRealPath),
   fs.readFile(taskErrorRealPath),
@@ -106,6 +110,7 @@ const templatePlaceholders = Object.freeze({
   bright: "__DENIA_OLD_DAYS_EXTENSION_BRIGHT_ART_JSON__",
   dark: "__DENIA_OLD_DAYS_EXTENSION_DARK_HOME_ART_JSON__",
   rightSidebar: "__DENIA_OLD_DAYS_EXTENSION_RIGHT_SIDEBAR_ART_JSON__",
+  rightSidebarWide: "__DENIA_OLD_DAYS_EXTENSION_RIGHT_SIDEBAR_WIDE_ART_JSON__",
   taskWarm: "__DENIA_OLD_DAYS_EXTENSION_TASK_WARM_ART_JSON__",
   taskApproval: "__DENIA_OLD_DAYS_EXTENSION_TASK_APPROVAL_ART_JSON__",
   taskError: "__DENIA_OLD_DAYS_EXTENSION_TASK_ERROR_ART_JSON__",
@@ -117,6 +122,7 @@ const templateSentinels = Object.freeze({
   bright: "@@DENIA_RUNTIME_BRIGHT_ART_7F3A@@",
   dark: "@@DENIA_RUNTIME_DARK_HOME_ART_7F3A@@",
   rightSidebar: "@@DENIA_RUNTIME_RIGHT_SIDEBAR_ART_7F3A@@",
+  rightSidebarWide: "@@DENIA_RUNTIME_RIGHT_SIDEBAR_WIDE_ART_7F3A@@",
   taskWarm: "@@DENIA_RUNTIME_TASK_WARM_ART_7F3A@@",
   taskApproval: "@@DENIA_RUNTIME_TASK_APPROVAL_ART_7F3A@@",
   taskError: "@@DENIA_RUNTIME_TASK_ERROR_ART_7F3A@@",
@@ -146,6 +152,7 @@ const stagedRuntimeTemplate = runtimeTemplate
   .replace(templatePlaceholders.bright, templateSentinels.bright)
   .replace(templatePlaceholders.dark, templateSentinels.dark)
   .replace(templatePlaceholders.rightSidebar, templateSentinels.rightSidebar)
+  .replace(templatePlaceholders.rightSidebarWide, templateSentinels.rightSidebarWide)
   .replace(templatePlaceholders.taskWarm, templateSentinels.taskWarm)
   .replace(templatePlaceholders.taskApproval, templateSentinels.taskApproval)
   .replace(templatePlaceholders.taskError, templateSentinels.taskError)
@@ -165,6 +172,7 @@ const sentinelPayloads = new Map([
   [templateSentinels.bright, JSON.stringify(imageDataUrl(brightPath, bright))],
   [templateSentinels.dark, JSON.stringify(imageDataUrl(darkHomePath, darkHome))],
   [templateSentinels.rightSidebar, JSON.stringify(imageDataUrl(rightSidebarPath, rightSidebar))],
+  [templateSentinels.rightSidebarWide, JSON.stringify(imageDataUrl(rightSidebarWidePath, rightSidebarWide))],
   [templateSentinels.taskWarm, JSON.stringify(imageDataUrl(taskWarmPath, taskWarm))],
   [templateSentinels.taskApproval, JSON.stringify(imageDataUrl(taskApprovalPath, taskApproval))],
   [templateSentinels.taskError, JSON.stringify(imageDataUrl(taskErrorPath, taskError))],
@@ -207,6 +215,8 @@ const cleanupExpression = `(() => {
   const artworkProperties = [
     '--denia-old-days-art-bright',
     '--denia-old-days-art-dark',
+    '--denia-old-days-art-right-sidebar',
+    '--denia-old-days-art-right-sidebar-wide',
     '--denia-old-days-art-task-warm',
     '--denia-old-days-art-task-approval',
     '--denia-old-days-art-task-error',
@@ -271,6 +281,9 @@ const verifyExpression = `(() => {
   const darkRuntimeArt = getComputedStyle(root).getPropertyValue('--denia-old-days-art-dark').trim();
   const rightSidebarRuntimeArt = getComputedStyle(root)
     .getPropertyValue('--denia-old-days-art-right-sidebar')
+    .trim();
+  const rightSidebarWideRuntimeArt = getComputedStyle(root)
+    .getPropertyValue('--denia-old-days-art-right-sidebar-wide')
     .trim();
   const brightRuntimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(brightRuntimeArt)?.[1] || '';
   const darkRuntimeArtUrl = /url\\(["']?([^"')]+)["']?\\)/.exec(darkRuntimeArt)?.[1] || '';
@@ -403,6 +416,7 @@ const verifyExpression = `(() => {
     fastArtPresent: Boolean(brightRuntimeArt),
     darkHomeArtPresent: Boolean(darkRuntimeArt),
     rightSidebarArtPresent: Boolean(rightSidebarRuntimeArt),
+    rightSidebarWideArtPresent: Boolean(rightSidebarWideRuntimeArt),
     heroUsesRuntimeArt: Boolean(!home || (darkHome
       ? darkRuntimeArtUrl && mainSurfaceBackgroundImage.includes(darkRuntimeArtUrl)
       : brightRuntimeArtUrl && photoFrontBackgroundImage.includes(brightRuntimeArtUrl))),
@@ -499,6 +513,7 @@ const verifyExpression = `(() => {
     && result.artReady
     && result.fastArtPresent
     && result.rightSidebarArtPresent
+    && result.rightSidebarWideArtPresent
     && brandMarkerAbsent
     && Boolean(result.composer?.visible)
     && composerDecorationDisabled
