@@ -1185,10 +1185,22 @@ const nativeSidebarWideAmbientChoiceSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="wide"]:not([data-denia-sidebar-resizing="true"]) .denia-old-days-ds-native-sidebar-art-wide-ambient';
 const nativeSidebarWideSceneChoiceSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-artwork="wide"]:not([data-denia-sidebar-resizing="true"]) .denia-old-days-ds-native-sidebar-art-wide-scene';
+const nativeSidebarResizePortraitSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"][data-denia-sidebar-artwork="portrait"] .denia-old-days-ds-native-sidebar-art-portrait';
+const nativeSidebarResizeWideSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"][data-denia-sidebar-artwork="wide"] .denia-old-days-ds-native-sidebar-art-wide-scene';
 const nativeSidebarResizeScrimSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim';
+const nativeSidebarResizeGlowSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim::before';
+const nativeSidebarResizeSweepSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim::after';
 const darkNativeSidebarResizeScrimSelector =
   'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim';
+const darkNativeSidebarResizeGlowSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim::before';
+const darkNativeSidebarResizeSweepSelector =
+  'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"][data-denia-sidebar-resizing="true"] .denia-old-days-ds-native-sidebar-art-scrim::after';
 assertCssDeclarations(stylesheetRules, nativeSidebarArtSelector, {
   "--denia-sidebar-portrait-image": "var(--denia-old-days-art-right-sidebar)",
   "--denia-sidebar-wide-image": "var(--denia-old-days-art-right-sidebar-wide)",
@@ -1221,33 +1233,77 @@ assertCssDeclarations(stylesheetRules, nativeSidebarWideAmbientSelector, {
 });
 assertCssDeclarations(stylesheetRules, nativeSidebarWideSceneSelector, {
   "background-image": "var(--denia-sidebar-wide-image)",
-  "background-position": "center",
-  "background-size": "contain",
+  "background-position": "51% center",
+  "background-size": "cover",
   opacity: "0",
   transform: "scale(1.018)",
   transition: "opacity 160ms cubic-bezier(.22, 1, .36, 1), transform 200ms cubic-bezier(.22, 1, .36, 1)",
 });
 assertCssDeclarations(stylesheetRules, nativeSidebarScrimSelector, {
   opacity: "1",
+  overflow: "hidden",
   background: "linear-gradient(90deg, rgba(245, 248, 252, .28) 0%, rgba(247, 250, 253, .5) 42%, rgba(238, 245, 250, .38) 70%, rgba(224, 235, 244, .2) 100%), linear-gradient(180deg, rgba(248, 250, 253, .28) 0%, rgba(236, 244, 249, .06) 48%, rgba(209, 224, 236, .22) 100%)",
 });
 assertCssDeclarations(stylesheetRules, nativeSidebarPortraitChoiceSelector, {
   opacity: "1",
   transform: "scale(1)",
 });
-assertCssDeclarations(stylesheetRules, nativeSidebarWideAmbientChoiceSelector, {
-  opacity: ".46",
-});
+assert(
+  !stylesheetRules.some((rule) =>
+    rule.selectors.includes(nativeSidebarWideAmbientChoiceSelector)
+      && Number.parseFloat(rule.declarations.get("opacity")) > 0),
+  "settled wide artwork must not expose the blurred ambient layer",
+);
 assertCssDeclarations(stylesheetRules, nativeSidebarWideSceneChoiceSelector, {
   opacity: "1",
-  transform: "scale(1)",
+  transform: "scale(1.035)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarResizePortraitSelector, {
+  opacity: ".12",
+  filter: "blur(18px) saturate(.76) brightness(.78)",
+  transform: "scale(1.08)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarResizeWideSelector, {
+  opacity: ".12",
+  filter: "blur(18px) saturate(.76) brightness(.78)",
+  transform: "scale(1.08)",
 });
 assertCssDeclarations(stylesheetRules, nativeSidebarResizeScrimSelector, {
-  background: "linear-gradient(135deg, rgba(232, 240, 247, .98), rgba(218, 231, 240, .96))",
+  "backdrop-filter": "blur(22px) saturate(140%)",
+  background: "radial-gradient(circle at 18% 14%, rgba(132, 224, 235, .52), transparent 34%), radial-gradient(circle at 82% 74%, rgba(236, 143, 187, .38), transparent 38%), rgba(222, 232, 242, .74)",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarResizeGlowSelector, {
+  animation: "denia-sidebar-glow-drift 2.4s ease-in-out infinite alternate",
+  opacity: ".82",
+});
+assertCssDeclarations(stylesheetRules, nativeSidebarResizeSweepSelector, {
+  animation: "denia-sidebar-glass-sweep 1.8s ease-in-out infinite",
+  opacity: ".64",
 });
 assertCssDeclarations(stylesheetRules, darkNativeSidebarResizeScrimSelector, {
-  background: "linear-gradient(135deg, rgba(18, 20, 47, .98), rgba(11, 14, 34, .97))",
+  background: "radial-gradient(circle at 18% 14%, rgba(92, 185, 210, .3), transparent 34%), radial-gradient(circle at 82% 74%, rgba(173, 93, 158, .24), transparent 38%), rgba(12, 15, 37, .78)",
 });
+assertCssDeclarations(stylesheetRules, darkNativeSidebarResizeGlowSelector, {
+  background: "radial-gradient(circle at 24% 24%, rgba(87, 190, 213, .4), transparent 34%), radial-gradient(circle at 76% 72%, rgba(181, 98, 164, .32), transparent 36%)",
+});
+assertCssDeclarations(stylesheetRules, darkNativeSidebarResizeSweepSelector, {
+  background: "linear-gradient(90deg, transparent, rgba(206, 231, 245, .42), transparent)",
+});
+for (const animationName of [
+  "denia-sidebar-glow-drift",
+  "denia-sidebar-glass-sweep",
+]) {
+  const keyframeRules = stylesheetRules.filter((rule) =>
+    rule.atRules.some((atRule) => atRule === `@keyframes ${animationName}`));
+  assert(keyframeRules.length > 0, `${animationName} must define keyframes`);
+  for (const rule of keyframeRules) {
+    assert(
+      [...rule.declarations.keys()].every((property) =>
+        property === "transform" || property === "opacity"),
+      `${animationName} may animate only transform and opacity`,
+    );
+  }
+}
 assertCssDeclarations(stylesheetRules, nativeSidebarArtSelector, {
   display: "none",
 }, ["prefers-reduced-transparency: reduce"]);
