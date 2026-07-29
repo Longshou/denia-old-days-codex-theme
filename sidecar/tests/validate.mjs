@@ -2383,6 +2383,7 @@ function assertNativeRightSidebarLifecycle(payload) {
   );
   assert(open.flushAnimationFrames() === 1, "released portrait selection must refresh diagnostics once");
 
+  open.dispatchWindowEvent("pointerdown", { target: resizeHandle });
   aside.setRect({ x: 672, width: 840 });
   main.setRect({ width: 672 });
   assert(open.flushResizeObservers(aside) === 1, "reaching workspace width must keep the observer attached");
@@ -2393,22 +2394,27 @@ function assertNativeRightSidebarLifecycle(payload) {
       && open.root.dataset.deniaSidebarArtwork === "portrait",
     "workspace drag must keep the previous artwork hidden until the width settles",
   );
-  assert(open.flushTimers() === 1, "the settled workspace drag must commit one artwork decision");
+  assert(
+    open.flushTimers() === 0
+      && open.root.dataset.deniaSidebarResizing === "true",
+    "a held workspace resize pointer must keep the mask instead of settling on idle time",
+  );
+  open.dispatchWindowEvent("pointerup", { target: resizeHandle });
   assert(
     !("deniaSidebarResizing" in open.root.dataset)
       && open.root.dataset.deniaSidebarArtwork === "wide",
-    "a settled landscape-like 840px panel must reveal the complete wide scene",
+    "releasing a landscape-like 840px panel must reveal the complete wide scene",
   );
-  assert(open.flushAnimationFrames() === 1, "settled wide selection must refresh diagnostics once");
+  assert(open.flushAnimationFrames() === 1, "released wide selection must refresh diagnostics once");
 
   aside.setRect({ x: 1178, width: 334 });
   main.setRect({ width: 1178 });
   assert(open.flushResizeObservers(aside) === 1, "returning to compact width must keep drag observation active");
   assert(open.flushAnimationFrames() === 1, "returning to compact width must refresh in one frame");
   assert(
-    open.root.dataset.deniaSidebarResizing === "true"
+    !("deniaSidebarResizing" in open.root.dataset)
       && open.root.dataset.deniaSidebarArtwork === "wide",
-    "the return drag must mask the previously committed wide scene",
+    "a passive compact-width change must keep the previous scene without showing the drag mask",
   );
   assert(open.flushTimers() === 1, "the returned compact width must commit one artwork decision");
   assert(
@@ -2564,6 +2570,12 @@ function assertNativeRightSidebarLifecycle(payload) {
   const openingFocusPanel = openingFocusArea.document.createElement("aside");
   openingFocusPanel.setAttribute("data-app-shell-focus-area", "right-panel");
   openingFocusPanel.setRect({ x: 1512, y: 46, width: 0, height: 813 });
+  let openingArtworkAtArtMount = "";
+  const openingFocusPrepend = openingFocusPanel.prepend.bind(openingFocusPanel);
+  openingFocusPanel.prepend = (...nodes) => {
+    openingArtworkAtArtMount = openingFocusArea.root.dataset.deniaSidebarArtwork || "";
+    openingFocusPrepend(...nodes);
+  };
   const openingFocusList = openingFocusArea.document.createElement("ul");
   const openingFocusItem = openingFocusArea.document.createElement("li");
   const openingFocusRow = openingFocusArea.document.createElement("button");
@@ -2590,12 +2602,31 @@ function assertNativeRightSidebarLifecycle(payload) {
     "the opening focus-area sidebar must receive its skin before the next animation frame",
   );
   assert(
+    openingArtworkAtArtMount === "portrait",
+    "the opening sidebar must choose its artwork before mounting transition-enabled layers",
+  );
+  assert(
     openingFocusRow.classList.contains("denia-old-days-ds-native-sidebar-row"),
     "a zero-width list shortcut must become transparent before the next animation frame",
   );
   assert(
     openingFocusArea.flushAnimationFrames() === 0,
     "zero-width shortcut decoration must not wait for a deferred frame",
+  );
+  openingFocusPanel.setRect({ x: 1192, y: 46, width: 320, height: 813 });
+  openingFocusRow.setRect({ x: 1216, y: 120, width: 248, height: 40 });
+  assert(
+    openingFocusArea.flushResizeObservers(openingFocusPanel) === 1,
+    "the native opening animation must notify the sidebar ResizeObserver",
+  );
+  assert(
+    !("deniaSidebarResizing" in openingFocusArea.root.dataset)
+      && openingFocusArea.root.dataset.deniaSidebarArtwork === "portrait",
+    "the native opening animation must not be mistaken for a pointer resize",
+  );
+  assert(
+    openingFocusArea.pendingTimerDelays().includes(120),
+    "the opening animation must still settle its final artwork after geometry stabilizes",
   );
 
   const conflicting = createRuntimeHarness((index) => `blob:sidebar-conflict-${index + 1}`);

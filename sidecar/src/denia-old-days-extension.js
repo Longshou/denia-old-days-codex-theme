@@ -709,9 +709,10 @@
           || 0;
         if (Math.abs(observedWidth - nativeSidebarLastObservedWidth) > .5) {
           nativeSidebarLastObservedWidth = observedWidth;
-          setDatasetValue(root, "deniaSidebarResizing", "true");
           clearNativeSidebarResizeTimer();
-          if (!nativeSidebarPointerResizing) {
+          if (nativeSidebarPointerResizing) {
+            setDatasetValue(root, "deniaSidebarResizing", "true");
+          } else {
             nativeSidebarResizeTimer = setTimeout(() => {
               nativeSidebarResizeTimer = 0;
               const target = nativeSidebarResizeTarget;
@@ -726,7 +727,7 @@
     nativeSidebarResizeObserver.observe(panel);
   }
 
-  function syncNativeSidebarPanel(nextPanel) {
+  function syncNativeSidebarPanel(nextPanel, panelRect) {
     if (nativeSidebarPanel !== nextPanel) {
       syncClass(nativeSidebarPanel, "denia-old-days-ds-native-right-sidebar", false);
       clearNativeSidebarArt();
@@ -735,8 +736,11 @@
         ? touch(nextPanel, "denia-old-days-ds-native-right-sidebar")
         : null;
       if (nativeSidebarPanel) {
-        ensureNativeSidebarArt(nativeSidebarPanel);
         syncNativeSidebarResizeTarget(nativeSidebarPanel);
+        if (!root.dataset.deniaSidebarArtwork) {
+          commitNativeSidebarArtwork(nativeSidebarPanel, panelRect, false);
+        }
+        ensureNativeSidebarArt(nativeSidebarPanel);
       }
       return;
     }
@@ -744,8 +748,11 @@
       touch(nextPanel, "denia-old-days-ds-native-right-sidebar");
     }
     if (nextPanel) {
-      ensureNativeSidebarArt(nextPanel);
       syncNativeSidebarResizeTarget(nextPanel);
+      if (!root.dataset.deniaSidebarArtwork) {
+        commitNativeSidebarArtwork(nextPanel, panelRect, false);
+      }
+      ensureNativeSidebarArt(nextPanel);
     }
   }
 
@@ -832,7 +839,7 @@
         }
       }
     }
-    syncNativeSidebarPanel(nextPanel);
+    syncNativeSidebarPanel(nextPanel, result.panelRect);
     const sidebarLayout = nextPanel
       ? sidebarLayoutForWidth(result.panelRect?.width)
       : null;
