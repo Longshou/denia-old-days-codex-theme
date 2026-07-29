@@ -60,8 +60,27 @@ test("public README exposes reproducible Kaboo commands", () => {
     "kaboo-cli codex-theme install-local",
     "kaboo-cli codex-theme verify denia-old-days",
     "kaboo-cli codex-theme publish",
+    "Changing any published package byte requires a new semantic version.",
   ]) {
     assert.match(readme, new RegExp(escapeRegex(token), "u"), `README missing ${token}`);
+  }
+  assert.doesNotMatch(readme, /copyright|版权|侵权|侵删|再分发许可|非官方|不隶属/iu);
+});
+
+test(".gitignore separates generated and local-only files", () => {
+  const ignored = read(".gitignore");
+  for (const token of [
+    "node_modules/",
+    "/theme/background.jpg",
+    "/sidecar/assets/*.webp",
+    "/sidecar/release/",
+    "/evidence/",
+    "/art/archive/",
+    "/art/reference/",
+    "/docs/superpowers/",
+    "/.worktrees/",
+  ]) {
+    assert.match(ignored, new RegExp(escapeRegex(token), "u"), `.gitignore missing ${token}`);
   }
 });
 

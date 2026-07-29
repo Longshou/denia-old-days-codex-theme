@@ -1,10 +1,50 @@
+# macOS
 .DS_Store
-.worktrees/
-.runtime/
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Node.js
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and runtime state
+.env
+.env.*
+!.env.example
+.runtime/
+*.log
+*.pid
+
+# Build and test output
+coverage/
 dist/
-theme/background.jpg
-sidecar/assets/*.webp
-sidecar/release/
-evidence/*.png
-evidence/*.json
+build/
+.cache/
+.tmp/
+tmp/
+
+# Generated theme assets and release packages
+/theme/background.jpg
+/sidecar/assets/*.webp
+/sidecar/release/
+
+# Local review and development history
+/evidence/
+/art/archive/
+/art/reference/
+/docs/superpowers/
+/.superpowers/
+/.worktrees/
