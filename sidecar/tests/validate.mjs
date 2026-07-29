@@ -339,6 +339,7 @@ assert(!activeStyles.includes(".denia-old-days-ds-photo-back"), "default hero mu
 for (const token of [
   "--denia-old-days-art-bright",
   "--denia-old-days-art-dark",
+  "--denia-old-days-art-right-sidebar",
   "--denia-old-days-art-task-warm",
   "--denia-old-days-art-task-approval",
   "--denia-old-days-art-task-error",
@@ -900,6 +901,9 @@ const sidebarPaintProperties = new Set([
   "background",
   "background-color",
   "background-image",
+  "background-position",
+  "background-repeat",
+  "background-size",
   "border-color",
   "border-radius",
   "box-shadow",
@@ -960,14 +964,58 @@ const nativeSidebarClasses = [
   ".denia-old-days-ds-native-sidebar-group",
   ".denia-old-days-ds-native-sidebar-row",
 ];
+const rightSidebarArtworkProperty = "--denia-old-days-art-right-sidebar";
+const forbiddenRightSidebarArtworkProperties = [
+  "--denia-old-days-art-bright",
+  "--denia-old-days-art-dark",
+  "--denia-old-days-art-task-warm",
+  "--denia-old-days-art-task-approval",
+  "--denia-old-days-art-task-error",
+  "--denia-old-days-art-task-complete",
+];
 for (const rule of stylesheetRules) {
-  if (!rule.selectors.some((selector) => nativeSidebarClasses.some((className) => selector.includes(className)))) continue;
+  const selectors = rule.selectors.filter((selector) =>
+    nativeSidebarClasses.some((className) => selector.includes(className)));
+  if (!selectors.length) continue;
   for (const property of rule.declarations.keys()) {
     assert(sidebarPaintProperties.has(property), `native sidebar selector must stay paint-only: ${property}`);
   }
-  for (const value of rule.declarations.values()) {
-    assert(!value.includes("--denia-old-days-art-"), "native sidebar surfaces must not use character artwork variables");
+  for (const [property, value] of rule.declarations) {
+    if (!value.includes("--denia-old-days-art-")) continue;
+    assert(
+      selectors.every((selector) => selector.includes(".denia-old-days-ds-native-right-sidebar")),
+      `only the native right sidebar may use character artwork: ${property}`,
+    );
+    assert(
+      value.includes(rightSidebarArtworkProperty),
+      `native right sidebar must use its dedicated artwork: ${property}`,
+    );
+    for (const forbidden of forbiddenRightSidebarArtworkProperties) {
+      assert(!value.includes(forbidden), `native right sidebar must not use ${forbidden}`);
+    }
   }
+}
+const lightRightSidebarRule = findCssRule(
+  stylesheetRules,
+  ".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar",
+);
+const darkRightSidebarRule = findCssRule(
+  stylesheetRules,
+  '.denia-old-days-ds-extension[data-denia-theme="dark"] .denia-old-days-ds-native-right-sidebar',
+);
+for (const rule of [lightRightSidebarRule, darkRightSidebarRule]) {
+  assert(
+    rule.declarations.get("background-image")?.includes(rightSidebarArtworkProperty),
+    "both themes must paint the dedicated right sidebar artwork",
+  );
+  assert(
+    canonicalCssValue(rule.declarations.get("background-position")) === "centerbottom,centerbottom",
+    "right sidebar artwork must stay bottom anchored",
+  );
+  assert(
+    canonicalCssValue(rule.declarations.get("background-size")) === "cover,cover",
+    "right sidebar artwork must cover the panel",
+  );
 }
 for (const forbiddenSelector of [
   '.denia-old-days-ds-extension:not([data-denia-sidebar-state="closed"]) .denia-old-days-ds-state-art',
@@ -990,7 +1038,10 @@ assert(
 );
 assertCssDeclarations(stylesheetRules, nativeSidebarPanelSelector, {
   "background-color": "rgba(255, 252, 249, .992) !important",
-  "background-image": "radial-gradient(circle at 88% 8%, rgba(242, 154, 171, .14), transparent 24%), radial-gradient(circle at 12% 22%, rgba(143, 210, 221, .15), transparent 28%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(111, 184, 231, .052) 31px 32px)",
+  "background-image": "linear-gradient(180deg, rgba(255, 252, 249, .98) 0%, rgba(255, 252, 249, .94) 25%, rgba(246, 251, 253, .76) 56%, rgba(225, 239, 247, .62) 100%), var(--denia-old-days-art-right-sidebar)",
+  "background-position": "center bottom, center bottom",
+  "background-repeat": "no-repeat, no-repeat",
+  "background-size": "cover, cover",
 });
 assertCssDeclarations(stylesheetRules, nativeLeftSidebarHostSelector, {
   color: "var(--denia-ink) !important",
@@ -1008,9 +1059,10 @@ assert(
   rgbaAlpha(nativeSidebarPanelRule.declarations.get("background-color")) >= .97,
   "native sidebar panel surface must be at least .97 opaque",
 );
+const nativeSidebarGroupAlpha = rgbaAlpha(nativeSidebarGroupRule.declarations.get("background"));
 assert(
-  rgbaAlpha(nativeSidebarGroupRule.declarations.get("background")) >= .98,
-  "native sidebar group surface must be at least .98 opaque",
+  nativeSidebarGroupAlpha >= .86 && nativeSidebarGroupAlpha <= .94,
+  "native sidebar group surface must stay readable while revealing the portrait",
 );
 const taskLayoutProperties = /^(?:width|min-width|max-width|margin(?:-.+)?|padding(?:-.+)?|grid(?:-.+)?|flex(?:-.+)?)$/u;
 const darkTaskMainReadabilityRoot =
