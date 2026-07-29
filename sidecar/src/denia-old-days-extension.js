@@ -19,6 +19,7 @@
   const ownedNodeHistory = new WeakSet();
   const listeners = [];
   let nativeLeftSidebarPanel = null;
+  let nativeSettingsShell = null;
   let nativeSidebarPanel = null;
   let nativeSidebarArt = null;
   let nativeSidebarResizeObserver = null;
@@ -35,6 +36,7 @@
   const nativeSidebarRows = new Set();
   const cachedToggles = new Map();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const nativeSettingsNavPattern = /^(?:设置|settings)$/iu;
   const nativeSidebarTogglePattern = /(?:显示\/隐藏侧边栏|show\/hide sidebar|toggle sidebar)/iu;
   const nativeSummaryTogglePattern = /(?:切换(?:置顶)?摘要|toggle (?:pinned )?summary)/iu;
   const nativeBottomPanelTogglePattern = /(?:切换底部面板显示|toggle bottom panel)/iu;
@@ -89,6 +91,7 @@
     "denia-old-days-ds-observation",
     "denia-old-days-ds-final-card",
     "denia-old-days-ds-native-left-sidebar",
+    "denia-old-days-ds-settings-shell",
     "denia-old-days-ds-native-right-sidebar",
     "denia-old-days-ds-native-sidebar-group",
     "denia-old-days-ds-native-sidebar-row",
@@ -157,6 +160,7 @@
     nativeTheme: null,
     frame: 0,
     styleRefreshTimer: 0,
+    surface: null,
     homeActive: false,
     homeScrollMain: null,
     ownedNodes,
@@ -575,6 +579,26 @@
     }
     if (nextPanel && !nextPanel.classList.contains("denia-old-days-ds-native-left-sidebar")) {
       touch(nextPanel, "denia-old-days-ds-native-left-sidebar");
+    }
+  }
+
+  function findSettingsNav() {
+    return [...document.querySelectorAll("nav")]
+      .find((nav) =>
+        nativeSettingsNavPattern.test(normalizedNodeLabel(nav))
+        && layoutVisible(nav))
+      || null;
+  }
+
+  function syncSettingsShell() {
+    const nextShell = findSettingsNav()?.closest(".app-shell-left-panel") || null;
+    if (nativeSettingsShell !== nextShell) {
+      syncClass(nativeSettingsShell, "denia-old-days-ds-settings-shell", false);
+      nativeSettingsShell = nextShell
+        ? touch(nextShell, "denia-old-days-ds-settings-shell")
+        : null;
+    } else if (nextShell) {
+      touch(nextShell, "denia-old-days-ds-settings-shell");
     }
   }
 
@@ -1098,6 +1122,29 @@
         || main.querySelector(".dream-skin-home")));
   }
 
+  function detectedSurface() {
+    if (findSettingsNav()) return "settings";
+    if (isHomeView()) return "home";
+    if (findMain()) return "task";
+    return state.surface || "task";
+  }
+
+  function paintReadySurface() {
+    if (findSettingsNav()) return "settings";
+    if (isHomePaintReady()) return "home";
+    const main = findMain();
+    if (main && !main.matches(".dream-skin-home, .dream-skin-home-shell")) {
+      return "task";
+    }
+    return null;
+  }
+
+  function syncSurfaceClasses(surface) {
+    syncClass(root, "denia-old-days-ds-home", surface === "home");
+    syncClass(root, "denia-old-days-ds-task", surface === "task");
+    syncClass(root, "denia-old-days-ds-settings", surface === "settings");
+  }
+
   function clearHomeViewportBinding() {
     state.homeScrollMain = null;
   }
@@ -1455,11 +1502,11 @@
       let currentMask = mask;
       if (currentMask & DIRTY.ROUTE) {
         state.metrics.domainRuns.route += 1;
-        const home = isHomeView();
-        const routeChanged = state.homeActive !== home;
-        state.homeActive = home;
-        syncClass(root, "denia-old-days-ds-home", home);
-        syncClass(root, "denia-old-days-ds-task", !home);
+        const surface = detectedSurface();
+        const routeChanged = state.surface !== surface;
+        state.surface = surface;
+        state.homeActive = surface === "home";
+        syncSurfaceClasses(surface);
         if (routeChanged) {
           currentMask |= DIRTY.ALL & ~DIRTY.ROUTE;
           decorationRoots.add(findMain() || document.body);
@@ -1472,6 +1519,7 @@
       if (currentMask & DIRTY.SIDEBAR) {
         state.metrics.domainRuns.sidebar += 1;
         syncNativeLeftSidebar();
+        syncSettingsShell();
         syncNativeRightSidebar(state.homeActive);
       }
       if (currentMask & DIRTY.LAYOUT) {
@@ -1489,18 +1537,24 @@
       if (state.homeActive && (currentMask & DIRTY.HOME)) {
         state.metrics.domainRuns.home += 1;
         syncPageDomain(true);
-      } else if (!state.homeActive && (currentMask & DIRTY.TASK_STATE)) {
+      } else if (state.surface === "task" && (currentMask & DIRTY.TASK_STATE)) {
         state.metrics.domainRuns.taskState += 1;
         syncPageDomain(false);
+      } else if (state.surface === "settings"
+        && (currentMask & (DIRTY.HOME | DIRTY.TASK_STATE))) {
+        clearHomeViewportBinding();
+        removeHomeNodes();
+        state.formState = "staged";
+        setDatasetValue(root, "deniaFormState", state.formState);
       }
-      if (!state.homeActive && (currentMask & DIRTY.TASK_DECORATION)) {
+      if (state.surface === "task" && (currentMask & DIRTY.TASK_DECORATION)) {
         state.metrics.domainRuns.taskDecoration += 1;
         decorateTaskRoots(decorationRoots);
       }
-      if (currentMask & DIRTY.TASK_STATE) {
+      if (state.surface === "task" && (currentMask & DIRTY.TASK_STATE)) {
         syncFinalAssistantCard();
       }
-      if (currentMask & DIRTY.ART) {
+      if (state.surface !== "settings" && (currentMask & DIRTY.ART)) {
         state.metrics.domainRuns.art += 1;
         syncStateArt(state.formState);
       }
@@ -1919,6 +1973,8 @@
     }
     syncClass(nativeLeftSidebarPanel, "denia-old-days-ds-native-left-sidebar", false);
     nativeLeftSidebarPanel = null;
+    syncClass(nativeSettingsShell, "denia-old-days-ds-settings-shell", false);
+    nativeSettingsShell = null;
     clearNativeRightSidebarClasses();
     removeHomeNodes();
     for (const node of [...ownedNodes]) {
@@ -1934,7 +1990,12 @@
       }
     }
     style.remove();
-    root.classList.remove(rootClass, "denia-old-days-ds-home", "denia-old-days-ds-task");
+    root.classList.remove(
+      rootClass,
+      "denia-old-days-ds-home",
+      "denia-old-days-ds-task",
+      "denia-old-days-ds-settings",
+    );
     delete root.dataset.deniaOldDaysExtensionVersion;
     delete root.dataset.deniaTheme;
     delete root.dataset.deniaFormState;
@@ -2006,6 +2067,10 @@
       && !mutationIsThemeOnly(record)
       && !mutationIsTerminalChurn(record)
       && !mutationIsEditorColorProbe(record));
+    const readySurface = relevantRecords.length ? paintReadySurface() : null;
+    if (readySurface && root.dataset.deniaTheme === "dark") {
+      syncSurfaceClasses(readySurface);
+    }
     const darkHomePaintReady = relevantRecords.length
       && root.dataset.deniaTheme === "dark"
       && isHomePaintReady()
@@ -2013,17 +2078,17 @@
     if (darkHomePaintReady) {
       const homeMain = findMain();
       if (!state.homeActive) {
-        syncClass(root, "denia-old-days-ds-home", true);
-        syncClass(root, "denia-old-days-ds-task", false);
+        syncSurfaceClasses("home");
       }
       if (!state.homeActive
         || relevantRecords.some((record) => childListAddsButton(record, homeMain))) {
         syncNativeHomeSuggestions();
       }
     }
-    if (relevantRecords.length && state.homeActive && !isHomeView()) {
-      syncClass(root, "denia-old-days-ds-home", false);
-      syncClass(root, "denia-old-days-ds-task", true);
+    if (relevantRecords.length
+      && state.homeActive
+      && !isHomeView()) {
+      syncSurfaceClasses(readySurface || "task");
       removeHomeNodes();
     }
     const toggleRecords = relevantRecords.filter(mutationIsNativeWorkSurfaceToggleState);

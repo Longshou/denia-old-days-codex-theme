@@ -1192,6 +1192,37 @@ html.codex-dream-skin.denia-old-days-ds-extension[data-denia-sidebar-resizing="t
     linear-gradient(140deg, rgba(32, 35, 72, .2), transparent 48%);
 }
 
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-settings[data-denia-theme="dark"] body {
+  color: var(--denia-dark-text-body) !important;
+  background-color: var(--denia-dark-canvas) !important;
+  background-image: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-settings[data-denia-theme="dark"] body::before {
+  background: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-settings[data-denia-theme="dark"]
+  .denia-old-days-ds-settings-shell {
+  color: var(--denia-dark-text-body) !important;
+  background: var(--denia-dark-surface) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-settings[data-denia-theme="dark"]
+  .denia-old-days-ds-settings-shell
+  > nav.denia-old-days-ds-native-left-sidebar {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-settings[data-denia-theme="dark"]
+  :is(button.text-token-button-tertiary-foreground, select, [role="combobox"]) {
+  color: var(--denia-dark-text-body) !important;
+}
+
 html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-task[data-denia-theme="dark"]
   main.main-surface:not(.dream-skin-home-shell) {
   color: var(--denia-dark-text);

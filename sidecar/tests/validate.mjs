@@ -276,6 +276,7 @@ assertLiveTaskVerification(loader);
 assertFallbackCleanupBehavior(loader);
 assertHomeLayoutPreservation(runtimePayload);
 assertHostThemeLifecycle(runtimePayload);
+assertSettingsSurfaceLifecycle(runtimePayload);
 assertThemeHeroCopy(runtimePayload);
 assertFormStateRecognition(runtimePayload);
 assertStateArtRailLifecycle(runtimePayload);
@@ -997,6 +998,15 @@ const sidebarPaintProperties = new Set([
 ]);
 const darkSidebarRoot =
   'html.codex-dream-skin.denia-old-days-ds-extension[data-denia-theme="dark"]';
+const darkSettingsRoot =
+  'html.codex-dream-skin.denia-old-days-ds-extension.denia-old-days-ds-settings[data-denia-theme="dark"]';
+const darkSettingsBodySelector = `${darkSettingsRoot} body`;
+const darkSettingsShellSelector =
+  `${darkSettingsRoot} .denia-old-days-ds-settings-shell`;
+const darkSettingsNavSelector =
+  `${darkSettingsRoot} .denia-old-days-ds-settings-shell > nav.denia-old-days-ds-native-left-sidebar`;
+const darkSettingsControlSelector =
+  `${darkSettingsRoot} :is(button.text-token-button-tertiary-foreground, select, [role="combobox"])`;
 const darkLeftSidebarInteractiveSelector =
   `${darkSidebarRoot} .denia-old-days-ds-native-left-sidebar :is(a, button, [role="button"], [data-app-action-sidebar-project-row], [data-app-action-sidebar-thread-row])`;
 const darkLeftSidebarActiveSelector =
@@ -1015,6 +1025,25 @@ const darkRightSidebarTokenTextSelector =
   `${darkSidebarRoot} .denia-old-days-ds-native-right-sidebar :is(.text-token-text-primary, .text-token-text-secondary)`;
 const rightSidebarNativeSurfaceSelector =
   ".denia-old-days-ds-extension .denia-old-days-ds-native-right-sidebar .bg-token-main-surface-primary";
+assertCssDeclarations(stylesheetRules, darkSettingsBodySelector, {
+  color: "var(--denia-dark-text-body) !important",
+  "background-color": "var(--denia-dark-canvas) !important",
+  "background-image": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkSettingsShellSelector, {
+  color: "var(--denia-dark-text-body) !important",
+  background: "var(--denia-dark-surface) !important",
+  "border-color": "transparent !important",
+  "box-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkSettingsNavSelector, {
+  background: "transparent !important",
+  "border-color": "transparent !important",
+  "box-shadow": "none !important",
+});
+assertCssDeclarations(stylesheetRules, darkSettingsControlSelector, {
+  color: "var(--denia-dark-text-body) !important",
+});
 assertCssDeclarations(stylesheetRules, rightSidebarNativeSurfaceSelector, {
   "background-color": "transparent !important",
 });
@@ -4285,6 +4314,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
     "denia-old-days-ds-observation",
     "denia-old-days-ds-final-card",
     "denia-old-days-ds-native-left-sidebar",
+    "denia-old-days-ds-settings-shell",
     "denia-old-days-ds-native-right-sidebar",
     "denia-old-days-ds-native-sidebar-group",
     "denia-old-days-ds-native-sidebar-row",
@@ -4306,7 +4336,12 @@ function assertFallbackCleanupBehavior(loaderSource) {
   }
   harness.document.body.append(hero);
 
-  harness.root.classList.add("denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task");
+  harness.root.classList.add(
+    "denia-old-days-ds-extension",
+    "denia-old-days-ds-home",
+    "denia-old-days-ds-task",
+    "denia-old-days-ds-settings",
+  );
   harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.0";
   harness.root.dataset.deniaTheme = "dark";
   harness.root.dataset.deniaFormState = "working";
@@ -4340,7 +4375,12 @@ function assertFallbackCleanupBehavior(loaderSource) {
   }
 
   assert(vm.runInContext(expression, harness.context) === true, "fallback cleanup must report success");
-  for (const className of ["denia-old-days-ds-extension", "denia-old-days-ds-home", "denia-old-days-ds-task"]) {
+  for (const className of [
+    "denia-old-days-ds-extension",
+    "denia-old-days-ds-home",
+    "denia-old-days-ds-task",
+    "denia-old-days-ds-settings",
+  ]) {
     assert(!harness.root.classList.contains(className), `fallback cleanup must remove root class ${className}`);
   }
   assert(!("deniaOldDaysExtensionVersion" in harness.root.dataset), "fallback cleanup must remove the extension version marker");
@@ -4513,6 +4553,59 @@ function assertHomeLayoutPreservation(payload) {
   state.refresh();
   for (let frame = 0; frame < 2; frame += 1) harness.flushAnimationFrames();
   assert(main.scrollTop === 0, "home refresh must keep the native viewport locked at the origin");
+}
+
+function assertSettingsSurfaceLifecycle(payload) {
+  const harness = createRuntimeHarness((index) => `blob:settings-${index + 1}`);
+  harness.root.classList.add("electron-dark");
+
+  const shell = harness.document.createElement("div");
+  shell.classList.add("app-shell-left-panel");
+  shell.setRect({ x: 0, y: 0, width: 245, height: 900 });
+  const nav = harness.document.createElement("nav");
+  nav.setAttribute("aria-label", "设置");
+  nav.setRect({ x: 0, y: 46, width: 245, height: 854 });
+  shell.append(nav);
+  harness.document.body.append(shell);
+
+  vm.runInContext(payload, harness.context, { timeout: 1000 });
+  const state = harness.sandbox.window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  assert(state.surface === "settings", "settings navigation must select the settings surface");
+  assert(harness.root.classList.contains("denia-old-days-ds-settings"));
+  assert(!harness.root.classList.contains("denia-old-days-ds-home"));
+  assert(!harness.root.classList.contains("denia-old-days-ds-task"));
+  assert(shell.classList.contains("denia-old-days-ds-settings-shell"));
+  assert(state.metrics.domainRuns.taskState === 0, "settings must not enter the task-state domain");
+  assert(
+    !harness.document.getElementById("denia-old-days-ds-chrome"),
+    "settings must not mount task artwork chrome",
+  );
+
+  harness.clearMutationRecords();
+  shell.remove();
+  assert(harness.flushMutations() > 0);
+  assert(
+    harness.root.classList.contains("denia-old-days-ds-settings"),
+    "an empty route handoff must retain the dark settings paint",
+  );
+
+  const main = harness.document.createElement("main");
+  main.classList.add("main-surface");
+  main.setRect({ x: 245, y: 0, width: 1195, height: 900 });
+  const assistant = harness.document.createElement("article");
+  assistant.setAttribute("data-content-search-unit-key", "task:assistant");
+  main.append(assistant);
+  harness.document.body.append(main);
+  assert(harness.flushMutations() > 0);
+  assert(
+    harness.root.classList.contains("denia-old-days-ds-task")
+      && !harness.root.classList.contains("denia-old-days-ds-settings"),
+    "a ready task surface must replace settings paint before the queued frame",
+  );
+
+  state.cleanup();
+  assert(!harness.root.classList.contains("denia-old-days-ds-settings"));
+  assert(!shell.classList.contains("denia-old-days-ds-settings-shell"));
 }
 
 function assertHostThemeLifecycle(payload) {

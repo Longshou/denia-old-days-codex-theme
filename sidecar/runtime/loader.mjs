@@ -223,7 +223,12 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-custom-card',
     'denia-old-days-ds-state-art',
   ]) document.getElementById(id)?.remove();
-  root.classList.remove('denia-old-days-ds-extension', 'denia-old-days-ds-home', 'denia-old-days-ds-task');
+  root.classList.remove(
+    'denia-old-days-ds-extension',
+    'denia-old-days-ds-home',
+    'denia-old-days-ds-task',
+    'denia-old-days-ds-settings',
+  );
   delete root.dataset.deniaOldDaysExtensionVersion;
   delete root.dataset.deniaTheme;
   delete root.dataset.deniaFormState;
@@ -273,6 +278,7 @@ const cleanupExpression = `(() => {
     'denia-old-days-ds-observation',
     'denia-old-days-ds-final-card',
     'denia-old-days-ds-native-left-sidebar',
+    'denia-old-days-ds-settings-shell',
     'denia-old-days-ds-native-right-sidebar',
     'denia-old-days-ds-native-sidebar-group',
     'denia-old-days-ds-native-sidebar-row',
