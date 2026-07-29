@@ -51,6 +51,26 @@ const manifest = JSON.parse(await fs.readFile(manifestRealPath, "utf8"));
 if (manifest.schemaVersion !== 1 || manifest.id !== "denia-old-days") {
   throw new Error("Unsupported or unexpected extension manifest");
 }
+if (manifest.layoutContract !== "layout-contract.json") {
+  throw new Error("Extension manifest must declare layout-contract.json");
+}
+const layoutContractPath = path.resolve(extensionDir, manifest.layoutContract);
+const layoutContractRealPath = await resolveExtensionFile(layoutContractPath, manifest.layoutContract);
+const layoutContract = JSON.parse(await fs.readFile(layoutContractRealPath, "utf8"));
+const expectedLayoutTargets = [
+  { id: "home-desktop", route: "/", viewport: { width: 1440, height: 900 } },
+  { id: "home-narrow", route: "/", viewport: { width: 390, height: 844 } },
+  { id: "task-desktop", route: "/task/current", viewport: { width: 1440, height: 900 } },
+  { id: "task-narrow", route: "/task/current", viewport: { width: 390, height: 844 } },
+];
+if (
+  layoutContract.schemaVersion !== 1
+  || layoutContract.packageId !== manifest.id
+  || layoutContract.packageVersion !== manifest.version
+  || JSON.stringify(layoutContract.requiredTargets) !== JSON.stringify(expectedLayoutTargets)
+) {
+  throw new Error("Unsupported or incomplete layout contract");
+}
 const stylePath = path.resolve(extensionDir, manifest.entrypoints.style);
 const runtimePath = path.resolve(extensionDir, manifest.entrypoints.runtime);
 const brightPath = path.resolve(extensionDir, manifest.assets.runtimeWallpaper);
@@ -703,11 +723,163 @@ async function openHomeRoute(session) {
     stableSamples = ready ? stableSamples + 1 : 0;
     if (stableSamples >= 3) break;
   }
+  if (stableSamples < 3) {
+    throw new Error(clicked
+      ? "Home route did not become layout-stable"
+      : "Could not find the native new-task control required to open the home route");
+  }
   await session.evaluate(`(() => {
     const home = document.querySelector('[role="main"].dream-skin-home');
     if (home) home.scrollTop = home.scrollHeight;
   })()`);
   await delay(150);
+}
+
+async function waitForTaskRoute(session) {
+  let stableSamples = 0;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await delay(100);
+    const ready = await session.evaluate(`(() => {
+      const root = document.documentElement;
+      const composer = document.querySelector('.composer-surface-chrome');
+      const box = composer?.getBoundingClientRect();
+      return Boolean(
+        root.classList.contains('denia-old-days-ds-task')
+        && box?.width > 0
+        && box?.height > 0
+      );
+    })()`);
+    stableSamples = ready ? stableSamples + 1 : 0;
+    if (stableSamples >= 3) return;
+  }
+  throw new Error("Task route did not become layout-stable");
+}
+
+async function openTaskRoute(session) {
+  const alreadyOpen = await session.evaluate(
+    "document.documentElement.classList.contains('denia-old-days-ds-task')",
+  );
+  if (alreadyOpen) {
+    await waitForTaskRoute(session);
+    return;
+  }
+  const clicked = await session.evaluate(`(() => {
+    const visible = (node) => {
+      const rect = node.getBoundingClientRect?.();
+      const style = getComputedStyle(node);
+      return Boolean(rect?.width > 0 && rect?.height > 0 && style.display !== 'none' && style.visibility !== 'hidden');
+    };
+    const candidates = [...document.querySelectorAll('a[href], button')]
+      .filter((node) => visible(node))
+      .map((node) => {
+        const label = (node.innerText || node.getAttribute('aria-label') || node.getAttribute('title') || '')
+          .replace(/\\s+/gu, ' ')
+          .trim();
+        const href = node.getAttribute('href') || '';
+        const testId = node.getAttribute('data-testid') || '';
+        const navigationHost = node.closest('aside, nav, [role="navigation"]');
+        const excluded = /^(new task|new chat|新建任务|新聊天|settings|设置)$/iu.test(label);
+        let score = excluded || !label ? -1 : 0;
+        if (/(?:task|thread|conversation)/iu.test(href)) score += 100;
+        if (/(?:task|thread|conversation)/iu.test(testId)) score += 80;
+        if (navigationHost) score += 30;
+        if (node.tagName === 'A') score += 10;
+        return { node, score };
+      })
+      .filter(({ score }) => score >= 30)
+      .sort((a, b) => b.score - a.score);
+    if (!candidates.length) return false;
+    candidates[0].node.click();
+    return true;
+  })()`);
+  if (!clicked) {
+    throw new Error("Could not find a recent task; open one task in Codex and run verification again");
+  }
+  await waitForTaskRoute(session);
+}
+
+async function setLayoutViewport(session, viewport) {
+  await session.send("Emulation.setDeviceMetricsOverride", {
+    width: viewport.width,
+    height: viewport.height,
+    deviceScaleFactor: 1,
+    mobile: false,
+    screenWidth: viewport.width,
+    screenHeight: viewport.height,
+  });
+  await delay(180);
+}
+
+function summarizeLayoutResult(target, measurement) {
+  const expectedSurface = target.route === "/" ? "home" : "task";
+  const surface = measurement?.home ? "home" : measurement?.taskMode ? "task" : "unknown";
+  const viewportMatches = measurement?.viewport?.width === target.viewport.width
+    && measurement?.viewport?.height === target.viewport.height;
+  const extensionActive = measurement?.id === manifest.id
+    && measurement?.version === manifest.version
+    && measurement?.installed === true
+    && measurement?.stylePresent === true;
+  const surfaceMatches = surface === expectedSurface;
+  const composerVisible = measurement?.composer?.visible === true;
+  const overflowPass = measurement?.overflowX === false;
+  const routeLayoutPass = expectedSurface === "home"
+    ? measurement?.homeLayoutPreserved === true && measurement?.composerViewportPass === true
+    : measurement?.taskPass === true;
+  return {
+    pass: Boolean(
+      measurement?.pass
+      && extensionActive
+      && surfaceMatches
+      && viewportMatches
+      && composerVisible
+      && overflowPass
+      && routeLayoutPass
+    ),
+    extensionActive,
+    surface,
+    surfaceMatches,
+    viewportMatches,
+    overflowX: measurement?.overflowX ?? null,
+    composerVisible,
+    layoutPass: routeLayoutPass,
+  };
+}
+
+async function verifyLayoutContract(session) {
+  const resultById = new Map();
+  const executionTargets = [
+    ...layoutContract.requiredTargets.filter(({ route }) => route !== "/"),
+    ...layoutContract.requiredTargets.filter(({ route }) => route === "/"),
+  ];
+  for (const target of executionTargets) {
+    try {
+      await setLayoutViewport(session, target.viewport);
+      if (target.route === "/") await openHomeRoute(session);
+      else await openTaskRoute(session);
+      const measurement = await session.evaluate(verifyExpression);
+      if (screenshotPath && target.id === "home-desktop") {
+        await captureScreenshot(session, path.resolve(screenshotPath));
+      }
+      resultById.set(target.id, {
+        id: target.id,
+        route: target.route,
+        viewport: target.viewport,
+        result: summarizeLayoutResult(target, measurement),
+      });
+    } catch (error) {
+      resultById.set(target.id, {
+        id: target.id,
+        route: target.route,
+        viewport: target.viewport,
+        result: {
+          pass: false,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+  await session.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
+  return layoutContract.requiredTargets.map(({ id }) => resultById.get(id));
 }
 
 async function captureScreenshot(session, outputPath) {
@@ -729,6 +901,14 @@ async function writeRuntimeState(state) {
 async function runOnce(operation) {
   const targets = await listTargets();
   if (!targets.length) throw new Error("No verified Codex renderer target is available");
+  if (operation === "verify") {
+    const session = await connectTarget(targets[0]);
+    try {
+      return await verifyLayoutContract(session);
+    } finally {
+      session.close();
+    }
+  }
   const results = [];
   for (const target of targets) {
     const session = await connectTarget(target);
@@ -737,14 +917,6 @@ async function runOnce(operation) {
         results.push({ targetId: target.id, result: await session.evaluate(installPayload) });
       } else if (operation === "remove") {
         results.push({ targetId: target.id, removed: await session.evaluate(cleanupExpression) });
-      } else if (operation === "verify") {
-        if (openHome) await openHomeRoute(session);
-        const result = await session.evaluate(verifyExpression);
-        if (openHome && (!result?.home || !result?.homeLayoutPreserved || !result?.composerViewportPass)) {
-          throw new Error("Home verification requires preserved native layout and an in-viewport composer");
-        }
-        if (screenshotPath) await captureScreenshot(session, path.resolve(screenshotPath));
-        results.push({ targetId: target.id, result });
       }
     } finally {
       session.close();
@@ -758,10 +930,13 @@ if (mode === "--once") {
 } else if (mode === "--remove-once") {
   console.log(JSON.stringify({ mode: "remove", extension: manifest.id, targets: await runOnce("remove") }, null, 2));
 } else if (mode === "--verify") {
-  const targets = await runOnce("verify");
-  const output = { mode: "verify", extension: manifest.id, version: manifest.version, targets };
+  const layoutResults = await runOnce("verify");
+  const output = { targets: layoutResults };
   console.log(JSON.stringify(output, null, 2));
-  if (!targets.length || targets.some((target) => !target.result?.pass)) process.exitCode = 1;
+  if (
+    layoutResults.length !== layoutContract.requiredTargets.length
+    || layoutResults.some((target) => !target?.result?.pass)
+  ) process.exitCode = 1;
 } else {
   let stopping = false;
   const sessions = new Map();

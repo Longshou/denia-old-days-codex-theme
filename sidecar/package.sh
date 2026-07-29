@@ -25,6 +25,7 @@ trap cleanup EXIT
 /bin/mkdir -p "$STAGED_PACKAGE"
 for item in \
   extension.json \
+  layout-contract.json \
   assets \
   src \
   runtime \

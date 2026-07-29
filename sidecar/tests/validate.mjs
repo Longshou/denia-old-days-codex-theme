@@ -48,6 +48,20 @@ assert(manifest.protocol?.target === "app://-/index.html", "renderer target must
 assert(manifest.protocol?.minimumDreamSkinVersion === "1.2.0", "minimum Dream Skin version must be 1.2.0");
 assert(manifest.entrypoints?.style === "src/denia-old-days-extension.css", "unexpected style entrypoint");
 assert(manifest.entrypoints?.runtime === "src/denia-old-days-extension.js", "unexpected runtime entrypoint");
+assert(manifest.layoutContract === "layout-contract.json", "layout contract pointer is required");
+const layoutContract = JSON.parse(await readRequired(manifest.layoutContract));
+assert(layoutContract.schemaVersion === 1, "layout contract schemaVersion must be 1");
+assert(layoutContract.packageId === manifest.id, "layout contract packageId must match the extension");
+assert(layoutContract.packageVersion === manifest.version, "layout contract packageVersion must match the extension");
+assert(
+  JSON.stringify(layoutContract.requiredTargets) === JSON.stringify([
+    { id: "home-desktop", route: "/", viewport: { width: 1440, height: 900 } },
+    { id: "home-narrow", route: "/", viewport: { width: 390, height: 844 } },
+    { id: "task-desktop", route: "/task/current", viewport: { width: 1440, height: 900 } },
+    { id: "task-narrow", route: "/task/current", viewport: { width: 390, height: 844 } },
+  ]),
+  "layout contract must declare the four supported verification targets",
+);
 const expectedAssets = {
   runtimeWallpaper: "assets/denia-old-days-bright.webp",
   darkHomeArtwork: "assets/denia-home-dark.webp",
@@ -139,6 +153,7 @@ const required = [
   "scripts/verify.sh",
   "tests/validate.mjs",
   "package.sh",
+  manifest.layoutContract,
   "README.md",
   "NOTICE.md",
   "LICENSE",
