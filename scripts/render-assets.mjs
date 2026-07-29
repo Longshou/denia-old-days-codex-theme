@@ -16,7 +16,7 @@ const output = (name) => path.join(root, name);
 await Promise.all([
   fs.mkdir(output("theme"), { recursive: true }),
   fs.mkdir(output("sidecar/assets"), { recursive: true }),
-  fs.mkdir(output("evidence"), { recursive: true }),
+  fs.mkdir(output("previews"), { recursive: true }),
 ]);
 
 await sharp(source("background.svg"))
@@ -331,14 +331,7 @@ async function renderHomePreview({ compact }) {
     .toBuffer();
 }
 
-const [homePreview, compactHomePreview] = await Promise.all([
-  renderHomePreview({ compact: false }),
-  renderHomePreview({ compact: true }),
-]);
-await Promise.all([
-  sharp(homePreview).toFile(output("evidence/home.png")),
-  sharp(compactHomePreview).toFile(output("evidence/home-compact.png")),
-]);
+const homePreview = await renderHomePreview({ compact: false });
 
 const TASK_STATE_ART = Object.freeze({
   staged: {
@@ -478,42 +471,14 @@ async function renderTaskPreview(state) {
     .toBuffer();
 }
 
-async function renderTaskTransition(fromState, toState, progress) {
-  const fromPreview = await renderTaskPreview(fromState);
-  const toRail = await renderTaskRailPanel(toState);
-  const fadedRail = await sharp(toRail)
-    .removeAlpha()
-    .ensureAlpha(progress)
-    .png()
-    .toBuffer();
-  return sharp(fromPreview)
-    .composite([{ input: fadedRail, left: 1280, top: 0 }])
-    .png({ compressionLevel: 9 })
-    .toBuffer();
-}
-
-const [taskStaged, taskWorking, taskApproval, taskError, taskComplete] = await Promise.all([
-  renderTaskPreview("staged"),
-  renderTaskPreview("working"),
-  renderTaskPreview("approval"),
-  renderTaskPreview("error"),
-  renderTaskPreview("complete"),
-]);
+const taskPreview = await renderTaskPreview("working");
 await Promise.all([
-  sharp(taskStaged).toFile(output("evidence/task-staged.png")),
-  sharp(taskWorking).toFile(output("evidence/task.png")),
-  sharp(taskApproval).toFile(output("evidence/task-approval.png")),
-  sharp(taskError).toFile(output("evidence/task-error.png")),
-  sharp(taskComplete).toFile(output("evidence/task-complete.png")),
-]);
-
-const [taskWorkingToApproval, taskErrorToComplete] = await Promise.all([
-  renderTaskTransition("working", "approval", 0.82),
-  renderTaskTransition("error", "complete", 0.92),
-]);
-await Promise.all([
-  sharp(taskWorkingToApproval).toFile(output("evidence/task-working-to-approval-350ms.png")),
-  sharp(taskErrorToComplete).toFile(output("evidence/task-error-to-complete-500ms.png")),
+  sharp(homePreview)
+    .webp({ quality: 82, effort: 6 })
+    .toFile(output("previews/home.webp")),
+  sharp(taskPreview)
+    .webp({ quality: 82, effort: 6 })
+    .toFile(output("previews/task.webp")),
 ]);
 
 for (const target of [
@@ -524,4 +489,4 @@ for (const target of [
   if (stat.size >= 1024 * 1024) throw new Error(`runtime artwork must remain below 1 MiB: ${target}`);
 }
 
-console.log("rendered 16 Denia assets");
+console.log("rendered 11 Denia assets");

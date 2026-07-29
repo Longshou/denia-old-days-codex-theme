@@ -7,18 +7,15 @@ import { RELEASE_COPY_SOURCES, RENDERER_SOURCE_INPUTS } from "./release-inputs.m
 
 const root = path.resolve(import.meta.dirname, "..");
 
-for (const relative of ["canon", "art/source", "theme", "sidecar", "evidence"]) {
+for (const relative of ["canon", "art/source", "theme", "sidecar", "previews"]) {
   if (!fs.existsSync(path.join(root, relative))) throw new Error(`missing ${relative}`);
 }
 
 const officialSources = new Map([
   ["art/source/official/old-days-bright-102s.jpg", "d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd"],
   ["art/source/official/denia-home-dark-hjz.jpg", "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce"],
-  ["art/source/official/denia-poster-wide.png", "1a5fc296eba320eff8fcab37be15fd017dce4b682ce4a4695c2dabbe1e54e6b1"],
   ["art/source/official/denia-garden-bubbles-warm.jpg", "481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b"],
-  ["art/source/official/denia-dark-direct-gaze.jpg", "aae25be7ff9670c43a8f36a4019fa445c28fb51c57f69a477c008277bc197292"],
   ["art/source/official/denia-anniversary-direct-gaze.jpg", "dea27e716f9561131e2b5255ea60a84de2512e8e81886073f09c64e02739fc6e"],
-  ["art/source/official/denia-dual-form-panorama.jpg", "646b290ae6a7584ce617cad85976f5caa6ae74e6d6678cd86a17a028266648b5"],
   ["art/source/official/denia-approval-dual-form.jpg", "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0"],
   ["art/source/official/denia-error-reaching.jpg", "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4"],
   ["art/source/official/denia-dark-form-smile-closeup.png", "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296"],
@@ -100,17 +97,12 @@ for (const marker of [
   "TASK_STATE_ART",
   "TASK_RAIL_SOURCES",
   "renderTaskRail",
-  "evidence/home-compact.png",
-  "evidence/task-staged.png",
-  "evidence/task-approval.png",
-  "evidence/task-error.png",
+  "previews/home.webp",
+  "previews/task.webp",
   "denia-task-warm.webp",
   "denia-task-approval.webp",
   "denia-task-error.webp",
   "denia-task-complete.webp",
-  "renderTaskTransition",
-  "evidence/task-working-to-approval-350ms.png",
-  "evidence/task-error-to-complete-500ms.png",
 ]) {
   if (!rendererSource.includes(marker)) throw new Error(`renderer missing ${marker}`);
 }
@@ -255,30 +247,12 @@ for (const [label, sourceText] of [
   }
 }
 for (const marker of [
-  "四组本地角色美术",
-  "warm garden-and-bubbles artwork",
-  "approval uses the official dual-form vertical artwork",
-  "error uses the separate official anniversary exhibition artwork with a complete unsmiling face and tense raised-arm movement",
-  "complete uses the bright anniversary direct-gaze crop",
-  "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
-  "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
-]) {
-  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing separate task-art provenance: ${marker}`);
-}
-for (const marker of [
   "暖色 P2 拍立得",
   "深色全景首页",
   "warm P2 polaroid homepage",
   "dark panoramic homepage",
-  "Dark homepage",
-  "denia-home-dark.webp",
-  "source-media/official-published-x/HJZ_QoAbEAAGOSi.jpg",
-  "4096×2304",
-  "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce",
-  "2048×1152",
-  "24590e16aebd09dd2ce730d3302e3b58b2d271e62f295485a32e23f1a8ce5b0c",
 ]) {
-  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing dark-home release metadata: ${marker}`);
+  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing theme description: ${marker}`);
 }
 if (!localReleaseBuilder.includes('recommendedNativeAppearance: "light"')) {
   throw new Error("local Kaboo release builder must keep the recommended native appearance light");
@@ -320,28 +294,14 @@ if (composerRight > 1220) {
   throw new Error(`task preview composer enters the rail safety zone: right edge ${composerRight}`);
 }
 
-const archivedArtwork = new Map([
-  ["art/archive/legacy-main-7851e38/background.svg", "f434bc0fbf01523e8198f7f41bdb546c98186e99a6c0c5ab44a5ca6ed1a6df1a"],
-  ["art/archive/legacy-main-7851e38/hero.svg", "a7cacba007ae990c9b02bba07fdf9437c0a40b6028189109c21c37c3090671ec"],
-  ["art/archive/legacy-main-7851e38/task-preview.svg", "ed9b47544f1fbd589d1124b8c63a6a650811632dcce6d5340fd8ddb1092d9ade"],
-  ["art/reference/visual-library-2026-07-23/production-ready/dark-stage-complete.jpg", "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed"],
-  ["art/reference/visual-library-2026-07-23/production-ready/old-days-half-face-clean.jpg", "c908f50f08dcc345a442ae9de73112d59725fdd2352114c142955093c13deb37"],
-]);
-for (const [relative, expected] of archivedArtwork) {
-  const bytes = fs.readFileSync(path.join(root, relative));
-  const actual = crypto.createHash("sha256").update(bytes).digest("hex");
-  if (actual !== expected) throw new Error(`archived artwork hash mismatch: ${relative}`);
-}
-
-const archiveRoots = [
-  path.resolve(root, "art/archive"),
-  path.resolve(root, "art/reference"),
-];
-const assertOutsideArchiveRoots = (inputKind, candidates) => {
+const assertInsideRepository = (inputKind, candidates) => {
   for (const candidate of candidates) {
     const resolved = path.resolve(candidate);
-    if (archiveRoots.some((archiveRoot) => resolved === archiveRoot || resolved.startsWith(`${archiveRoot}${path.sep}`))) {
-      throw new Error(`${inputKind} must not include archived artwork: ${resolved}`);
+    if (!resolved.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`${inputKind} escapes the repository: ${resolved}`);
+    }
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`${inputKind} is missing: ${resolved}`);
     }
   }
 };
@@ -371,23 +331,7 @@ for (const [name, inputs] of [
   ["renderer input list", rendererInputs],
   ["release ZIP input list", releaseZipInputs],
 ]) {
-  assertOutsideArchiveRoots(name, inputs);
-}
-
-const boundaryMutationFixture = path.join(
-  root,
-  "art/source",
-  "..",
-  "archive/legacy-main-7851e38/background.svg",
-);
-let mutationWasRejected = false;
-try {
-  assertOutsideArchiveRoots("boundary mutation fixture", [boundaryMutationFixture]);
-} catch (error) {
-  mutationWasRejected = error instanceof Error && error.message.includes("must not include archived artwork");
-}
-if (!mutationWasRejected) {
-  throw new Error("archive boundary mutation fixture must be rejected after path normalization");
+  assertInsideRepository(name, inputs);
 }
 
 const generatedFiles = [
@@ -400,15 +344,8 @@ const generatedFiles = [
   "sidecar/assets/denia-task-complete.webp",
   "sidecar/assets/denia-right-sidebar.webp",
   "sidecar/assets/denia-right-sidebar-wide.webp",
-  "evidence/home.png",
-  "evidence/home-compact.png",
-  "evidence/task-staged.png",
-  "evidence/task.png",
-  "evidence/task-approval.png",
-  "evidence/task-error.png",
-  "evidence/task-working-to-approval-350ms.png",
-  "evidence/task-error-to-complete-500ms.png",
-  "evidence/task-complete.png",
+  "previews/home.webp",
+  "previews/task.webp",
 ];
 
 for (const relative of generatedFiles) {
@@ -449,31 +386,11 @@ if (
   );
 }
 
-const expectedDimensions = new Map([
-  ["evidence/home.png", [1600, 1000]],
-  ["evidence/home-compact.png", [1200, 800]],
-  ["evidence/task-staged.png", [1600, 1000]],
-  ["evidence/task.png", [1600, 1000]],
-  ["evidence/task-approval.png", [1600, 1000]],
-  ["evidence/task-error.png", [1600, 1000]],
-  ["evidence/task-working-to-approval-350ms.png", [1600, 1000]],
-  ["evidence/task-error-to-complete-500ms.png", [1600, 1000]],
-  ["evidence/task-complete.png", [1600, 1000]],
-]);
-for (const [relative, [expectedWidth, expectedHeight]] of expectedDimensions) {
-  const bytes = fs.readFileSync(path.join(root, relative));
-  if (bytes.toString("ascii", 1, 4) !== "PNG") throw new Error(`not a PNG: ${relative}`);
-  const width = bytes.readUInt32BE(16);
-  const height = bytes.readUInt32BE(20);
-  if (width !== expectedWidth || height !== expectedHeight) {
-    throw new Error(`unexpected dimensions for ${relative}: ${width}x${height}`);
+for (const relative of ["previews/home.webp", "previews/task.webp"]) {
+  const metadata = await sharp(path.join(root, relative)).metadata();
+  if (metadata.format !== "webp" || metadata.width !== 1600 || metadata.height !== 1000) {
+    throw new Error(`public preview must be a 1600x1000 WebP: ${relative}`);
   }
-}
-
-const workingEvidence = fs.readFileSync(path.join(root, "evidence/task.png"));
-const workingEvidenceHash = crypto.createHash("sha256").update(workingEvidence).digest("hex");
-if (workingEvidenceHash !== "7719c000b70ed5f94858ebe4bf341c756fee77c1776bc43b47ec32d27f21d3e4") {
-  throw new Error(`working evidence hash mismatch: ${workingEvidenceHash}`);
 }
 const errorRail = fs.readFileSync(path.join(root, "sidecar/assets/denia-task-error.webp"));
 const errorRailHash = crypto.createHash("sha256").update(errorRail).digest("hex");

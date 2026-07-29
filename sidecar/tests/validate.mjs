@@ -77,33 +77,51 @@ assert(manifest.capabilities.includes("task.state-art-rail"), "state art rail ca
 if (canonSources) {
   const officialRows = new Map(
     canonSources.split("\n")
-      .filter((line) => /^\| (?:Home|Legacy stage|Warm rail|Dark rail|Complete rail|Wide scene|Approval rail|Error rail|Right sidebar|Right sidebar wide) \|/u.test(line))
-      .map((line) => [line.split("|")[1].trim(), line]),
+      .filter((line) => /^\| `art\/source\/official\/[^`]+` \|/u.test(line))
+      .map((line) => [line.split("|")[1].trim().slice(1, -1), line]),
   );
-  const officialSourceUrls = {
-    Home: ["https://www.kurobbs.com/mc/post/1507356224033308672"],
-    "Legacy stage": ["https://www.kurobbs.com/mc/post/1508896679676882944"],
-    "Warm rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
-    "Dark rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
-    "Complete rail": ["https://x.com/WW_JP_Official/status/2049081192532557960"],
-    "Wide scene": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
-    "Approval rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
-    "Error rail": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
-    "Right sidebar": ["https://x.com/Wuthering_Waves/status/2037002852649099578"],
-    "Right sidebar wide": ["https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust"],
+  const expectedOfficialSources = {
+    "art/source/official/old-days-bright-102s.jpg": [
+      "d0989c926a8dcb8033c21e781fc6c99a5d6e550d3233dac2789ca688e9c7f1dd",
+      "https://www.kurobbs.com/mc/post/1507356224033308672",
+    ],
+    "art/source/official/denia-home-dark-hjz.jpg": [
+      "b4d5f5b17b83c0f855e8d09effadc01fdead43d01fb6c03b42c3f34860fe17ce",
+      "https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust",
+    ],
+    "art/source/official/denia-garden-bubbles-warm.jpg": [
+      "481bf5ff8fa4f54d5b696f6144fb3f6a7d3b2d8b580cf2a5baee39409110489b",
+      "https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust",
+    ],
+    "art/source/official/denia-approval-dual-form.jpg": [
+      "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
+      "https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust",
+    ],
+    "art/source/official/denia-error-reaching.jpg": [
+      "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
+      "https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust",
+    ],
+    "art/source/official/denia-anniversary-direct-gaze.jpg": [
+      "dea27e716f9561131e2b5255ea60a84de2512e8e81886073f09c64e02739fc6e",
+      "https://x.com/WW_JP_Official/status/2049081192532557960",
+    ],
+    "art/source/official/denia-dark-form-smile-closeup.png": [
+      "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296",
+      "https://x.com/Wuthering_Waves/status/2037002852649099578",
+    ],
+    "art/source/official/denia-right-sidebar-wide.jpg": [
+      "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed",
+      "https://wikiwiki.jp/w-w/%E3%83%80%E3%83%BC%E3%83%8B%E3%83%A3#official_illust",
+    ],
   };
-  for (const [form, urls] of Object.entries(officialSourceUrls)) {
-    const row = officialRows.get(form) || "";
-    for (const url of urls) assert(row.includes(url), `${form} official source row must include ${url}`);
-  }
-  const exactSourceHashes = {
-    "Approval rail": "3339a65536eb6b8cff762f4ac441df6358e857c8b25f0ddaecbade8e457f84c0",
-    "Error rail": "42c2a49b83de911a01627501875e6df992ac26da556c90b2c64433883eb353f4",
-    "Right sidebar": "1dcbfa127968c2386ad77da325f850ad4985bccc95959d915652df36dcba2296",
-    "Right sidebar wide": "d312c86f21610d7d6b50b8d8fa9b9685ef4baa11d34c0ca72fd71a712bfa42ed",
-  };
-  for (const [form, hash] of Object.entries(exactSourceHashes)) {
-    assert(officialRows.get(form)?.includes(`\`${hash}\``), `${form} official source row must include exact SHA-256 ${hash}`);
+  assert(
+    officialRows.size === Object.keys(expectedOfficialSources).length,
+    "canon/sources.md must list exactly the official files used by the renderer",
+  );
+  for (const [relative, [hash, url]] of Object.entries(expectedOfficialSources)) {
+    const row = officialRows.get(relative) || "";
+    assert(row.includes(`\`${hash}\``), `${relative} source row must include exact SHA-256 ${hash}`);
+    assert(row.includes(url), `${relative} source row must include ${url}`);
   }
 }
 

@@ -15,8 +15,8 @@ export const RELEASE_COPY_SOURCES = Object.freeze({
   sidecar: "sidecar",
   themeDefinition: "theme/theme.json",
   themeBackground: "theme/background.jpg",
-  homePreview: "evidence/home.png",
-  taskPreview: "evidence/task.png",
-  license: "sidecar/LICENSE",
+  homePreview: "previews/home.webp",
+  taskPreview: "previews/task.webp",
+  license: "LICENSE",
   notice: "sidecar/NOTICE.md",
 });

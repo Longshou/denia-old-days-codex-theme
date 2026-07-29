@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:kaboo": "node scripts/build-local-kaboo-release.mjs",
-    "check": "node scripts/check-source.mjs && node sidecar/tests/validate.mjs sidecar",
+    "build:assets": "node scripts/render-assets.mjs",
+    "build:kaboo": "npm run build:assets && node scripts/build-local-kaboo-release.mjs",
+    "check": "npm run build:assets && node scripts/check-source.mjs && node sidecar/tests/validate.mjs sidecar && npm run test:release",
     "test:release": "node --test scripts/public-release-contract.test.mjs"
   },
   "engines": {
