@@ -25,6 +25,7 @@
   let nativeSidebarResizeTarget = null;
   let nativeSidebarResizeTimer = 0;
   let nativeSidebarLastObservedWidth = 0;
+  let nativeSidebarPointerResizing = false;
   let nativeHomePrompt = null;
   let taskChrome = null;
   let finalAssistantUnitKey = "";
@@ -603,6 +604,47 @@
     nativeSidebarResizeTimer = 0;
   }
 
+  function nativeSidebarResizePointerTarget(target) {
+    if (!(target instanceof HTMLElement) || !nativeSidebarResizeTarget?.contains(target)) {
+      return false;
+    }
+    for (let node = target; node && node !== nativeSidebarResizeTarget; node = node.parentElement) {
+      if (
+        node.classList?.contains("cursor-col-resize")
+        || getComputedStyle(node).cursor === "col-resize"
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function beginNativeSidebarPointerResize(event) {
+    if (
+      (Number.isInteger(event.button) && event.button !== 0)
+      || !nativeSidebarResizePointerTarget(event.target)
+    ) {
+      return;
+    }
+    nativeSidebarPointerResizing = true;
+    clearNativeSidebarResizeTimer();
+    setDatasetValue(root, "deniaSidebarResizing", "true");
+  }
+
+  function finishNativeSidebarPointerResize() {
+    if (!nativeSidebarPointerResizing) return;
+    nativeSidebarPointerResizing = false;
+    clearNativeSidebarResizeTimer();
+    const target = nativeSidebarResizeTarget;
+    if (!target) {
+      removeDatasetValue(root, "deniaSidebarResizing");
+      return;
+    }
+    const rect = measuredRect(target);
+    nativeSidebarLastObservedWidth = Number(rect?.width) || nativeSidebarLastObservedWidth;
+    commitNativeSidebarArtwork(target, rect);
+  }
+
   function sidebarArtworkForRect(rect) {
     const width = Number(rect?.width);
     const height = Number(rect?.height);
@@ -647,6 +689,7 @@
 
   function syncNativeSidebarResizeTarget(panel) {
     if (nativeSidebarResizeTarget === panel) return;
+    nativeSidebarPointerResizing = false;
     clearNativeSidebarResizeTimer();
     removeDatasetValue(root, "deniaSidebarResizing");
     if (nativeSidebarResizeObserver && nativeSidebarResizeTarget) {
@@ -668,12 +711,14 @@
           nativeSidebarLastObservedWidth = observedWidth;
           setDatasetValue(root, "deniaSidebarResizing", "true");
           clearNativeSidebarResizeTimer();
-          nativeSidebarResizeTimer = setTimeout(() => {
-            nativeSidebarResizeTimer = 0;
-            const target = nativeSidebarResizeTarget;
-            if (!target) return;
-            commitNativeSidebarArtwork(target, measuredRect(target));
-          }, 120);
+          if (!nativeSidebarPointerResizing) {
+            nativeSidebarResizeTimer = setTimeout(() => {
+              nativeSidebarResizeTimer = 0;
+              const target = nativeSidebarResizeTarget;
+              if (!target) return;
+              commitNativeSidebarArtwork(target, measuredRect(target));
+            }, 120);
+          }
         }
         scheduleRefresh(DIRTY.SIDEBAR | DIRTY.LAYOUT | DIRTY.WORK_SURFACES);
       });
@@ -1844,9 +1889,9 @@
     return mask | STRUCTURE_DIRTY | (state.homeActive ? DIRTY.HOME : 0);
   }
 
-  function on(target, name, handler) {
-    target.addEventListener(name, handler);
-    listeners.push([target, name, handler]);
+  function on(target, name, handler, options) {
+    target.addEventListener(name, handler, options);
+    listeners.push([target, name, handler, options]);
   }
 
   function cleanup() {
@@ -1862,7 +1907,9 @@
     invalidateComposerCache();
     invalidateToggleCache();
     clearHomeViewportBinding();
-    for (const [target, name, handler] of listeners) target.removeEventListener(name, handler);
+    for (const [target, name, handler, options] of listeners) {
+      target.removeEventListener(name, handler, options);
+    }
     syncClass(nativeLeftSidebarPanel, "denia-old-days-ds-native-left-sidebar", false);
     nativeLeftSidebarPanel = null;
     clearNativeRightSidebarClasses();
@@ -1922,6 +1969,9 @@
   on(window, "popstate", scheduleRouteRefresh);
   on(window, "hashchange", scheduleRouteRefresh);
   on(window, "resize", scheduleResizeRefresh);
+  on(window, "pointerdown", beginNativeSidebarPointerResize, true);
+  on(window, "pointerup", finishNativeSidebarPointerResize, true);
+  on(window, "pointercancel", finishNativeSidebarPointerResize, true);
   if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
     on(window.visualViewport, "resize", scheduleResizeRefresh);
   }

@@ -2207,6 +2207,9 @@ function assertNativeRightSidebarLifecycle(payload) {
   main.append(threadScroll);
   const toggle = appendToggle(open, { "aria-controls": "native-right-panel", "aria-expanded": "true" });
   const aside = appendRightPanel(open, "native-right-panel");
+  const resizeHandle = open.document.createElement("div");
+  resizeHandle.classList.add("cursor-col-resize");
+  aside.append(resizeHandle);
   const group = open.document.createElement("div");
   group.setRect({ x: 1194, y: 92, width: 302, height: 126 });
   const firstRow = open.document.createElement("button");
@@ -2297,6 +2300,11 @@ function assertNativeRightSidebarLifecycle(payload) {
     assertNativeNodeUnchanged(node, attributes, before, label);
   }
 
+  open.dispatchWindowEvent("pointerdown", { target: resizeHandle });
+  assert(
+    open.root.dataset.deniaSidebarResizing === "true",
+    "pressing the native resize handle must show the sidebar mask before geometry changes",
+  );
   aside.setRect({ x: 952, width: 560 });
   assert(open.flushResizeObservers(aside) === 1, "dragging the sidebar must notify one ResizeObserver");
   assert(open.flushAnimationFrames() === 1, "a sidebar resize must coalesce into one refresh frame");
@@ -2307,16 +2315,17 @@ function assertNativeRightSidebarLifecycle(payload) {
     "a 560px drag must keep the last portrait choice hidden behind the resize mask",
   );
   assert(
-    open.pendingTimerDelays().includes(120),
-    "sidebar artwork selection must wait 120ms after the final resize observation",
+    open.flushTimers() === 0
+      && open.root.dataset.deniaSidebarResizing === "true",
+    "a held native resize pointer must keep the mask instead of settling on idle time",
   );
-  assert(open.flushTimers() === 1, "the settled 560px drag must commit one artwork decision");
+  open.dispatchWindowEvent("pointerup", { target: resizeHandle });
   assert(
     !("deniaSidebarResizing" in open.root.dataset)
       && open.root.dataset.deniaSidebarArtwork === "portrait",
-    "a settled portrait-like 560px panel must reveal the portrait artwork",
+    "releasing a portrait-like 560px panel must reveal the portrait artwork",
   );
-  assert(open.flushAnimationFrames() === 1, "settled portrait selection must refresh diagnostics once");
+  assert(open.flushAnimationFrames() === 1, "released portrait selection must refresh diagnostics once");
 
   aside.setRect({ x: 672, width: 840 });
   main.setRect({ width: 672 });
@@ -2973,6 +2982,7 @@ function createRuntimeHarness(createObjectUrl) {
   const revoked = [];
   const events = [];
   const freezeCalls = [];
+  const windowListeners = new Map();
   const mutationObservers = new Set();
   const resizeObservers = new Set();
   const animationFrames = new Map();
@@ -3422,8 +3432,17 @@ function createRuntimeHarness(createObjectUrl) {
       return id;
     },
     clearTimeout: (id) => timers.delete(id),
-    addEventListener() {},
-    removeEventListener() {},
+    addEventListener(name, handler) {
+      const handlers = windowListeners.get(name) || [];
+      handlers.push(handler);
+      windowListeners.set(name, handlers);
+    },
+    removeEventListener(name, handler) {
+      windowListeners.set(
+        name,
+        (windowListeners.get(name) || []).filter((candidate) => candidate !== handler),
+      );
+    },
     innerWidth: 1512,
     innerHeight: 859,
     visualViewport: {
@@ -3519,6 +3538,11 @@ function createRuntimeHarness(createObjectUrl) {
     },
     pendingTimerDelays() {
       return [...timers.values()].map((timer) => timer.delay);
+    },
+    dispatchWindowEvent(name, event = {}) {
+      for (const handler of windowListeners.get(name) || []) {
+        handler({ type: name, ...event });
+      }
     },
   };
 }
