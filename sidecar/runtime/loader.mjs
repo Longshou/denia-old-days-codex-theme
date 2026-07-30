@@ -16,8 +16,8 @@ const value = (flag, fallback = "") => {
   return found;
 };
 
-const mode = ["--watch", "--once", "--remove-once", "--verify"].find(has);
-if (!mode) throw new Error("Choose one mode: --watch, --once, --remove-once, or --verify");
+const mode = ["--watch", "--once", "--remove-once", "--health", "--verify"].find(has);
+if (!mode) throw new Error("Choose one mode: --watch, --once, --remove-once, --health, or --verify");
 
 const extensionDir = path.resolve(value("--extension-dir", defaultExtensionDir));
 const port = Number(value("--port", "9341"));
@@ -25,6 +25,8 @@ const statePath = value("--state", "");
 const screenshotPath = value("--screenshot", "");
 const openHome = has("--open-home");
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("--port must be a valid local TCP port");
+const CDP_PAGE_ID_PATTERN = /^[A-Za-z0-9._-]{1,200}$/u;
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 
 let extensionRealDir;
 try {
@@ -207,6 +209,51 @@ const unresolvedSentinels = [...sentinelPayloads.keys()].filter((sentinel) => in
 if (unresolvedSentinels.length) {
   throw new Error(`Unresolved Denia runtime template sentinel(s): ${unresolvedSentinels.join(", ")}`);
 }
+
+function validatedDebuggerUrl(target) {
+  if (typeof target?.id !== "string" || !CDP_PAGE_ID_PATTERN.test(target.id)) {
+    throw new Error("Rejected an invalid CDP page target id");
+  }
+  const url = new URL(target.webSocketDebuggerUrl || "");
+  if (
+    url.protocol !== "ws:"
+    || !LOOPBACK_HOSTS.has(url.hostname)
+    || Number(url.port) !== port
+    || url.username
+    || url.password
+    || url.search
+    || url.hash
+    || url.pathname !== `/devtools/page/${target.id}`
+  ) {
+    throw new Error("Rejected a CDP WebSocket outside the allowed loopback page endpoint");
+  }
+  return url.href;
+}
+
+const healthExpression = `(() => {
+  const root = document.documentElement;
+  const state = window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
+  const style = document.getElementById('denia-old-days-dream-skin-extension-style');
+  const installed = state?.id === 'denia-old-days'
+    && state?.version === ${JSON.stringify(manifest.version)}
+    && root.classList.contains('denia-old-days-ds-extension')
+    && root.dataset.deniaOldDaysExtensionVersion === ${JSON.stringify(manifest.version)};
+  return {
+    pass: Boolean(installed && style?.textContent),
+    id: state?.id || null,
+    version: state?.version || null,
+    installed: Boolean(installed),
+    stylePresent: Boolean(style?.textContent),
+    surface: root.classList.contains('denia-old-days-ds-home')
+      ? 'home'
+      : root.classList.contains('denia-old-days-ds-task')
+        ? 'task'
+        : root.classList.contains('denia-old-days-ds-settings')
+          ? 'settings'
+          : 'other',
+    url: location.href,
+  };
+})()`;
 
 const cleanupExpression = `(() => {
   const state = window.__DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__;
@@ -595,6 +642,7 @@ const verifyExpression = `(() => {
 class CdpSession {
   constructor(target) {
     this.target = target;
+    this.debuggerUrl = validatedDebuggerUrl(target);
     this.socket = null;
     this.sequence = 0;
     this.pending = new Map();
@@ -603,7 +651,7 @@ class CdpSession {
   }
 
   async connect() {
-    this.socket = new WebSocket(this.target.webSocketDebuggerUrl);
+    this.socket = new WebSocket(this.debuggerUrl);
     this.socket.onmessage = ({ data }) => {
       const message = JSON.parse(data);
       if (message.id) {
@@ -666,11 +714,21 @@ async function listTargets() {
   const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error(`Dream Skin CDP endpoint returned HTTP ${response.status}`);
   const targets = await response.json();
-  return targets.filter((target) =>
-    target.type === "page" &&
-    target.url === manifest.protocol.target &&
-    typeof target.webSocketDebuggerUrl === "string" &&
-    target.webSocketDebuggerUrl.startsWith(`ws://127.0.0.1:${port}/`));
+  if (!Array.isArray(targets)) throw new Error("Dream Skin CDP target list was not an array");
+  return targets.filter((target) => {
+    if (
+      target?.type !== "page"
+      || typeof target.url !== "string"
+      || !target.url.startsWith("app://")
+      || typeof target.webSocketDebuggerUrl !== "string"
+    ) return false;
+    try {
+      validatedDebuggerUrl(target);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function connectBrowserEventStream(onSignal, onClose) {
@@ -696,10 +754,35 @@ async function connectBrowserEventStream(onSignal, onClose) {
   return socket;
 }
 
+async function probeCodexRenderer(session) {
+  return session.evaluate(`(() => ({
+    codex: location.protocol === 'app:' && (
+      Boolean(document.querySelector('main.main-surface'))
+        && Boolean(document.querySelector(
+          'header.app-header-tint, aside.app-shell-left-panel, [data-testid="home-icon"], .composer-surface-chrome, .thread-scroll-container, [data-message-author-role]'
+        ))
+      || Boolean(
+        document.querySelector('input[name="appearance-theme"]')
+          && document.querySelector('[data-testid="theme-preview"]')
+      )
+    ),
+    url: location.href,
+  }))()`);
+}
+
 async function connectTarget(target) {
   const session = new CdpSession(target);
-  await session.connect();
-  return session;
+  try {
+    await session.connect();
+    const probe = await probeCodexRenderer(session);
+    if (!probe?.codex) {
+      throw new Error(`Rejected an app:// page without Codex renderer markers: ${probe?.url || target.url}`);
+    }
+    return session;
+  } catch (error) {
+    session.close();
+    throw error;
+  }
 }
 
 async function openHomeRoute(session) {
@@ -911,16 +994,46 @@ async function runOnce(operation) {
   const targets = await listTargets();
   if (!targets.length) throw new Error("No verified Codex renderer target is available");
   if (operation === "verify") {
-    const session = await connectTarget(targets[0]);
+    let session = null;
+    for (const target of targets) {
+      try {
+        session = await connectTarget(target);
+        break;
+      } catch {}
+    }
+    if (!session) throw new Error("No verified Codex renderer target is available");
     try {
       return await verifyLayoutContract(session);
     } finally {
       session.close();
     }
   }
+  if (operation === "health") {
+    const results = [];
+    for (const target of targets) {
+      let session;
+      try {
+        session = await connectTarget(target);
+      } catch {
+        continue;
+      }
+      try {
+        results.push({ targetId: target.id, result: await session.evaluate(healthExpression) });
+      } finally {
+        session.close();
+      }
+    }
+    if (!results.length) throw new Error("No verified Codex renderer target is available");
+    return results;
+  }
   const results = [];
   for (const target of targets) {
-    const session = await connectTarget(target);
+    let session;
+    try {
+      session = await connectTarget(target);
+    } catch {
+      continue;
+    }
     try {
       if (operation === "install") {
         results.push({ targetId: target.id, result: await session.evaluate(installPayload) });
@@ -931,6 +1044,7 @@ async function runOnce(operation) {
       session.close();
     }
   }
+  if (!results.length) throw new Error("No verified Codex renderer target is available");
   return results;
 }
 
@@ -938,6 +1052,10 @@ if (mode === "--once") {
   console.log(JSON.stringify({ mode: "once", extension: manifest.id, targets: await runOnce("install") }, null, 2));
 } else if (mode === "--remove-once") {
   console.log(JSON.stringify({ mode: "remove", extension: manifest.id, targets: await runOnce("remove") }, null, 2));
+} else if (mode === "--health") {
+  const healthResults = await runOnce("health");
+  console.log(JSON.stringify({ mode: "health", extension: manifest.id, targets: healthResults }, null, 2));
+  if (!healthResults.some((target) => target?.result?.pass)) process.exitCode = 1;
 } else if (mode === "--verify") {
   const layoutResults = await runOnce("verify");
   const output = { targets: layoutResults };
@@ -1021,10 +1139,15 @@ if (mode === "--once") {
     for (const target of targets) {
       let session = sessions.get(target.id);
       if (!session) {
-        session = await connectTarget(target);
-        session.on("Page.loadEventFired", () => scheduleReinject(session));
-        sessions.set(target.id, session);
-        await ensureInstalled(session, true);
+        try {
+          session = await connectTarget(target);
+          session.on("Page.loadEventFired", () => scheduleReinject(session));
+          await ensureInstalled(session, true);
+          sessions.set(target.id, session);
+        } catch {
+          session?.close();
+          continue;
+        }
         continue;
       }
       try {

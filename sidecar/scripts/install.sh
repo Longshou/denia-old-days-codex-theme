@@ -17,10 +17,47 @@ ensure_state_root
 
 STAGE="$STATE_ROOT/.package-stage-$$"
 /bin/mkdir -p "$STAGE"
-cleanup_stage() {
+BACKUP=""
+RECEIPT_BACKUP=""
+RECEIPT_WAS_PRESENT="false"
+OLD_WAS_RUNNING="false"
+SWAP_STARTED="false"
+INSTALL_COMMITTED="false"
+
+finish_install() {
+  local status="$1"
+  local failed_package="$STATE_ROOT/.package-failed-$$"
+  trap - EXIT
+  if [ "$INSTALL_COMMITTED" = "true" ]; then
+    [ -z "${STAGE:-}" ] || /bin/rm -rf "$STAGE"
+    exit "$status"
+  fi
+  set +e
+  if [ "$SWAP_STARTED" = "true" ]; then
+    if [ -x "$INSTALL_DIR/scripts/stop.sh" ]; then
+      "$INSTALL_DIR/scripts/stop.sh" >/dev/null 2>&1
+    fi
+    if [ -e "$INSTALL_DIR" ]; then /bin/mv "$INSTALL_DIR" "$failed_package"; fi
+    if [ -n "$BACKUP" ] && [ -e "$BACKUP" ]; then
+      /bin/mv "$BACKUP" "$INSTALL_DIR"
+    fi
+    [ ! -e "$failed_package" ] || /bin/rm -rf "$failed_package"
+    if [ "$RECEIPT_WAS_PRESENT" = "true" ]; then
+      if [ -n "$RECEIPT_BACKUP" ] && [ -f "$RECEIPT_BACKUP" ]; then
+        /bin/mv "$RECEIPT_BACKUP" "$STATE_ROOT/receipt.json"
+      fi
+    else
+      /bin/rm -f "$STATE_ROOT/receipt.json"
+    fi
+    if [ "$OLD_WAS_RUNNING" = "true" ] && [ -x "$INSTALL_DIR/scripts/start.sh" ]; then
+      "$INSTALL_DIR/scripts/start.sh" >/dev/null 2>&1
+    fi
+  fi
   [ -z "${STAGE:-}" ] || /bin/rm -rf "$STAGE"
+  set -e
+  exit "$status"
 }
-trap cleanup_stage EXIT
+trap 'finish_install "$?"' EXIT
 for item in \
   extension.json \
   layout-contract.json \
@@ -38,16 +75,29 @@ done
 
 "$NODE" "$STAGE/tests/validate.mjs" "$STAGE"
 
+if [ -e "$INSTALL_DIR" ]; then
+  [ -d "$INSTALL_DIR" ] && [ ! -L "$INSTALL_DIR" ] \
+    || fail "Refusing to replace an unsafe extension package path: $INSTALL_DIR"
+fi
 if [ -x "$INSTALL_DIR/scripts/stop.sh" ]; then
+  if [ -x "$INSTALL_DIR/scripts/status.sh" ] \
+    && "$INSTALL_DIR/scripts/status.sh" 2>/dev/null | /usr/bin/grep -q '^running=true$'; then
+    OLD_WAS_RUNNING="true"
+  fi
   "$INSTALL_DIR/scripts/stop.sh" >/dev/null 2>&1 || true
 fi
+SWAP_STARTED="true"
 if [ -d "$INSTALL_DIR" ]; then
-  BACKUP="$STATE_ROOT/package-previous-$(/bin/date '+%Y%m%d-%H%M%S')"
+  BACKUP="$STATE_ROOT/.package-previous-$$"
   /bin/mv "$INSTALL_DIR" "$BACKUP"
+fi
+if [ -f "$STATE_ROOT/receipt.json" ]; then
+  RECEIPT_WAS_PRESENT="true"
+  RECEIPT_BACKUP="$STATE_ROOT/.receipt-previous-$$"
+  /bin/mv "$STATE_ROOT/receipt.json" "$RECEIPT_BACKUP"
 fi
 /bin/mv "$STAGE" "$INSTALL_DIR"
 STAGE=""
-trap - EXIT
 /bin/chmod 700 "$INSTALL_DIR/scripts/"*.sh "$INSTALL_DIR/package.sh"
 
 "$NODE" -e '
@@ -66,3 +116,10 @@ if [ "$START_EXTENSION" = "true" ]; then
     exit 1
   fi
 fi
+
+INSTALL_COMMITTED="true"
+trap - EXIT
+[ -z "$BACKUP" ] || /bin/rm -rf "$BACKUP" \
+  || /usr/bin/printf 'Warning: old package backup was not removed: %s\n' "$BACKUP" >&2
+[ -z "$RECEIPT_BACKUP" ] || /bin/rm -f "$RECEIPT_BACKUP" \
+  || /usr/bin/printf 'Warning: old receipt backup was not removed: %s\n' "$RECEIPT_BACKUP" >&2

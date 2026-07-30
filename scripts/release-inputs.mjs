@@ -12,11 +12,14 @@ export const RENDERER_SOURCE_INPUTS = Object.freeze([
 ]);
 
 export const RELEASE_COPY_SOURCES = Object.freeze({
+  installCommand: "Install Denia Old Days.command",
+  uninstallCommand: "Uninstall Denia Old Days.command",
+  installer: "installer",
   sidecar: "sidecar",
+  previews: "previews",
   themeDefinition: "theme/theme.json",
   themeBackground: "theme/background.jpg",
-  homePreview: "previews/home.webp",
-  taskPreview: "previews/task.webp",
+  readme: "README.md",
   license: "LICENSE",
   notice: "sidecar/NOTICE.md",
 });

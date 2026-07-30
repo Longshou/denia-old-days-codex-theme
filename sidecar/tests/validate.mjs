@@ -152,6 +152,7 @@ const required = [
   ...new Set(Object.values(manifest.assets || {})),
   "runtime/loader.mjs",
   "scripts/common.sh",
+  "scripts/health.sh",
   "scripts/install.sh",
   "scripts/start.sh",
   "scripts/status.sh",
@@ -177,7 +178,7 @@ const [loader, styles, runtime, packageReadme, packageNotice, ...scripts] = awai
   readRequired(manifest.entrypoints.runtime),
   readRequired("README.md"),
   readRequired("NOTICE.md"),
-  ...["common.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
+  ...["common.sh", "health.sh", "install.sh", "start.sh", "status.sh", "stop.sh", "uninstall.sh", "verify.sh"]
     .map((name) => readRequired(`scripts/${name}`)),
 ]);
 const combinedExtensionSource = [JSON.stringify(manifest), styles, runtime, loader].join("\n");
@@ -193,7 +194,14 @@ for (const removedToken of [
 ]) {
   assert(!combinedExtensionSource.includes(removedToken), `removed suggestion token must be absent: ${removedToken}`);
 }
-const startScript = scripts[2];
+const healthScript = scripts[1];
+const startScript = scripts[3];
+const statusScript = scripts[4];
+assert(healthScript.includes("--health"), "health script must use the current-page health mode");
+assert(statusScript.includes("--health"), "status script must use the non-disruptive health mode");
+assert(!statusScript.includes("--verify"), "status must not trigger the route-changing layout verifier");
+assert(loader.includes('"--health"'), "loader must register the current-page health mode");
+assert(loader.includes('operation === "health"'), "loader must evaluate health without layout navigation");
 const launchBootstrapIndex = startScript.lastIndexOf('/bin/launchctl bootstrap "$LAUNCH_DOMAIN" "$LAUNCH_PLIST"');
 const launchKickstartIndex = startScript.indexOf('/bin/launchctl kickstart -k "$LAUNCH_DOMAIN/$LAUNCH_LABEL"');
 assert(
@@ -205,41 +213,12 @@ assert(!/同一暗色图|approval\s*\/\s*error|approval\s+and\s+error[^.\n]*(?:s
 for (const marker of [
   "denia-old-days@0.1.0",
   "sidecar/layout-contract.json",
+  "sidecar/scripts/health.sh",
   "sidecar/scripts/verify.sh",
   "SHA256SUMS",
   "app://-/index.html",
 ]) {
   assert(packageNotice.includes(marker), `NOTICE must include package boundary marker: ${marker}`);
-}
-
-const bundleRoot = path.resolve(root, "..");
-let bundleManifest = null;
-try {
-  bundleManifest = JSON.parse(await fs.readFile(path.join(bundleRoot, "kaboo-package.json"), "utf8"));
-} catch (error) {
-  if (error?.code !== "ENOENT") throw error;
-}
-if (bundleManifest) {
-  const [bundleNotice, bundleReadme] = await Promise.all([
-    fs.readFile(path.join(bundleRoot, "NOTICE.md"), "utf8"),
-    fs.readFile(path.join(bundleRoot, "README.md"), "utf8"),
-  ]);
-  assert(bundleNotice === packageNotice, "top-level NOTICE must match the canonical Sidecar notice");
-  assert(bundleManifest.summary.includes("暖色 P2 拍立得") && bundleManifest.summary.includes("深色全景首页"), "release summary must name both light P2 and dark panoramic home treatments");
-  assert(bundleManifest.description.includes("浅色模式") && bundleManifest.description.includes("深色模式"), "release description must distinguish the light and dark homepage treatments");
-  assert(bundleManifest.description.includes("原生右侧栏"), "release description must name the native right sidebar portrait skin");
-  assert(bundleManifest.description.includes("拖拽") && bundleManifest.description.includes("宽幅舞台"), "release description must name the responsive wide sidebar treatment");
-  assert(bundleManifest.theme?.recommendedNativeAppearance === "light", "release manifest must preserve the recommended light native appearance");
-  assert(bundleReadme.startsWith("<!-- kaboo-theme-readme:v1 -->\n"), "package README must use the Kaboo v1 marker");
-  for (const heading of [
-    "## Runtime dependencies",
-    "## Rendering architecture",
-    "## Layout verification",
-    "## AI adaptation fallback",
-    "## Troubleshooting",
-  ]) {
-    assert(bundleReadme.includes(heading), `package README must include ${heading}`);
-  }
 }
 
 const runtimeTokens = [
@@ -287,6 +266,10 @@ assertFinalReviewRegressions(runtimePayload);
 
 assert(loader.includes("127.0.0.1"), "loader must bind to loopback");
 assert(!loader.includes("0.0.0.0"), "loader must not use a wildcard host");
+assert(loader.includes("validatedDebuggerUrl"), "loader must validate each loopback page WebSocket");
+assert(loader.includes("probeCodexRenderer"), "loader must verify the Codex DOM before injection");
+assert(loader.includes('target.url.startsWith("app://")'), "loader must accept validated app:// renderer URL variants");
+assert(!loader.includes("target.url === manifest.protocol.target"), "loader must not require one exact renderer URL");
 assert(loader.includes("Target.setDiscoverTargets"), "loader must subscribe to target discovery");
 assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_CSS_JSON__"), "loader must inject CSS token");
 assert(loader.includes("__DENIA_OLD_DAYS_EXTENSION_MANIFEST_JSON__"), "loader must inject manifest token");

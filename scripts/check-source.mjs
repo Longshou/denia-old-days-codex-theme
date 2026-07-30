@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -42,8 +41,11 @@ if (fs.existsSync(path.join(root, "art/source/official/denia-portrait.png"))) {
 
 const backgroundSource = fs.readFileSync(path.join(root, "art/source/background.svg"), "utf8");
 const rendererSource = fs.readFileSync(path.join(root, "scripts/render-assets.mjs"), "utf8");
-const localReleaseBuilder = fs.readFileSync(path.join(root, "scripts/build-local-kaboo-release.mjs"), "utf8");
-const localLauncher = fs.readFileSync(path.join(root, "scripts/start-themed-codex.sh"), "utf8");
+const releaseBuilder = fs.readFileSync(path.join(root, "scripts/build-github-release.mjs"), "utf8");
+const releaseValidator = fs.readFileSync(path.join(root, "scripts/validate-github-release.mjs"), "utf8");
+const installerSource = fs.readFileSync(path.join(root, "installer/install-macos.sh"), "utf8");
+const uninstallerSource = fs.readFileSync(path.join(root, "installer/uninstall-macos.sh"), "utf8");
+const installerCommon = fs.readFileSync(path.join(root, "installer/lib/common.sh"), "utf8");
 const runtimeCss = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.css"), "utf8");
 const runtimeJs = fs.readFileSync(path.join(root, "sidecar/src/denia-old-days-extension.js"), "utf8");
 const runtimeLoader = fs.readFileSync(path.join(root, "sidecar/runtime/loader.mjs"), "utf8");
@@ -133,132 +135,46 @@ if (rendererSource.includes('target: "sidecar/assets/denia-task-dark.webp"')) {
   throw new Error("renderer must not retain the shared approval/error rail asset");
 }
 for (const marker of [
-  "codex-dream-skin-denia-old-days-0.1.0",
-  "catalog-version.json",
+  'const rootName = "Denia Old Days"',
+  'const archiveName = "denia-old-days-macos.zip"',
   "SHA256SUMS",
-  "preview-home.webp",
-  "preview-task.webp",
-  "zip",
+  "RELEASE_COPY_SOURCES",
+  "Install Denia Old Days.command",
+  "Uninstall Denia Old Days.command",
 ]) {
-  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing ${marker}`);
+  if (!releaseBuilder.includes(marker)) throw new Error(`GitHub release builder missing ${marker}`);
 }
-const workerTargetIndex = localLauncher.indexOf('WORKER_TARGET="gui/$(/usr/bin/id -u)/$WORKER_LABEL"');
-const workerSubmitIndex = localLauncher.indexOf("/bin/launchctl submit");
-const workerKickstartIndex = localLauncher.indexOf(
-  '/bin/launchctl kickstart "$WORKER_TARGET"',
-  workerSubmitIndex,
-);
-const workerStartedMessageIndex = localLauncher.indexOf(
-  "The themed Codex startup is running.",
-  workerSubmitIndex,
-);
-if (
-  workerTargetIndex < 0
-  || workerSubmitIndex < workerTargetIndex
-  || workerKickstartIndex < workerSubmitIndex
-  || workerStartedMessageIndex < workerKickstartIndex
-) {
-  throw new Error("local launcher must kickstart the submitted worker before reporting startup");
+for (const marker of [
+  "Codex-Dream-Skin/releases/latest",
+  "DREAM_SWITCH_SCRIPT",
+  "sidecar/scripts/install.sh",
+  "scripts/health.sh",
+  "remember_install",
+]) {
+  if (![installerSource, installerCommon].some((sourceText) => sourceText.includes(marker))) {
+    throw new Error(`beginner installer missing ${marker}`);
+  }
 }
-const waitForCodexToStopBody = localLauncher.match(
-  /wait_for_codex_to_stop\(\) \{(?<body>[\s\S]*?)\n\}/u,
-)?.groups?.body || "";
-if (!/codex_is_running && fail "Codex did not quit within 20 seconds"\s+return 0\s*$/u.test(waitForCodexToStopBody)) {
-  throw new Error("local launcher must return success after Codex has stopped");
-}
-const injectorDetectorProgram = localLauncher.match(
-  /injector_is_running\(\) \{[\s\S]*?\/usr\/bin\/awk[^']*'(?<program>[\s\S]*?)'\n\}/u,
-)?.groups?.program || "";
-const injectorDetectorResult = spawnSync(
-  "/usr/bin/awk",
-  [
-    "-v", "injector=/runtime/injector.mjs",
-    "-v", "port=9341",
-    "-v", "theme=/theme",
-    injectorDetectorProgram,
-  ],
-  {
-    encoding: "utf8",
-    input: "node /runtime/injector.mjs --watch --port 9341 --theme-dir /theme\n",
-  },
-);
-if (injectorDetectorResult.status !== 0) {
-  throw new Error(`local launcher injector detector must accept a matching process: ${injectorDetectorResult.stderr.trim()}`);
-}
-const managedCodexLaunchIndex = localLauncher.indexOf("/usr/bin/open -n");
-const managedCodexBundleIndex = localLauncher.indexOf('"$CODEX_BUNDLE"', managedCodexLaunchIndex);
-const managedCodexArgsIndex = localLauncher.indexOf("--args", managedCodexBundleIndex);
-const cdpWaitAfterManagedLaunchIndex = localLauncher.indexOf("\nwait_for_cdp\n", managedCodexArgsIndex);
-if (
-  managedCodexLaunchIndex < 0
-  || managedCodexBundleIndex < managedCodexLaunchIndex
-  || managedCodexArgsIndex < managedCodexBundleIndex
-  || cdpWaitAfterManagedLaunchIndex < managedCodexArgsIndex
-  || localLauncher.includes('/usr/bin/nohup "$CODEX_EXE"')
-) {
-  throw new Error("local launcher must start Codex as a managed LaunchServices application");
-}
-const injectorSubmitIndex = localLauncher.indexOf('/bin/launchctl submit \\\n    -l "$INJECTOR_LABEL"');
-const injectorKickstartIndex = localLauncher.indexOf(
-  '/bin/launchctl kickstart "$INJECTOR_TARGET"',
-  injectorSubmitIndex,
-);
-if (
-  injectorSubmitIndex < 0
-  || injectorKickstartIndex < injectorSubmitIndex
-  || localLauncher.includes('/usr/bin/nohup "$CODEX_NODE" "$INJECTOR"')
-) {
-  throw new Error("local launcher must keep the injector in its own launchd job");
-}
-const sidecarPathIndex = localLauncher.indexOf('SIDECAR_PATH="${CODEX_NODE%/*}:/usr/bin:/bin:/usr/sbin:/sbin"');
-const sidecarStartIndex = localLauncher.indexOf(
-  'PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/start.sh"',
-  sidecarPathIndex,
-);
-const sidecarVerifyIndex = localLauncher.indexOf(
-  'PATH="$SIDECAR_PATH" "$EXTENSION_ROOT/scripts/verify.sh"',
-  sidecarStartIndex,
-);
-if (
-  sidecarPathIndex < 0
-  || sidecarStartIndex < sidecarPathIndex
-  || sidecarVerifyIndex < sidecarStartIndex
-) {
-  throw new Error("local launcher must provide Codex's Node runtime to the Sidecar scripts");
+if (!uninstallerSource.includes("restore_previous_theme_or_pause")) {
+  throw new Error("uninstaller must restore the previous theme or pause Dream Skin");
 }
 for (const [label, sourceText] of [
   ["asset renderer", rendererSource],
-  ["local release builder", localReleaseBuilder],
+  ["release builder", releaseBuilder],
+  ["release validator", releaseValidator],
+  ["installer", installerSource],
+  ["uninstaller", uninstallerSource],
   ["README", readme],
 ]) {
   for (const forbidden of [
     /\/Users\//u,
-    /\/Applications\//u,
     /ByteDance\/workspace/u,
-    /Codex-Dream-Skin/u,
-    /\bKABOO_SHARP_ENTRY\b/u,
-    /\bSTUDIO_ROOT\b/u,
-    /\bKABOO_CLI\b/u,
     /start-local-test\.command/u,
   ]) {
     if (forbidden.test(sourceText)) {
-      throw new Error(`${label} must use Kaboo's managed runtime instead of an external source checkout: ${forbidden}`);
+      throw new Error(`${label} contains a machine-local or retired release dependency: ${forbidden}`);
     }
   }
-}
-for (const marker of [
-  "暖色 P2 拍立得",
-  "深色全景首页",
-  "<!-- kaboo-theme-readme:v1 -->",
-  "## Layout verification",
-]) {
-  if (!localReleaseBuilder.includes(marker)) throw new Error(`local Kaboo release builder missing theme description: ${marker}`);
-}
-if (!localReleaseBuilder.includes('recommendedNativeAppearance: "light"')) {
-  throw new Error("local Kaboo release builder must keep the recommended native appearance light");
-}
-if (/approval\s*\/\s*error/iu.test(localReleaseBuilder)) {
-  throw new Error("local Kaboo release builder must not describe approval/error as shared artwork");
 }
 for (const retiredFragment of [
   "official/denia-portrait.png",
@@ -308,7 +224,7 @@ const assertInsideRepository = (inputKind, candidates) => {
 if (!rendererSource.includes("RENDERER_SOURCE_INPUTS")) {
   throw new Error("renderer must use a structured source input list");
 }
-if (!localReleaseBuilder.includes("RELEASE_COPY_SOURCES")) {
+if (!releaseBuilder.includes("RELEASE_COPY_SOURCES")) {
   throw new Error("release builder must use a structured copy-source list");
 }
 const sidecarRoot = path.resolve(root, "sidecar");

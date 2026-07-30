@@ -1,6 +1,16 @@
 # 达妮娅 · 旧日斑斓 Sidecar
 
-这是 `denia-old-days@0.1.0` 的 Canonical Sidecar。它通过 Dream Skin Studio 已存在的 `127.0.0.1` CDP 端点连接 `app://-/index.html`，只注入包作用域内的样式、装饰节点和原生动作代理。
+这是 `denia-old-days@0.1.0` 的动态组件层。它使用 Codex Dream Skin 已启用的本机 CDP 端点连接经过页面身份检查的 Codex renderer，注入包内样式、装饰节点和本地美术。首选地址是 `app://-/index.html`，同时兼容上游后续的 `app://` 页面变体。
+
+普通用户使用根目录的 `Install Denia Old Days.command`，不需要单独操作本目录。
+
+## 运行边界
+
+- 只连接 `127.0.0.1` 上由 Codex Dream Skin 提供的端口。
+- 不发起远程素材请求。
+- 不读取账号、模型或 API 凭据。
+- 不修改 `Codex.app`、`app.asar` 或代码签名。
+- 卸载只删除本包管理的文件和状态。
 
 ## 本地检查
 
@@ -8,46 +18,40 @@
 node tests/validate.mjs .
 scripts/start.sh
 scripts/status.sh
-scripts/verify.sh
+scripts/health.sh
 scripts/stop.sh
 ```
 
-Sidecar 不发起远程请求，不读取模型凭据，不修改 Codex.app、`app.asar` 或代码签名。卸载只删除本包管理的状态和文件。
+`health.sh` 只检查当前页面是否完成注入。它不会跳转页面或模拟窗口尺寸。
 
-## 任务状态美术
-
-| Codex 状态 | 美术与处理 |
-| --- | --- |
-| `staged` | 暖色花园泡泡图，低强度等待 |
-| `working` | 同一暖色图，提高对比并轻微靠近工作区 |
-| `approval` | 官方双形态竖幅，保留明色正脸和上方暗色注视，以柔紫色表达确认语气 |
-| `error` | 独立的官方周年插画展图，优先保留完整无笑意正脸与抬臂动势，并使用克制的洋红分界 |
-| `complete` | 明快直视近景，右下细节覆轻纸雾 |
-
-任务页使用不参与布局的固定右侧双层美术栏。跨图状态通过 `opacity`、`transform` 和 `filter`
-交叉过渡；同图状态只改变强度，不重复闪烁。美术栏挂在任务 `main` 的背景层，置顶摘要、底部面板
-和右侧栏只覆盖各自相交区域。面板打开期间任务状态仍更新，关闭后直接显示当前状态。主题不修改
-工作区、分栏或输入框几何尺寸；窄于 `920px` 时隐藏，并支持“减少动态效果”和“减少透明度”系统偏好。
-
-## 本地体验交付
-
-构建本地包：
+## 深度布局检查
 
 ```bash
-bash package.sh
-```
-
-只安装、不启动：
-
-```bash
-scripts/install.sh --no-start
-```
-
-当 Dream Skin Studio 的 Codex 调试端口已经启用后：
-
-```bash
-scripts/start.sh
 scripts/verify.sh
 ```
 
-`start.sh` 不会擅自重启正在运行的 Codex。若调试端口尚未启用，需要先退出 Codex，再通过 Dream Skin Studio 启动，或由用户明确授权其重启流程。
+`verify.sh` 按 `layout-contract.json` 检查桌面和窄屏的首页、任务页。运行前需要在 Codex 中保留至少一个可打开的任务。这个检查用于发布前维护，不阻止普通安装。
+
+## 任务状态美术
+
+| Codex 状态 | 美术 |
+| --- | --- |
+| `staged` | 暖色花园泡泡图 |
+| `working` | 暖色图的高对比工作态 |
+| `approval` | 双形态竖幅 |
+| `error` | 周年插画展图 |
+| `complete` | 明快直视近景 |
+
+任务页使用固定右侧双层美术栏，不改动工作区、分栏或输入框尺寸。窄于 `920px` 时隐藏，并遵循“减少动态效果”和“减少透明度”系统设置。
+
+## 单独安装
+
+维护者可以运行：
+
+```bash
+scripts/install.sh --no-start
+scripts/start.sh
+scripts/health.sh
+```
+
+CDP 端点未启用时，先从 Codex Dream Skin 应用当前主题。

@@ -40,6 +40,7 @@ tmp/
 /theme/background.jpg
 /sidecar/assets/*.webp
 /sidecar/release/
+/release/
 
 # Local review and development history
 /evidence/

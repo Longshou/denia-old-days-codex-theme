@@ -23,7 +23,7 @@ fi
 
 if [ "$RUNNING" = "true" ] && cdp_ready "$PORT"; then
   NODE="$(resolve_node)"
-  "$NODE" "$INSTALL_DIR/runtime/loader.mjs" --verify --extension-dir "$INSTALL_DIR" --port "$PORT" >/dev/null \
+  "$NODE" "$INSTALL_DIR/runtime/loader.mjs" --health --extension-dir "$INSTALL_DIR" --port "$PORT" >/dev/null \
     && /usr/bin/printf 'verified=true\n' \
     || /usr/bin/printf 'verified=false\n'
 else

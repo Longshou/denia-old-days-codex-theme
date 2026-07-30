@@ -40,4 +40,4 @@ SHA-256 共同定义 `denia-old-days@0.1.0` 的视觉产物。
 - 首页明色图：WebP quality 88。
 - 首页暗色图：WebP quality 80。
 - 右侧栏与任务状态图：WebP quality 84～86。
-- GitHub 与 Kaboo 预览：1600×1000，WebP quality 82，effort 6。
+- GitHub Release 预览：1600×1000，WebP quality 82，effort 6。
