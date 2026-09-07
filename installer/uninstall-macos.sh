@@ -30,18 +30,11 @@ fi
 PREVIOUS_THEME_ID="$(receipt_previous_theme_id)"
 CURRENT_THEME_ID="$(active_theme_id)"
 
-if [ -x "$SIDECAR_STATE_ROOT/package/scripts/uninstall.sh" ]; then
-  denia_info "移除动态效果"
-  "$SIDECAR_STATE_ROOT/package/scripts/uninstall.sh"
-else
-  denia_info "动态效果未安装，跳过"
-fi
-
 if [ "$CURRENT_THEME_ID" = "$THEME_ID" ]; then
   if [ "$DREAM_ENGINE_AVAILABLE" = "true" ]; then
     denia_info "恢复安装前的基础主题"
     if ! restore_previous_theme_or_pause "$PREVIOUS_THEME_ID"; then
-      denia_warn "自动恢复没有完成，请从 Codex Dream Skin 菜单选择其他主题。"
+      denia_fail "基础主题恢复失败；已保留动态效果、卸载器和主题库。请从 Codex Dream Skin 菜单选择其他主题后重试。"
     fi
   else
     denia_warn "Codex Dream Skin 引擎不可用，已跳过原主题恢复。"
@@ -56,6 +49,13 @@ if [ "$CURRENT_THEME_ID" = "$THEME_ID" ]; then
       *) denia_fail "拒绝清理意外路径：$DREAM_ACTIVE_THEME_DIR" ;;
     esac
   fi
+fi
+
+if [ -x "$SIDECAR_STATE_ROOT/package/scripts/uninstall.sh" ]; then
+  denia_info "移除动态效果"
+  "$SIDECAR_STATE_ROOT/package/scripts/uninstall.sh"
+else
+  denia_info "动态效果未安装，跳过"
 fi
 
 case "$DREAM_SAVED_THEME_DIR" in

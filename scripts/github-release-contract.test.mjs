@@ -53,7 +53,7 @@ test("repository exposes the beginner installer surface", () => {
   );
   assert.deepEqual(
     Object.keys(packageJson.scripts).sort(),
-    ["build:assets", "build:release", "check", "check:release", "test:release"].sort(),
+    ["build:assets", "build:release", "build:kaboo", "check", "check:release", "check:kaboo", "test:release"].sort(),
   );
 });
 

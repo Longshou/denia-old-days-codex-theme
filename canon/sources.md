@@ -1,7 +1,7 @@
 # 素材清单
 
 `scripts/render-assets.mjs` 只读取本页列出的固定输入。源文件、生成参数和
-SHA-256 共同定义 `denia-old-days@0.1.0` 的视觉产物。
+SHA-256 共同定义 `denia-old-days@0.1.2` 的视觉产物。
 
 ## 输入文件
 

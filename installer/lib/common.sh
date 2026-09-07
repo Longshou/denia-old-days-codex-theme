@@ -5,7 +5,7 @@ INSTALLER_DIR="$(cd "$INSTALLER_LIB_DIR/.." && pwd -P)"
 PACKAGE_ROOT="$(cd "$INSTALLER_DIR/.." && pwd -P)"
 
 THEME_ID="denia-old-days"
-THEME_VERSION="0.1.0"
+THEME_VERSION="0.1.2"
 UPSTREAM_RELEASE_URL="https://github.com/Fei-Away/Codex-Dream-Skin/releases/latest"
 DREAM_ENGINE_ROOT="${DENIA_DREAM_SKIN_ENGINE_ROOT:-$HOME/.codex/codex-dream-skin-studio}"
 DREAM_STATE_ROOT="${DENIA_DREAM_SKIN_STATE_ROOT:-$HOME/Library/Application Support/CodexDreamSkinStudio}"
@@ -78,6 +78,22 @@ offer_upstream_download() {
   fi
 }
 
+version_at_least() {
+  local actual="$1"
+  local minimum="$2"
+  [[ "$actual" =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]] || return 1
+  [[ "$minimum" =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]] || return 1
+  local actual_parts minimum_parts index actual_part minimum_part
+  IFS=. read -r -a actual_parts <<< "$actual"
+  IFS=. read -r -a minimum_parts <<< "$minimum"
+  for index in 0 1 2; do
+    actual_part=$((10#${actual_parts[$index]}))
+    minimum_part=$((10#${minimum_parts[$index]}))
+    [ "$actual_part" -le "$minimum_part" ] || return 0
+    [ "$actual_part" -ge "$minimum_part" ] || return 1
+  done
+}
+
 require_dream_skin_engine() {
   if [ ! -x "$DREAM_SWITCH_SCRIPT" ]; then
     offer_upstream_download
@@ -85,6 +101,17 @@ require_dream_skin_engine() {
   fi
   [ -x "$DREAM_PAUSE_SCRIPT" ] \
     || denia_fail "Codex Dream Skin 安装不完整，缺少暂停脚本。请重新安装上游最新版。"
+  local engine_version=""
+  local minimum_version
+  minimum_version="$(json_string_field "$PACKAGE_ROOT/sidecar/extension.json" protocol.minimumDreamSkinVersion)"
+  if [ -f "$DREAM_ENGINE_ROOT/VERSION" ]; then
+    engine_version="$(/usr/bin/tr -d '[:space:]' < "$DREAM_ENGINE_ROOT/VERSION")"
+    engine_version="${engine_version#v}"
+  elif [ -f "$DREAM_ENGINE_ROOT/package.json" ]; then
+    engine_version="$(json_string_field "$DREAM_ENGINE_ROOT/package.json" version)"
+  fi
+  version_at_least "$engine_version" "$minimum_version" \
+    || denia_fail "需要 Codex Dream Skin ${minimum_version} 或更新版本，当前版本为 ${engine_version:-未知}。请先更新：$UPSTREAM_RELEASE_URL"
 }
 
 active_theme_id() {

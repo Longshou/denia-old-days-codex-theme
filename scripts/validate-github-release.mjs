@@ -118,6 +118,14 @@ try {
   assert.equal(extension.id, releaseMetadata.id);
   assert.equal(theme.version, releaseMetadata.version);
   assert.equal(extension.version, releaseMetadata.version);
+  for (const [relative, constant] of [
+    ["installer/lib/common.sh", "THEME_VERSION"],
+    ["sidecar/scripts/common.sh", "EXTENSION_VERSION"],
+  ]) {
+    const source = await fs.readFile(path.join(bundleDir, relative), "utf8");
+    const shellVersion = source.match(new RegExp(`^${constant}="([^"]+)"$`, "mu"))?.[1];
+    assert.equal(shellVersion, releaseMetadata.version, `${relative} version must match the release`);
+  }
 
   const checksumText = await fs.readFile(path.join(bundleDir, "SHA256SUMS"), "utf8");
   const checksumEntries = new Map();

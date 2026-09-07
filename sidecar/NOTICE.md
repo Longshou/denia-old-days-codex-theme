@@ -2,7 +2,7 @@
 
 ## Package contents
 
-`denia-old-days@0.1.0` contains one Codex Dream Skin base theme, one removable
+`denia-old-days@0.1.2` contains one Codex Dream Skin base theme, one removable
 Sidecar, package-local WebP artwork, two GitHub previews, beginner installer
 scripts, and a machine-readable layout contract.
 

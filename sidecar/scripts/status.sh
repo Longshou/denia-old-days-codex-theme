@@ -21,11 +21,18 @@ fi
 /usr/bin/printf 'package=%s\n' "$INSTALL_DIR"
 /usr/bin/printf 'launchAgent=%s\n' "$LAUNCH_LABEL"
 
-if [ "$RUNNING" = "true" ] && cdp_ready "$PORT"; then
-  NODE="$(resolve_node)"
-  "$NODE" "$INSTALL_DIR/runtime/loader.mjs" --health --extension-dir "$INSTALL_DIR" --port "$PORT" >/dev/null \
-    && /usr/bin/printf 'verified=true\n' \
-    || /usr/bin/printf 'verified=false\n'
-else
-  /usr/bin/printf 'verified=false\n'
+RUNTIME_STATUS="stopped"
+TARGET_COUNT="0"
+CONNECTED="false"
+if [ "$RUNNING" = "true" ] && [ -f "$RUNTIME_STATE" ]; then
+  RUNTIME_STATUS="$(json_string_field "$RUNTIME_STATE" status || true)"
+  TARGET_COUNT="$(json_number_field "$RUNTIME_STATE" targetCount || true)"
+  [ -n "$TARGET_COUNT" ] || TARGET_COUNT="0"
+  if [ "$RUNTIME_STATUS" = "running" ] && [ "$TARGET_COUNT" -gt 0 ]; then
+    CONNECTED="true"
+  fi
 fi
+/usr/bin/printf 'runtimeStatus=%s\n' "$RUNTIME_STATUS"
+/usr/bin/printf 'connected=%s\n' "$CONNECTED"
+/usr/bin/printf 'targets=%s\n' "$TARGET_COUNT"
+/usr/bin/printf 'verified=%s\n' "$([ "$CONNECTED" = "true" ] && /usr/bin/printf unknown || /usr/bin/printf false)"

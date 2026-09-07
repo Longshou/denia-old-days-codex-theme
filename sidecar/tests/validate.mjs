@@ -41,7 +41,7 @@ const readRequired = async (relative) => {
 const manifest = JSON.parse(await readRequired("extension.json"));
 assert(manifest.schemaVersion === 1, "schemaVersion must be 1");
 assert(manifest.id === "denia-old-days", "unexpected extension id");
-assert(manifest.version === "0.1.0", "unexpected extension version");
+assert(manifest.version === "0.1.2", "unexpected extension version");
 assert(manifest.protocol?.kind === "codex-dream-skin-sidecar", "unexpected protocol kind");
 assert(manifest.protocol?.transport === "cdp-loopback-v1", "transport must be loopback CDP");
 assert(manifest.protocol?.target === "app://-/index.html", "renderer target must be exact");
@@ -198,7 +198,6 @@ const healthScript = scripts[1];
 const startScript = scripts[3];
 const statusScript = scripts[4];
 assert(healthScript.includes("--health"), "health script must use the current-page health mode");
-assert(statusScript.includes("--health"), "status script must use the non-disruptive health mode");
 assert(!statusScript.includes("--verify"), "status must not trigger the route-changing layout verifier");
 assert(loader.includes('"--health"'), "loader must register the current-page health mode");
 assert(loader.includes('operation === "health"'), "loader must evaluate health without layout navigation");
@@ -211,7 +210,7 @@ assert(
 const packageDocumentation = `${packageReadme}\n${packageNotice}`;
 assert(!/同一暗色图|approval\s*\/\s*error|approval\s+and\s+error[^.\n]*(?:same|shared)/iu.test(packageDocumentation), "README/NOTICE must not claim approval and error share one image");
 for (const marker of [
-  "denia-old-days@0.1.0",
+  "denia-old-days@0.1.2",
   "sidecar/layout-contract.json",
   "sidecar/scripts/health.sh",
   "sidecar/scripts/verify.sh",
@@ -2194,7 +2193,7 @@ async function assertAcceptsUnicodeStylesheetFixture() {
     const result = spawnStylesheetFixture(fixtureRoot);
     const output = `${result.stdout || ""}\n${result.stderr || ""}`;
     assert(
-      result.status === 0 && output.includes("Validated 达妮娅 · 旧日斑斓 extension 0.1.0"),
+      result.status === 0 && output.includes("Validated 达妮娅 · 旧日斑斓 extension 0.1.2"),
       `validator must accept astral Unicode before critical CSS rules without shifting parser indices:\n${output.trim()}`,
     );
   } finally {
@@ -3742,7 +3741,7 @@ function assertLiveVerificationArtworkTarget(loaderSource) {
       window: {
         __DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__: {
           id: "denia-old-days",
-          version: "0.1.0",
+          version: "0.1.2",
           artReady: true,
         },
       },
@@ -4027,7 +4026,7 @@ function assertLiveTaskVerification(loaderSource) {
       window: {
         __DENIA_OLD_DAYS_DREAM_SKIN_EXTENSION__: {
           id: "denia-old-days",
-          version: "0.1.0",
+          version: "0.1.2",
           artReady: true,
           formState,
         },
@@ -4344,7 +4343,7 @@ function assertFallbackCleanupBehavior(loaderSource) {
     "denia-old-days-ds-task",
     "denia-old-days-ds-settings",
   );
-  harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.0";
+  harness.root.dataset.deniaOldDaysExtensionVersion = "0.1.2";
   harness.root.dataset.deniaTheme = "dark";
   harness.root.dataset.deniaFormState = "working";
   harness.root.dataset.deniaSidebarState = "open";

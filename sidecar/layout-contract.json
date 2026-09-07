@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "denia-old-days",
-  "packageVersion": "0.1.0",
+  "packageVersion": "0.1.2",
   "coordinateSpace": "css-pixel",
   "requiredTargets": [
     {

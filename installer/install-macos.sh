@@ -26,11 +26,13 @@ fi
 /usr/bin/printf '\n达妮娅 · 旧日斑斓 %s\n\n' "$THEME_VERSION"
 
 CURRENT_THEME_ID="$(active_theme_id)"
+TRANSACTION_ACTIVE_THEME_ID="$CURRENT_THEME_ID"
 PREVIOUS_THEME_ID="$CURRENT_THEME_ID"
 if [ "$CURRENT_THEME_ID" = "$THEME_ID" ]; then
   PREVIOUS_THEME_ID="$(receipt_previous_theme_id)"
 fi
 if ! theme_id_is_safe "$PREVIOUS_THEME_ID"; then PREVIOUS_THEME_ID=""; fi
+if ! theme_id_is_safe "$TRANSACTION_ACTIVE_THEME_ID"; then TRANSACTION_ACTIVE_THEME_ID=""; fi
 
 /bin/mkdir -p "$DREAM_SAVED_THEME_ROOT"
 /bin/chmod 700 "$DREAM_STATE_ROOT" "$DREAM_SAVED_THEME_ROOT" 2>/dev/null || true
@@ -42,18 +44,38 @@ SIDECAR_BACKUP=""
 SIDECAR_FAILED=""
 SIDECAR_WAS_RUNNING="false"
 SIDECAR_STOPPED="false"
-BASE_SWITCHED="false"
+SIDECAR_RUNTIME_START_ATTEMPTED="false"
+BASE_SWITCH_ATTEMPTED="false"
 THEME_REPLACED="false"
 SIDECAR_TRANSACTION_STARTED="false"
 INSTALL_COMMITTED="false"
 
 rollback_theme_files() {
   local failed_theme="$DREAM_STATE_ROOT/.denia-old-days-theme-failed.$$"
-  if [ -e "$DREAM_SAVED_THEME_DIR" ]; then /bin/mv "$DREAM_SAVED_THEME_DIR" "$failed_theme" || true; fi
-  if [ -n "$THEME_BACKUP" ] && [ -e "$THEME_BACKUP" ]; then
-    /bin/mv "$THEME_BACKUP" "$DREAM_SAVED_THEME_DIR" || true
+  if [ -e "$DREAM_SAVED_THEME_DIR" ] && ! /bin/mv "$DREAM_SAVED_THEME_DIR" "$failed_theme"; then
+    denia_warn "未能保留失败安装的主题副本：$DREAM_SAVED_THEME_DIR"
+    return 1
   fi
-  [ ! -e "$failed_theme" ] || /bin/rm -rf "$failed_theme"
+  if [ -n "$THEME_BACKUP" ] && [ -e "$THEME_BACKUP" ]; then
+    if ! /bin/mv "$THEME_BACKUP" "$DREAM_SAVED_THEME_DIR"; then
+      denia_warn "未能恢复安装前的主题库；恢复材料保留在：$THEME_BACKUP"
+      return 1
+    fi
+  fi
+  if [ -e "$failed_theme" ] && ! /bin/rm -rf "$failed_theme"; then
+    denia_warn "失败安装的主题副本未能清理，保留在：$failed_theme"
+    return 1
+  fi
+}
+
+restore_transaction_active_theme() {
+  local active_theme_id="${1:-}"
+  if theme_id_is_safe "$active_theme_id" \
+    && [ -f "$DREAM_SAVED_THEME_ROOT/$active_theme_id/theme.json" ]; then
+    "$DREAM_SWITCH_SCRIPT" --id "$active_theme_id"
+    return
+  fi
+  "$DREAM_PAUSE_SCRIPT"
 }
 
 finish_install() {
@@ -66,30 +88,72 @@ finish_install() {
   fi
 
   set +e
-  if [ "$BASE_SWITCHED" = "true" ]; then
-    restore_previous_theme_or_pause "$PREVIOUS_THEME_ID" >/dev/null 2>&1
-  fi
+  SIDECAR_ROLLED_BACK="true"
+  SIDECAR_REPLACEMENT_ISOLATED="true"
+  SIDECAR_RESTART_NEEDED="false"
   if [ "$SIDECAR_TRANSACTION_STARTED" = "true" ] && [ -e "$SIDECAR_STATE_ROOT" ]; then
-    if [ -x "$SIDECAR_STATE_ROOT/package/scripts/stop.sh" ]; then
-      "$SIDECAR_STATE_ROOT/package/scripts/stop.sh" >/dev/null 2>&1
+    if [ "$SIDECAR_RUNTIME_START_ATTEMPTED" = "true" ]; then
+      if [ -x "$SIDECAR_STATE_ROOT/package/scripts/stop.sh" ]; then
+        if ! "$SIDECAR_STATE_ROOT/package/scripts/stop.sh" >/dev/null 2>&1; then
+          denia_warn "未能停止失败安装的动态效果；已保留当前副本：$SIDECAR_STATE_ROOT；安装前副本：${SIDECAR_BACKUP:-无}"
+          SIDECAR_ROLLED_BACK="false"
+          SIDECAR_REPLACEMENT_ISOLATED="false"
+        fi
+      else
+        denia_warn "失败安装的动态效果缺少停止脚本；已保留当前副本：$SIDECAR_STATE_ROOT；安装前副本：${SIDECAR_BACKUP:-无}"
+        SIDECAR_ROLLED_BACK="false"
+        SIDECAR_REPLACEMENT_ISOLATED="false"
+      fi
     fi
-    SIDECAR_FAILED="$DREAM_STATE_ROOT/.denia-old-days-sidecar-failed.$$"
-    /bin/mv "$SIDECAR_STATE_ROOT" "$SIDECAR_FAILED"
+    if [ "$SIDECAR_REPLACEMENT_ISOLATED" = "true" ]; then
+      SIDECAR_FAILED="$DREAM_STATE_ROOT/.denia-old-days-sidecar-failed.$$"
+      if ! /bin/mv "$SIDECAR_STATE_ROOT" "$SIDECAR_FAILED"; then
+        denia_warn "未能隔离失败安装的动态效果；已保留当前副本：$SIDECAR_STATE_ROOT；安装前副本：${SIDECAR_BACKUP:-无}"
+        SIDECAR_ROLLED_BACK="false"
+        SIDECAR_REPLACEMENT_ISOLATED="false"
+      fi
+    fi
   fi
-  if [ "$SIDECAR_TRANSACTION_STARTED" = "true" ] \
+  if [ "$SIDECAR_REPLACEMENT_ISOLATED" = "true" ] \
+    && [ "$SIDECAR_TRANSACTION_STARTED" = "true" ] \
     && [ -n "$SIDECAR_BACKUP" ] && [ -e "$SIDECAR_BACKUP" ]; then
-    /bin/mv "$SIDECAR_BACKUP" "$SIDECAR_STATE_ROOT"
-    if [ "$SIDECAR_WAS_RUNNING" = "true" ] && [ -x "$SIDECAR_STATE_ROOT/package/scripts/start.sh" ]; then
-      "$SIDECAR_STATE_ROOT/package/scripts/start.sh" >/dev/null 2>&1
+    if /bin/mv "$SIDECAR_BACKUP" "$SIDECAR_STATE_ROOT"; then
+      if [ "$SIDECAR_WAS_RUNNING" = "true" ] && [ -x "$SIDECAR_STATE_ROOT/package/scripts/start.sh" ]; then
+        SIDECAR_RESTART_NEEDED="true"
+      fi
+    else
+      denia_warn "未能恢复安装前的动态效果；恢复材料保留在：$SIDECAR_BACKUP；失败安装副本：${SIDECAR_FAILED:-无}"
+      SIDECAR_ROLLED_BACK="false"
     fi
   elif [ "$SIDECAR_TRANSACTION_STARTED" != "true" ] \
     && [ "$SIDECAR_STOPPED" = "true" ] \
     && [ "$SIDECAR_WAS_RUNNING" = "true" ] \
     && [ -x "$SIDECAR_STATE_ROOT/package/scripts/start.sh" ]; then
-    "$SIDECAR_STATE_ROOT/package/scripts/start.sh" >/dev/null 2>&1
+    SIDECAR_RESTART_NEEDED="true"
   fi
-  [ -z "$SIDECAR_FAILED" ] || /bin/rm -rf "$SIDECAR_FAILED"
-  if [ "$THEME_REPLACED" = "true" ]; then rollback_theme_files; fi
+  THEME_ROLLED_BACK="true"
+  if [ "$THEME_REPLACED" = "true" ] && ! rollback_theme_files; then
+    THEME_ROLLED_BACK="false"
+  fi
+  if [ "$BASE_SWITCH_ATTEMPTED" = "true" ]; then
+    if [ "$THEME_ROLLED_BACK" = "true" ]; then
+      if ! restore_transaction_active_theme "$TRANSACTION_ACTIVE_THEME_ID"; then
+        denia_warn "基础主题恢复没有完成；恢复材料已保留。"
+      fi
+    else
+      denia_warn "主题库恢复没有完成；未重新应用基础主题，以免覆盖恢复材料。"
+    fi
+  fi
+  if [ "$SIDECAR_RESTART_NEEDED" = "true" ] \
+    && ! "$SIDECAR_STATE_ROOT/package/scripts/start.sh" >/dev/null 2>&1; then
+    denia_warn "安装前的动态效果未能重新启动；失败安装副本保留在：${SIDECAR_FAILED:-无}"
+    SIDECAR_ROLLED_BACK="false"
+  fi
+  if [ -n "$SIDECAR_FAILED" ] && [ "$SIDECAR_ROLLED_BACK" = "true" ]; then
+    /bin/rm -rf "$SIDECAR_FAILED" || denia_warn "失败安装的动态效果副本未能清理：$SIDECAR_FAILED"
+  elif [ -n "$SIDECAR_FAILED" ]; then
+    denia_warn "失败安装的动态效果副本保留在：$SIDECAR_FAILED"
+  fi
   [ -z "$THEME_STAGE" ] || /bin/rm -rf "$THEME_STAGE"
   [ -z "$UNINSTALL_STAGE" ] || /bin/rm -rf "$UNINSTALL_STAGE"
   set -e
@@ -143,11 +207,12 @@ fi
 UNINSTALL_STAGE=""
 
 denia_info "应用基础主题"
+BASE_SWITCH_ATTEMPTED="true"
 "$DREAM_SWITCH_SCRIPT" --id "$THEME_ID"
-BASE_SWITCHED="true"
 
 denia_info "安装完整动态效果"
 "$SIDECAR_PACKAGE_SOURCE/scripts/install.sh" --no-start
+SIDECAR_RUNTIME_START_ATTEMPTED="true"
 "$SIDECAR_STATE_ROOT/package/scripts/start.sh"
 
 HEALTHY="false"

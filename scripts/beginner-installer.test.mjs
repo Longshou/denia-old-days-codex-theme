@@ -43,6 +43,7 @@ set -euo pipefail
 /usr/bin/printf 'paused\\n' >> "\${DENIA_DREAM_SKIN_STATE_ROOT:?}/switch.log"
 `);
   await fsPromises.mkdir(dreamState, { recursive: true });
+  await fsPromises.writeFile(path.join(engine, "VERSION"), "1.2.0\n");
   return engine;
 };
 
@@ -123,6 +124,7 @@ test("check mode validates a ready fake engine without changing it", async (cont
   const installerState = path.join(temporary, "installer-state");
   await fsPromises.mkdir(path.join(engine, "scripts"), { recursive: true });
   await fsPromises.mkdir(state, { recursive: true });
+  await fsPromises.writeFile(path.join(engine, "VERSION"), "1.2.0\n");
   const switchScript = path.join(engine, "scripts/switch-theme-macos.sh");
   await fsPromises.writeFile(switchScript, "#!/bin/bash\nexit 0\n", { mode: 0o700 });
   await fsPromises.writeFile(

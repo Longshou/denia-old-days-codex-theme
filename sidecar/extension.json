@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "denia-old-days",
   "name": "达妮娅 · 旧日斑斓",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "A removable scrapbook and dual-form component layer for Codex.",
   "protocol": {
     "kind": "codex-dream-skin-sidecar",

@@ -9,10 +9,6 @@ ensure_state_root
 PORT="$(resolve_port)"
 NODE="$(resolve_node)"
 
-if ! cdp_ready "$PORT"; then
-  fail "Dream Skin CDP endpoint is not active on 127.0.0.1:${PORT}. Run the Dream Skin apply command first; no restart was attempted."
-fi
-
 if launch_job_running; then
   /usr/bin/printf 'Denia Old Days extension LaunchAgent is already running (port=%s).\n' "$PORT"
   exit 0
@@ -63,10 +59,21 @@ fi
   || fail "Could not kickstart the Denia Old Days extension LaunchAgent"
 
 for _ in 1 2 3 4 5 6 7 8; do
-  if launch_job_running && [ -f "$RUNTIME_STATE" ] && /usr/bin/grep -q '"status": "running"' "$RUNTIME_STATE"; then
+  if launch_job_running && [ -f "$RUNTIME_STATE" ]; then
     PID="$(json_number_field "$RUNTIME_STATE" pid || true)"
-    /usr/bin/printf 'Denia Old Days extension LaunchAgent is active (pid=%s, port=%s).\n' "$PID" "$PORT"
-    exit 0
+    RUNTIME_STATUS="$(json_string_field "$RUNTIME_STATE" status || true)"
+    if [ -n "$PID" ] && is_loader_pid "$PID"; then
+      case "$RUNTIME_STATUS" in
+        running)
+          /usr/bin/printf 'Denia Old Days extension is connected (pid=%s, port=%s).\n' "$PID" "$PORT"
+          exit 0
+          ;;
+        waiting|degraded)
+          /usr/bin/printf 'Denia Old Days extension is waiting for Codex (pid=%s, port=%s). Apply the theme from Codex Dream Skin to connect.\n' "$PID" "$PORT"
+          exit 0
+          ;;
+      esac
+    fi
   fi
   /bin/sleep 0.5
 done

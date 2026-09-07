@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 EXTENSION_ID="denia-old-days"
-EXTENSION_VERSION="0.1.0"
+EXTENSION_VERSION="0.1.2"
 STATE_ROOT="${DENIA_OLD_DAYS_DS_STATE_ROOT:-$HOME/Library/Application Support/CodexDreamSkinExtensions/$EXTENSION_ID}"
 INSTALL_DIR="$STATE_ROOT/package"
 PID_FILE="$STATE_ROOT/loader.pid"
@@ -24,12 +24,24 @@ fail() {
 json_string_field() {
   local file="$1"
   local key="$2"
+  local value=""
+  value="$(/usr/bin/plutil -extract "$key" raw -o - "$file" 2>/dev/null || true)"
+  if [ -n "$value" ]; then
+    /usr/bin/printf '%s\n' "$value"
+    return
+  fi
   /usr/bin/sed -nE "s/^[[:space:]]*\"${key}\":[[:space:]]*\"([^\"]*)\".*/\\1/p" "$file" | /usr/bin/head -n 1
 }
 
 json_number_field() {
   local file="$1"
   local key="$2"
+  local value=""
+  value="$(json_string_field "$file" "$key" 2>/dev/null || true)"
+  case "$value" in
+    ''|*[!0-9]*) ;;
+    *) /usr/bin/printf '%s\n' "$value"; return ;;
+  esac
   /usr/bin/sed -nE "s/^[[:space:]]*\"${key}\":[[:space:]]*([0-9]+).*/\\1/p" "$file" | /usr/bin/head -n 1
 }
 
@@ -48,13 +60,20 @@ resolve_node() {
   if [ -f "$DREAM_STATE" ]; then
     candidate="$(json_string_field "$DREAM_STATE" nodePath || true)"
   fi
-  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+  if node_runtime_supported "$candidate"; then
     /usr/bin/printf '%s\n' "$candidate"
     return
   fi
   candidate="$(command -v node || true)"
-  [ -n "$candidate" ] && [ -x "$candidate" ] || fail "No Node runtime is available. Apply Dream Skin Studio first."
+  node_runtime_supported "$candidate" \
+    || fail "Node.js 22 or newer with WebSocket support is required. Update Codex Dream Skin or install a supported Node runtime."
   /usr/bin/printf '%s\n' "$candidate"
+}
+
+node_runtime_supported() {
+  local candidate="${1:-}"
+  [ -n "$candidate" ] && [ -x "$candidate" ] || return 1
+  "$candidate" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 && typeof WebSocket === "function" ? 0 : 1)' >/dev/null 2>&1
 }
 
 cdp_ready() {

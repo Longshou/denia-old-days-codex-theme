@@ -24,6 +24,14 @@ const port = Number(value("--port", "9341"));
 const statePath = value("--state", "");
 const screenshotPath = value("--screenshot", "");
 const openHome = has("--open-home");
+const RETRY_INITIAL_MS = 500;
+const RETRY_MAX_MS = 30_000;
+const ERROR_LOG_INTERVAL_MS = 5 * 60 * 1000;
+const CDP_REQUEST_TIMEOUT_MS = 5_000;
+const ACTIVE_LOG_BYTES = 1024 * 1024;
+const PRIOR_LOG_BYTES = 256 * 1024;
+const logPath = statePath ? path.join(path.dirname(statePath), "loader.log") : "";
+const priorLogPath = logPath ? `${logPath}.previous` : "";
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("--port must be a valid local TCP port");
 const CDP_PAGE_ID_PATTERN = /^[A-Za-z0-9._-]{1,200}$/u;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
@@ -648,6 +656,7 @@ class CdpSession {
     this.pending = new Map();
     this.listeners = new Map();
     this.closed = false;
+    this.connectTimeout = null;
   }
 
   async connect() {
@@ -656,8 +665,9 @@ class CdpSession {
       const message = JSON.parse(data);
       if (message.id) {
         if (!this.pending.has(message.id)) return;
-        const { resolve, reject } = this.pending.get(message.id);
+        const { resolve, reject, timeout } = this.pending.get(message.id);
         this.pending.delete(message.id);
+        clearTimeout(timeout);
         if (message.error) reject(new Error(message.error.message || "CDP request failed"));
         else resolve(message.result);
         return;
@@ -666,13 +676,17 @@ class CdpSession {
     };
     this.socket.onclose = () => {
       this.closed = true;
-      for (const { reject } of this.pending.values()) reject(new Error("CDP session closed"));
-      this.pending.clear();
+      this.rejectPending(new Error("CDP session closed"));
     };
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Timed out connecting to Codex renderer")), 5000);
-      this.socket.onopen = () => { clearTimeout(timeout); resolve(); };
-      this.socket.onerror = () => { clearTimeout(timeout); reject(new Error("Could not connect to Codex renderer")); };
+      const finish = (callback) => {
+        if (this.connectTimeout) clearTimeout(this.connectTimeout);
+        this.connectTimeout = null;
+        callback();
+      };
+      this.connectTimeout = setTimeout(() => finish(() => reject(new Error("Timed out connecting to Codex renderer"))), CDP_REQUEST_TIMEOUT_MS);
+      this.socket.onopen = () => finish(resolve);
+      this.socket.onerror = () => finish(() => reject(new Error("Could not connect to Codex renderer")));
     });
     await this.send("Runtime.enable");
     await this.send("Page.enable");
@@ -688,7 +702,12 @@ class CdpSession {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) throw new Error("CDP session is not open");
     return new Promise((resolve, reject) => {
       const id = ++this.sequence;
-      this.pending.set(id, { resolve, reject });
+      const timeout = setTimeout(() => {
+        if (!this.pending.has(id)) return;
+        this.pending.delete(id);
+        reject(new Error(`Timed out waiting for CDP response: ${method}`));
+      }, CDP_REQUEST_TIMEOUT_MS);
+      this.pending.set(id, { resolve, reject, timeout });
       this.socket.send(JSON.stringify({ id, method, params }));
     });
   }
@@ -704,14 +723,29 @@ class CdpSession {
 
   close() {
     this.closed = true;
+    this.cancelPending(new Error("CDP session closed"));
     try { this.socket?.close(); } catch {}
+  }
+
+  cancelPending(error = new Error("CDP session closed")) {
+    if (this.connectTimeout) clearTimeout(this.connectTimeout);
+    this.connectTimeout = null;
+    this.rejectPending(error);
+  }
+
+  rejectPending(error) {
+    for (const { reject, timeout } of this.pending.values()) {
+      clearTimeout(timeout);
+      reject(error);
+    }
+    this.pending.clear();
   }
 }
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function listTargets() {
-  const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) });
+  const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(CDP_REQUEST_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`Dream Skin CDP endpoint returned HTTP ${response.status}`);
   const targets = await response.json();
   if (!Array.isArray(targets)) throw new Error("Dream Skin CDP target list was not an array");
@@ -732,7 +766,7 @@ async function listTargets() {
 }
 
 async function connectBrowserEventStream(onSignal, onClose) {
-  const response = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(5000) });
+  const response = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(CDP_REQUEST_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`Dream Skin CDP version endpoint returned HTTP ${response.status}`);
   const version = await response.json();
   const url = new URL(version.webSocketDebuggerUrl || "");
@@ -741,9 +775,21 @@ async function connectBrowserEventStream(onSignal, onClose) {
   }
   const socket = new WebSocket(url.href);
   await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timed out connecting to browser CDP events")), 5000);
-    socket.addEventListener("open", () => { clearTimeout(timeout); resolve(); }, { once: true });
-    socket.addEventListener("error", () => { clearTimeout(timeout); reject(new Error("Could not connect to browser CDP events")); }, { once: true });
+    let settled = false;
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      callback();
+    };
+    const fail = (error) => finish(() => {
+      try { socket.close(); } catch {}
+      reject(error);
+    });
+    const timeout = setTimeout(() => fail(new Error("Timed out connecting to browser CDP events")), CDP_REQUEST_TIMEOUT_MS);
+    socket.addEventListener("open", () => finish(resolve), { once: true });
+    socket.addEventListener("error", () => fail(new Error("Could not connect to browser CDP events")), { once: true });
+    socket.addEventListener("close", () => fail(new Error("Browser CDP events closed before opening")), { once: true });
   });
   socket.addEventListener("message", ({ data }) => {
     const message = JSON.parse(data);
@@ -981,13 +1027,39 @@ async function captureScreenshot(session, outputPath) {
   await fs.writeFile(outputPath, Buffer.from(result.data, "base64"));
 }
 
+async function trimLoaderLog(reserveBytes = 0) {
+  if (!logPath) return;
+  let size;
+  try {
+    ({ size } = await fs.stat(logPath));
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+  if (size + reserveBytes <= ACTIVE_LOG_BYTES) return;
+  const priorTail = Buffer.alloc(Math.min(size, PRIOR_LOG_BYTES));
+  const activeLog = await fs.open(logPath, "r");
+  try {
+    await activeLog.read(priorTail, 0, priorTail.length, size - priorTail.length);
+  } finally {
+    await activeLog.close();
+  }
+  await fs.writeFile(priorLogPath, priorTail, { mode: 0o600 });
+  await fs.chmod(priorLogPath, 0o600);
+  await fs.truncate(logPath, 0);
+}
+
+let latestRuntimeState = "";
 async function writeRuntimeState(state) {
   if (!statePath) return;
+  const serialized = `${JSON.stringify(state, null, 2)}\n`;
+  if (serialized === latestRuntimeState) return;
   await fs.mkdir(path.dirname(statePath), { recursive: true, mode: 0o700 });
   const temporary = `${statePath}.${process.pid}.tmp`;
-  await fs.writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
+  await fs.writeFile(temporary, serialized, { mode: 0o600 });
   await fs.rename(temporary, statePath);
   await fs.chmod(statePath, 0o600);
+  latestRuntimeState = serialized;
 }
 
 async function runOnce(operation) {
@@ -1071,6 +1143,9 @@ if (mode === "--once") {
   let pendingWake = true;
   let wakeResolver = null;
   let wakeTimer = null;
+  let retryDelay = RETRY_INITIAL_MS;
+  let lastRecoveryError = null;
+  let lastRecoveryErrorAt = 0;
   const startedAt = new Date().toISOString();
 
   const wake = () => {
@@ -1097,7 +1172,28 @@ if (mode === "--once") {
       }, milliseconds);
     });
   };
-  const requestStop = () => { stopping = true; wake(); };
+  const reportRecoveryError = async (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const now = Date.now();
+    if (message === lastRecoveryError && now - lastRecoveryErrorAt < ERROR_LOG_INTERVAL_MS) return;
+    const line = `[denia-old-days] CDP recovery unavailable: ${message}`;
+    try { await trimLoaderLog(Buffer.byteLength(`${line}\n`)); } catch {}
+    console.error(line);
+    lastRecoveryError = message;
+    lastRecoveryErrorAt = now;
+  };
+
+  const clearSessions = () => {
+    for (const session of sessions.values()) session.close();
+    sessions.clear();
+  };
+
+  const requestStop = () => {
+    stopping = true;
+    for (const session of sessions.values()) session.cancelPending(new Error("CDP session stopping"));
+    try { browserEvents?.close(); } catch {}
+    wake();
+  };
   process.on("SIGTERM", requestStop);
   process.on("SIGINT", requestStop);
   process.on("SIGHUP", requestStop);
@@ -1129,7 +1225,13 @@ if (mode === "--once") {
   };
 
   const syncTargets = async () => {
-    const targets = await listTargets();
+    let targets;
+    try {
+      targets = await listTargets();
+    } catch (error) {
+      clearSessions();
+      throw error;
+    }
     const targetIds = new Set(targets.map((target) => target.id));
     for (const [targetId, session] of sessions) {
       if (targetIds.has(targetId) && !session.closed) continue;
@@ -1160,7 +1262,7 @@ if (mode === "--once") {
   };
 
   const ensureBrowserEvents = async () => {
-    if (browserEvents?.readyState === WebSocket.OPEN) return true;
+    if (browserEvents?.readyState === WebSocket.OPEN) return { eventDriven: true, error: null };
     try {
       let socket;
       socket = await connectBrowserEventStream(wake, () => {
@@ -1168,28 +1270,41 @@ if (mode === "--once") {
         wake();
       });
       browserEvents = socket;
-      return true;
+      return { eventDriven: true, error: null };
     } catch (error) {
-      console.error(`[denia-old-days] target events unavailable, using poll fallback: ${error.message}`);
       browserEvents = null;
-      return false;
+      return { eventDriven: false, error };
     }
   };
 
-  await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "starting", startedAt, targets: [] });
+  try { await trimLoaderLog(); } catch {}
+  await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "waiting", startedAt, retryDelay, targets: [], targetCount: 0 });
+  pendingWake = false;
 
   try {
     while (!stopping) {
-      const eventDriven = await ensureBrowserEvents();
+      const browserConnection = await ensureBrowserEvents();
+      let syncError = null;
       try {
         await syncTargets();
       } catch (error) {
-        if (!stopping) {
-          console.error(`[denia-old-days] target sync failed: ${error.message}`);
-        }
+        syncError = error;
       }
-      await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "running", startedAt, discovery: eventDriven ? "target-events" : "poll-fallback", targets: [...sessions.keys()] });
-      await waitForWake(eventDriven ? 5000 : 500);
+      const recoveryError = syncError || browserConnection.error;
+      if (!stopping && recoveryError) await reportRecoveryError(recoveryError);
+      const targets = [...sessions.keys()];
+      const waiting = targets.length === 0;
+      if (waiting) {
+        await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "waiting", startedAt, discovery: browserConnection.eventDriven ? "target-events" : "poll-fallback", retryDelay, targets, targetCount: 0 });
+        const wait = retryDelay;
+        retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+        await waitForWake(wait);
+      } else {
+        retryDelay = RETRY_INITIAL_MS;
+        if (!recoveryError) lastRecoveryError = null;
+        await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "running", startedAt, discovery: browserConnection.eventDriven ? "target-events" : "poll-fallback", targets, targetCount: targets.length });
+        await waitForWake(browserConnection.eventDriven ? 5000 : RETRY_INITIAL_MS);
+      }
     }
   } finally {
     if (wakeTimer) clearTimeout(wakeTimer);
@@ -1198,6 +1313,6 @@ if (mode === "--once") {
       try { await session.evaluate(cleanupExpression); } catch {}
       session.close();
     }
-    await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "stopped", stoppedAt: new Date().toISOString(), targets: [] }).catch(() => {});
+    await writeRuntimeState({ schemaVersion: 1, extension: manifest.id, version: manifest.version, pid: process.pid, port, status: "stopped", stoppedAt: new Date().toISOString(), targets: [], targetCount: 0 }).catch(() => {});
   }
 }

@@ -1,17 +1,19 @@
 {
   "name": "denia-old-days-codex-theme",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
     "build:assets": "node scripts/render-assets.mjs",
     "build:release": "npm run build:assets && node scripts/build-github-release.mjs",
     "check:release": "node scripts/validate-github-release.mjs release/denia-old-days-macos.zip",
+    "build:kaboo": "npm run build:assets && node scripts/build-local-kaboo-release.mjs",
+    "check:kaboo": "node scripts/validate-kaboo-release.mjs",
     "check": "npm run build:assets && node scripts/check-source.mjs && node sidecar/tests/validate.mjs sidecar && npm run test:release",
     "test:release": "node --test scripts/github-release-contract.test.mjs scripts/beginner-installer.test.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "devDependencies": {
     "sharp": "0.34.5"

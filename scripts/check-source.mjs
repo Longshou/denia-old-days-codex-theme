@@ -28,7 +28,7 @@ for (const [relative, expected] of officialSources) {
 }
 
 const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
-if (!readme.includes("denia-old-days@0.1.0")) throw new Error("README identity missing");
+if (!readme.includes("denia-old-days@0.1.2")) throw new Error("README identity missing");
 
 const theme = JSON.parse(fs.readFileSync(path.join(root, "theme/theme.json"), "utf8"));
 if (theme.id !== "denia-old-days") throw new Error("theme id mismatch");

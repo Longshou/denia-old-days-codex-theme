@@ -1,6 +1,6 @@
 # 达妮娅 · 旧日斑斓 Codex Theme
 
-`denia-old-days@0.1.0` 是一套 macOS 版 Codex 完整主题。浅色首页使用暖色拍立得构图，深色首页切换为全景画面；任务页会随工作、审批、错误和完成状态改变右侧美术。
+`denia-old-days@0.1.2` 是一套 macOS 版 Codex 完整主题。浅色首页使用暖色拍立得构图，深色首页切换为全景画面；任务页会随工作、审批、错误和完成状态改变右侧美术。
 
 ![首页预览](previews/home.webp)
 
@@ -9,6 +9,8 @@
 ## 安装前只做一件事
 
 先安装公开的 [Codex Dream Skin](https://github.com/Fei-Away/Codex-Dream-Skin/releases/latest)，打开一次并完成引擎安装。
+
+建议使用 Codex Dream Skin 1.5.18。最低支持版本为 1.2.0；安装器会检查版本。Sidecar 需要 Node.js 22 或更高版本，优先使用引擎记录的运行时，未找到兼容运行时时会停止安装并给出提示。
 
 - 已安装 Codex Desktop，并至少打开过一次。
 - 支持 Apple Silicon 和 Intel Mac。
@@ -59,7 +61,11 @@ curl -fsSL https://raw.githubusercontent.com/Longshou/denia-old-days-codex-theme
 "$HOME/Library/Application Support/CodexDreamSkinExtensions/denia-old-days/package/scripts/status.sh"
 ```
 
-`verified=true` 表示当前 Codex 页面已加载完整效果。安装使用的 `sidecar/scripts/health.sh` 只检查当前页面，不切换任务、不改变窗口尺寸。
+状态命令只读取本地运行记录，不连接页面。`running=true` 表示后台进程存活；`runtimeStatus=waiting` 表示正在等待 Codex；`connected=true` 表示运行记录中至少有一个已注入的页面。`verified=unknown` 表示尚未执行本次页面检查。
+
+需要确认当前页面效果时，可手动运行 `sidecar/scripts/health.sh`。它只检查当前页面，不切换任务、不改变窗口尺寸。
+
+Codex 未运行或端口不可用时，Sidecar 会逐步延长重试间隔，最长 30 秒；相同错误最多每 5 分钟记录一次。日志超过 1 MiB 时保留末尾 256 KiB 到 `loader.log.previous`，再截断当前日志。
 
 ## 卸载
 
@@ -76,6 +82,8 @@ Uninstall Denia Old Days.command
 ```
 
 卸载会删除达妮娅基础主题、动态效果和本包状态，并恢复安装前的主题。Codex Dream Skin 引擎和其他主题会保留。
+
+如果原主题恢复失败，卸载器会停止并保留主题、恢复记录和卸载入口。先从 Codex Dream Skin 选择其他主题，再重新执行卸载。如果后台进程无法停止，也会保留安装包供重试。
 
 ## 常见问题
 
@@ -105,7 +113,7 @@ Uninstall Denia Old Days.command
 
 ## 开发与打包
 
-开发者需要 Node.js 20 或更高版本：
+开发者需要 Node.js 22 或更高版本：
 
 ```bash
 npm ci
@@ -121,6 +129,26 @@ release/denia-old-days-macos.zip
 ```
 
 `npm run check` 会重新生成素材，检查源码和 Sidecar，并运行安装器与 GitHub 发布契约测试。`npm run check:release` 会解压 ZIP，复核路径、执行权限、版本、`SHA256SUMS` 和 Sidecar 协议。
+
+### Kaboo 适配包
+
+Kaboo 版使用相同的主题和 Sidecar，保留托管 Dream Skin 1.2.0 的兼容协议。已安装 Kaboo CLI 的用户可执行：
+
+```bash
+kaboo-cli codex-theme use denia-old-days@0.1.2
+```
+
+若状态为 `prepared`，先保存输入，再手动执行 `kaboo-cli codex-theme activate denia-old-days --restart`。
+
+维护者使用独立的发布包：
+
+```bash
+npm run build:kaboo
+npm run check:kaboo
+kaboo-cli codex-theme publish sidecar/release/kaboo-local/denia-old-days/0.1.2/catalog-version.json --tag light
+```
+
+输出目录包含 `bundle.zip`、`catalog-version.json`、`manifest.json` 和两张预览图。发布后版本不可覆盖；更改包内容时必须递增版本。
 
 ## 目录
 
